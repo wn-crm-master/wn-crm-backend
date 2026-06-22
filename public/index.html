@@ -211,17 +211,23 @@
     <div id="tab-import" class="tab">
       <div class="page-title">Import Data</div>
       <div class="import-card">
-        <h2>Import Authors &amp; Books</h2>
-        <p>Paste a JSON object with <code>authors</code> and <code>books</code> arrays, or upload a JSON file.</p>
-        <textarea id="import-json" placeholder='{"authors": [...], "books": [...]}'></textarea>
-        <div class="import-actions">
-          <button class="btn btn-primary" style="width:auto" onclick="submitImport()">Import JSON</button>
-          <label class="file-label">
-            Upload JSON File
-            <input type="file" id="file-input" accept=".json" onchange="loadFile(event)" />
+        <h2>Import Authors</h2>
+        <p>Upload a <strong>JSON</strong> or <strong>CSV</strong> file — data will be imported automatically on upload.</p>
+        <div class="import-actions" style="margin-top:0;">
+          <label class="file-label" style="background:#3b6cf7;color:#fff;">
+            ⬆ Import JSON
+            <input type="file" accept=".json" onchange="handleFileUpload(event,'json')" />
+          </label>
+          <label class="file-label" style="background:#1a7f52;color:#fff;">
+            ⬆ Import CSV
+            <input type="file" accept=".csv" onchange="handleFileUpload(event,'csv')" />
           </label>
         </div>
         <div id="import-msg"></div>
+        <div id="import-preview" style="margin-top:16px;display:none;">
+          <p style="color:#555;font-size:0.85rem;margin-bottom:8px;">Preview (first 5 rows):</p>
+          <div id="preview-table"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -351,32 +357,76 @@
       </table>`;
   }
 
-  function loadFile(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      document.getElementById('import-json').value = e.target.result;
-      submitImport();
-    };
-    reader.readAsText(file);
+  function parseCSV(text) {
+    const lines = text.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    return lines.slice(1).map((line, i) => {
+      const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const row = { id: 'csv-' + i };
+      headers.forEach((h, idx) => { row[h] = vals[idx] || ''; });
+      // Map CSV column names to our field names
+      row.name = row['Author Name'] || row.name || '';
+      row.email = row['Email ID'] || row.email || '';
+      row.uid = row['Author UID'] || row.uid || '';
+      row.regnDate = row['Regn. Date'] || row.regnDate || '';
+      row.prevPlatformTag = row['Prev Platform Tag'] || row.prevPlatformTag || '';
+      row.preContractedTag = row['Pre-Contracted Tag'] || row.preContractedTag || '';
+      // Use UID as unique id if available
+      if (row.uid) row.id = row.uid;
+      return row;
+    });
   }
 
-  async function submitImport() {
-    const msg = document.getElementById('import-msg');
-    const raw = document.getElementById('import-json').value.trim();
-    if (!raw) { showImportMsg('error', 'Please paste or upload a JSON payload.'); return; }
-    let data;
-    try { data = JSON.parse(raw); } catch { showImportMsg('error', 'Invalid JSON. Please check your input.'); return; }
-    showImportMsg('', 'Importing...');
-    const res = await api('/api/import', { method: 'POST', body: JSON.stringify(data) });
-    if (res.success || res.message) {
-      const a = res.authors ? `${res.authors.inserted + res.authors.updated} authors` : `${res.authorsCount || 0} authors`;
-      const b = res.books ? `${res.books.inserted + res.books.updated} books` : `${res.booksCount || 0} books`;
-      showImportMsg('success', `Import successful — ${a}, ${b}.`);
-    } else {
-      showImportMsg('error', res.error || 'Import failed.');
-    }
+  function showPreview(authors) {
+    const preview = document.getElementById('import-preview');
+    const container = document.getElementById('preview-table');
+    const sample = authors.slice(0, 5);
+    preview.style.display = 'block';
+    container.innerHTML = `
+      <table style="font-size:0.8rem;">
+        <thead><tr><th>Author Name</th><th>Email ID</th><th>Author UID</th><th>Regn. Date</th><th>Prev Platform</th><th>Pre-Contracted</th></tr></thead>
+        <tbody>
+          ${sample.map(a => `<tr>
+            <td>${a.name||'—'}</td><td>${a.email||'—'}</td><td>${a.uid||'—'}</td>
+            <td>${a.regnDate||'—'}</td><td>${a.prevPlatformTag||'—'}</td><td>${a.preContractedTag||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function handleFileUpload(event, type) {
+    const file = event.target.files[0];
+    if (!file) return;
+    showImportMsg('', 'Reading file...');
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const text = e.target.result;
+      let authors = [];
+      try {
+        if (type === 'json') {
+          const parsed = JSON.parse(text);
+          authors = parsed.authors || parsed;
+        } else {
+          authors = parseCSV(text);
+        }
+      } catch {
+        showImportMsg('error', 'Could not parse file. Check the format and try again.');
+        return;
+      }
+      if (!authors.length) { showImportMsg('error', 'No data found in file.'); return; }
+      showPreview(authors);
+      showImportMsg('', `Importing ${authors.length} authors...`);
+      const res = await api('/api/import', { method: 'POST', body: JSON.stringify({ authors, books: [] }) });
+      if (res.success) {
+        const total = (res.authors?.inserted || 0) + (res.authors?.updated || 0);
+        showImportMsg('success', `Done! ${total} authors imported. Go to the Authors tab to view.`);
+        loadStats();
+      } else {
+        showImportMsg('error', res.error || 'Import failed.');
+      }
+    };
+    reader.readAsText(file);
   }
 
   function showImportMsg(type, text) {
