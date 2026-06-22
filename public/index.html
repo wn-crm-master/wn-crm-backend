@@ -355,7 +355,10 @@
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = e => { document.getElementById('import-json').value = e.target.result; };
+    reader.onload = e => {
+      document.getElementById('import-json').value = e.target.result;
+      submitImport();
+    };
     reader.readAsText(file);
   }
 
