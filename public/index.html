@@ -187,7 +187,10 @@
 
     <!-- Authors Tab -->
     <div id="tab-authors" class="tab">
-      <div class="page-title">Authors</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div class="page-title" style="margin-bottom:0;">Authors</div>
+        <button class="btn btn-danger" onclick="deleteAllAuthors()">Delete Data</button>
+      </div>
       <div class="table-card">
         <div class="table-header"><h2>All Authors</h2></div>
         <div id="authors-body">
@@ -427,6 +430,18 @@
       }
     };
     reader.readAsText(file);
+  }
+
+  async function deleteAllAuthors() {
+    if (!confirm('Are you sure you want to delete ALL author data? This cannot be undone.')) return;
+    const res = await api('/api/authors/all', { method: 'DELETE' });
+    if (res.success) {
+      alert(`Deleted ${res.deleted} authors.`);
+      loadAuthors();
+      loadStats();
+    } else {
+      alert(res.error || 'Delete failed.');
+    }
   }
 
   function showImportMsg(type, text) {

@@ -140,6 +140,15 @@ app.get('/api/authors', authMiddleware, async (req, res) => {
   }
 });
 
+app.delete('/api/authors/all', authMiddleware, async (req, res) => {
+  try {
+    const result = await db.collection('authors').deleteMany({});
+    res.json({ success: true, deleted: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/authors/:id', authMiddleware, async (req, res) => {
   try {
     const author = await db.collection('authors').findOne({ id: req.params.id });
