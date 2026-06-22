@@ -303,23 +303,24 @@
 
   async function loadAuthors() {
     document.getElementById('authors-body').innerHTML = '<div class="loading">Loading...</div>';
-    const data = await api('/api/authors');
-    const authors = Array.isArray(data) ? data : [];
+    const res = await api('/api/authors');
+    const authors = res.data || (Array.isArray(res) ? res : []);
     if (authors.length === 0) {
       document.getElementById('authors-body').innerHTML = '<div class="empty">No authors yet. Import some data.</div>';
       return;
     }
     document.getElementById('authors-body').innerHTML = `
       <table>
-        <thead><tr><th>Name</th><th>Pen Name</th><th>Genres</th><th>Nationality</th><th>Rating</th></tr></thead>
+        <thead><tr><th>Author Name</th><th>Email ID</th><th>Author UID</th><th>Regn. Date</th><th>Prev Platform Tag</th><th>Pre-Contracted Tag</th></tr></thead>
         <tbody>
           ${authors.map(a => `
             <tr>
-              <td>${a.name || '—'}</td>
-              <td>${a.penName || '—'}</td>
-              <td>${Array.isArray(a.genres) ? a.genres.map(g => `<span class="badge">${g}</span>`).join('') : (a.genres || '—')}</td>
-              <td>${a.nationality || '—'}</td>
-              <td>${a.rating !== undefined ? a.rating : '—'}</td>
+              <td>${a.name || a['Author Name'] || '—'}</td>
+              <td>${a.email || a['Email ID'] || '—'}</td>
+              <td>${a.uid || a['Author UID'] || a.id || '—'}</td>
+              <td>${a.regnDate || a['Regn. Date'] || '—'}</td>
+              <td>${a.prevPlatformTag || a['Prev Platform Tag'] || '—'}</td>
+              <td>${a.preContractedTag || a['Pre-Contracted Tag'] || '—'}</td>
             </tr>`).join('')}
         </tbody>
       </table>`;
@@ -327,8 +328,8 @@
 
   async function loadBooks() {
     document.getElementById('books-body').innerHTML = '<div class="loading">Loading...</div>';
-    const data = await api('/api/books');
-    const books = Array.isArray(data) ? data : [];
+    const res = await api('/api/books');
+    const books = res.data || (Array.isArray(res) ? res : []);
     if (books.length === 0) {
       document.getElementById('books-body').innerHTML = '<div class="empty">No books yet. Import some data.</div>';
       return;
