@@ -68,52 +68,81 @@
     .inline-msg.error { background: #fdecea; color: #c0392b; display: block; }
     .inline-msg.info { background: #eef2ff; color: #3b6cf7; display: block; }
 
-    /* Table wrapper */
-    .table-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden; }
-    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-height: calc(100vh - 220px); overflow-y: auto; }
+    /* Table */
+    .table-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    .table-scroll { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; max-height: calc(100vh - 220px); border-radius: 10px; }
     table { border-collapse: collapse; table-layout: fixed; }
     table.wide { min-width: max-content; }
 
-    /* Header cells */
     th {
       background: #f7f8fc; text-align: left; padding: 0;
-      font-size: 0.8rem; color: #555; border-bottom: 2px solid #e8eaf0;
-      border-right: 1px solid #e8eaf0; white-space: nowrap;
-      position: relative; vertical-align: top;
+      font-size: 0.8rem; color: #555;
+      border-bottom: 2px solid #e0e4f0; border-right: 1px solid #e8eaf0;
+      white-space: nowrap; position: relative; vertical-align: top;
     }
-    th.sticky { position: sticky; z-index: 10; background: #f0f3fc; box-shadow: 2px 0 4px rgba(0,0,0,0.06); }
-    th.pinned-col { background: #e8eeff; }
+    th.is-sticky { position: sticky; z-index: 10; background: #eef1fb; box-shadow: 2px 0 5px rgba(0,0,0,0.08); }
+    th.is-pinned { background: #e6eaff; }
 
     .th-inner { display: flex; flex-direction: column; }
-    .th-top { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; cursor: pointer; user-select: none; }
-    .th-top:hover { background: rgba(59,108,247,0.06); }
-    .th-label { flex: 1; font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: #444; }
-    .th-icons { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
-    .sort-btn { background: none; border: none; cursor: pointer; font-size: 0.7rem; color: #bbb; padding: 1px 2px; border-radius: 2px; line-height: 1; }
-    .sort-btn.active { color: #3b6cf7; }
-    .pin-btn { background: none; border: none; cursor: pointer; font-size: 0.72rem; color: #ccc; padding: 1px 2px; border-radius: 2px; line-height: 1; transition: color 0.15s; }
+    .th-top { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; }
+    .th-label { flex: 1; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: #444; cursor: default; }
+    .th-icons { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+    .sort-btn { background: none; border: none; cursor: pointer; font-size: 0.65rem; color: #ccc; padding: 2px 3px; border-radius: 3px; line-height: 1; }
+    .sort-btn:hover { color: #3b6cf7; background: #eef2ff; }
+    .sort-btn.active { color: #3b6cf7; font-weight: bold; }
+    .pin-btn { background: none; border: none; cursor: pointer; font-size: 0.7rem; color: #ccc; padding: 2px 3px; border-radius: 3px; line-height: 1; }
     .pin-btn:hover { color: #3b6cf7; }
     .pin-btn.pinned { color: #3b6cf7; }
-    .th-filter { padding: 4px 8px 6px; }
-    .th-filter input { width: 100%; padding: 3px 6px; font-size: 0.78rem; border: 1px solid #ddd; border-radius: 4px; outline: none; background: #fff; color: #333; }
-    .th-filter input:focus { border-color: #3b6cf7; }
+
+    /* Filter button */
+    .th-filter { padding: 3px 8px 7px; }
+    .filter-btn {
+      width: 100%; padding: 3px 7px; font-size: 0.75rem; border: 1px solid #dde2f0;
+      border-radius: 4px; background: #fff; color: #888; cursor: pointer;
+      text-align: left; display: flex; align-items: center; justify-content: space-between;
+      gap: 4px; white-space: nowrap; overflow: hidden;
+    }
+    .filter-btn:hover { border-color: #3b6cf7; color: #3b6cf7; }
+    .filter-btn.has-filter { background: #eef2ff; border-color: #3b6cf7; color: #3b6cf7; font-weight: 600; }
+    .filter-btn-text { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+    .filter-btn-arrow { flex-shrink: 0; font-size: 0.6rem; }
+
+    /* Shared dropdown */
+    #filter-dropdown {
+      display: none; position: fixed; z-index: 9999;
+      background: #fff; border: 1px solid #dde2f0; border-radius: 8px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.14); width: 240px;
+      max-height: 320px; overflow: hidden; flex-direction: column;
+    }
+    #filter-dropdown.open { display: flex; }
+    .fd-search-wrap { padding: 10px 10px 6px; border-bottom: 1px solid #f0f2f5; flex-shrink: 0; }
+    .fd-search-wrap input { width: 100%; padding: 5px 9px; font-size: 0.83rem; border: 1px solid #dde2f0; border-radius: 5px; outline: none; }
+    .fd-search-wrap input:focus { border-color: #3b6cf7; }
+    .fd-actions { display: flex; gap: 6px; padding: 6px 10px; border-bottom: 1px solid #f0f2f5; flex-shrink: 0; }
+    .fd-action-btn { font-size: 0.75rem; color: #3b6cf7; background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 3px; }
+    .fd-action-btn:hover { background: #eef2ff; }
+    .fd-options { overflow-y: auto; flex: 1; padding: 4px 0; }
+    .fd-option { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; font-size: 0.84rem; color: #333; }
+    .fd-option:hover { background: #f4f6ff; }
+    .fd-option input[type=checkbox] { width: 14px; height: 14px; cursor: pointer; accent-color: #3b6cf7; flex-shrink: 0; }
+    .fd-option-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fd-empty { padding: 16px; text-align: center; color: #bbb; font-size: 0.83rem; }
 
     /* Body cells */
     td {
       padding: 9px 10px; font-size: 0.85rem; border-bottom: 1px solid #f0f2f5;
       border-right: 1px solid #f0f2f5; white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; max-width: 200px; vertical-align: middle;
+      text-overflow: ellipsis; max-width: 220px; vertical-align: middle;
     }
-    td.sticky { position: sticky; z-index: 5; background: #fff; box-shadow: 2px 0 4px rgba(0,0,0,0.05); }
-    td.pinned-col { background: #f5f7ff; }
+    td.is-sticky { position: sticky; z-index: 5; background: #fff; box-shadow: 2px 0 5px rgba(0,0,0,0.05); }
+    td.is-pinned { background: #f5f7ff; }
     tr:hover td { background: #f4f6ff; }
-    tr:hover td.sticky { background: #edf0ff; }
-    tr:hover td.pinned-col { background: #edf0ff; }
+    tr:hover td.is-sticky, tr:hover td.is-pinned { background: #edf0ff; }
     tr:last-child td { border-bottom: none; }
+    tr.row-hidden { display: none; }
 
-    /* Editable cells */
     td.editable { cursor: pointer; }
-    td.editable:hover { background: #eef5ff !important; outline: 1px dashed #3b6cf7; }
+    td.editable:hover { background: #e8f0ff !important; outline: 1px dashed #3b6cf7; }
     td.editing { padding: 2px; overflow: visible; }
     .cell-input { width: 100%; padding: 6px 8px; border: 2px solid #3b6cf7; border-radius: 4px; font-size: 0.85rem; outline: none; font-family: inherit; min-width: 120px; }
     .cell-special { border-color: #e67e22; background: #fff8f0; }
@@ -128,7 +157,7 @@
     .page-title { font-size: 1.3rem; font-weight: 700; color: #1a2340; margin-bottom: 20px; }
     .loading { text-align: center; padding: 40px; color: #aaa; }
     .empty { text-align: center; padding: 40px; color: #bbb; font-size: 0.95rem; }
-    .save-indicator { position: fixed; bottom: 20px; right: 20px; background: #1a7f52; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.88rem; display: none; z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .save-indicator { position: fixed; bottom: 20px; right: 20px; background: #1a7f52; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.88rem; display: none; z-index: 9998; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .save-indicator.error { background: #e74c3c; }
   </style>
 </head>
@@ -137,25 +166,26 @@
 <!-- Save indicator -->
 <div id="save-indicator" class="save-indicator">Saved ✓</div>
 
-<!-- Login Screen -->
+<!-- Shared filter dropdown (portal — appended to body, positioned via JS) -->
+<div id="filter-dropdown">
+  <div class="fd-search-wrap"><input id="fd-search" type="text" placeholder="Search values…" oninput="fdSearch(this.value)" /></div>
+  <div class="fd-actions">
+    <button class="fd-action-btn" onclick="fdSelectAll()">Select all</button>
+    <button class="fd-action-btn" onclick="fdClearAll()">Clear all</button>
+  </div>
+  <div class="fd-options" id="fd-options"></div>
+</div>
+
+<!-- Login -->
 <div id="login-screen">
   <div class="login-card">
     <h1>Authors &amp; Books CRM</h1>
     <p id="login-subtitle">Sign in to your account</p>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="auth-email" placeholder="you@example.com" />
-    </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="auth-password" placeholder="••••••••" />
-    </div>
+    <div class="form-group"><label>Email</label><input type="email" id="auth-email" placeholder="you@example.com" /></div>
+    <div class="form-group"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••" /></div>
     <button class="btn btn-primary btn-login" onclick="submitAuth()">Sign In</button>
     <div id="login-msg"></div>
-    <div class="login-toggle">
-      <span id="toggle-text">Don't have an account?</span>
-      <a onclick="toggleMode()">Register</a>
-    </div>
+    <div class="login-toggle"><span id="toggle-text">Don't have an account?</span> <a onclick="toggleMode()">Register</a></div>
   </div>
 </div>
 
@@ -177,7 +207,6 @@
 
   <div class="main">
 
-    <!-- Dashboard -->
     <div id="tab-dashboard" class="tab active">
       <div class="page-title">Dashboard</div>
       <div class="stat-cards">
@@ -186,49 +215,38 @@
       </div>
     </div>
 
-    <!-- Authors -->
     <div id="tab-authors" class="tab">
       <div class="tab-toolbar">
         <div class="page-title">Authors</div>
         <div class="import-btns">
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
-          <button class="btn btn-danger" onclick="deleteAllAuthors()">Delete Data</button>
+          <button class="btn btn-danger" onclick="deleteAllEntity('authors')">Delete Data</button>
         </div>
       </div>
       <div id="authors-import-msg" class="inline-msg"></div>
-      <div class="table-card">
-        <div class="table-scroll" id="authors-scroll">
-          <div id="authors-body"><div class="loading">Loading...</div></div>
-        </div>
-      </div>
+      <div class="table-card"><div class="table-scroll"><div id="authors-body"><div class="loading">Loading…</div></div></div></div>
     </div>
 
-    <!-- Books -->
     <div id="tab-books" class="tab">
       <div class="tab-toolbar">
         <div class="page-title">Books</div>
         <div class="import-btns">
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
-          <button class="btn btn-danger" onclick="deleteAllBooks()">Delete Data</button>
+          <button class="btn btn-danger" onclick="deleteAllEntity('books')">Delete Data</button>
         </div>
       </div>
       <div id="books-import-msg" class="inline-msg"></div>
-      <div class="table-card">
-        <div class="table-scroll" id="books-scroll">
-          <div id="books-body"><div class="loading">Loading...</div></div>
-        </div>
-      </div>
+      <div class="table-card"><div class="table-scroll"><div id="books-body"><div class="loading">Loading…</div></div></div></div>
     </div>
 
-    <!-- Settings -->
     <div id="tab-settings" class="tab">
       <div class="page-title">Settings</div>
       <div class="settings-section">
         <h3>Data Backups &amp; Rollback</h3>
-        <p>Before any import overwrites existing data, the old records are backed up for 24 hours.</p>
-        <div id="backups-body"><div class="loading">Loading backups...</div></div>
+        <p>Backups are created automatically before any import or edit overwrites existing data. Kept for 24 hours.</p>
+        <div id="backups-body"><div class="loading">Loading…</div></div>
       </div>
     </div>
 
@@ -236,90 +254,89 @@
 </div>
 
 <script>
-// ── Column definitions ─────────────────────────────────────────────────
+// ── Column definitions ─────────────────────────────────────────────
 const AUTHOR_COLS = [
-  { field: 'uid',                    header: 'Author ID',                  width: 160 },
-  { field: 'name',                   header: 'Author Name',                width: 160 },
-  { field: 'regnDate',               header: 'Author Reg. Date',           width: 140 },
-  { field: 'locale',                 header: 'Author Locale',              width: 120 },
-  { field: 'email',                  header: 'Author Email ID',            width: 200 },
-  { field: 'phone',                  header: 'Author Phone No.',           width: 140 },
-  { field: 'bucketTag',              header: 'Bucket Tag',                 width: 120 },
-  { field: 'contestTag',             header: 'Contest Tag',                width: 120 },
-  { field: 'sourceTag',              header: 'Source Tag',                 width: 120 },
-  { field: 'authorTypeTag',          header: 'Author Type Tag',            width: 140 },
-  { field: 'form1MailSent',          header: 'Form 1 Mail Sent',           width: 140 },
-  { field: 'form1FollowUp1Sent',     header: 'Form 1 FU1 Sent',           width: 130 },
-  { field: 'form1FollowUp2Sent',     header: 'Form 1 FU2 Sent',           width: 130 },
-  { field: 'form1Filled',            header: 'Form 1 Filled',              width: 110 },
-  { field: 'preContractedTag',       header: 'Pre-Contract Validation',    width: 180 },
-  { field: 'preContractCompany',     header: 'Pre-Contract Company',       width: 170 },
-  { field: 'booksCreated',           header: 'Books Created',              width: 120 },
-  { field: 'booksChp1Published',     header: 'Books Chp1 Published',       width: 160 },
-  { field: 'books10kCompleted',      header: 'Books 10k Completed',        width: 160 },
-  { field: 'booksModPassed',         header: 'Books Mod Passed',           width: 150 },
-  { field: 'booksExpressContracted', header: 'Books Express Contracted',   width: 190 },
-  { field: 'booksWBPContracted',     header: 'Books WBP Contracted',       width: 170 },
-  { field: 'booksOFW',              header: 'Books OFW',                  width: 110 },
+  { field:'uid',                    header:'Author ID',                width:160 },
+  { field:'name',                   header:'Author Name',              width:160 },
+  { field:'regnDate',               header:'Author Reg. Date',         width:140 },
+  { field:'locale',                 header:'Author Locale',            width:120 },
+  { field:'email',                  header:'Author Email ID',          width:200 },
+  { field:'phone',                  header:'Author Phone No.',         width:140 },
+  { field:'bucketTag',              header:'Bucket Tag',               width:120 },
+  { field:'contestTag',             header:'Contest Tag',              width:120 },
+  { field:'sourceTag',              header:'Source Tag',               width:120 },
+  { field:'authorTypeTag',          header:'Author Type Tag',          width:140 },
+  { field:'form1MailSent',          header:'Form 1 Mail Sent',         width:140 },
+  { field:'form1FollowUp1Sent',     header:'Form 1 FU1 Sent',         width:130 },
+  { field:'form1FollowUp2Sent',     header:'Form 1 FU2 Sent',         width:130 },
+  { field:'form1Filled',            header:'Form 1 Filled',            width:110 },
+  { field:'preContractedTag',       header:'Pre-Contract Validation',  width:180 },
+  { field:'preContractCompany',     header:'Pre-Contract Company',     width:170 },
+  { field:'booksCreated',           header:'Books Created',            width:120 },
+  { field:'booksChp1Published',     header:'Books Chp1 Published',     width:160 },
+  { field:'books10kCompleted',      header:'Books 10k Completed',      width:160 },
+  { field:'booksModPassed',         header:'Books Mod Passed',         width:150 },
+  { field:'booksExpressContracted', header:'Books Express Contracted', width:190 },
+  { field:'booksWBPContracted',     header:'Books WBP Contracted',     width:170 },
+  { field:'booksOFW',               header:'Books OFW',                width:110 },
 ];
-
 const BOOK_COLS = [
-  { field: 'id',                  header: 'Book ID',               width: 140 },
-  { field: 'authorId',            header: 'Author ID',             width: 160 },
-  { field: 'title',               header: 'Book Title',            width: 200 },
-  { field: 'showId',              header: 'Show ID',               width: 120 },
-  { field: 'showTitle',           header: 'Show Title',            width: 180 },
-  { field: 'createDate',          header: 'Book Create Date',      width: 140 },
-  { field: 'status',              header: 'Book Status',           width: 120 },
-  { field: 'pubWC',               header: 'Pub WC',                width: 100 },
-  { field: 'chp1Published',       header: 'Chp 1 Published',       width: 130 },
-  { field: 'chp1PublishedDate',   header: 'Chp 1 Published Date',  width: 160 },
-  { field: 'words10kCompleted',   header: '10k Words Completed',   width: 150 },
-  { field: 'words10kDate',        header: '10k Words Date',        width: 140 },
-  { field: 'moderationStatus',    header: 'Moderation Status',     width: 150 },
-  { field: 'moderationPassedDate',header: 'Mod Passed Date',       width: 150 },
-  { field: 'editorScore',         header: 'Book Editor Score',     width: 140 },
-  { field: 'words50kCompleted',   header: '50k Words Completed',   width: 150 },
-  { field: 'words50kDate',        header: '50k Words Date',        width: 140 },
-  { field: 'llmScore5hr',         header: '5hr LLM Score',         width: 120 },
-  { field: 'wbpStatus',           header: 'WBP Status',            width: 120 },
-  { field: 'wbpSubStatus',        header: 'WBP Sub Status',        width: 130 },
-  { field: 'incentiveFlag',       header: 'Incentive Flag',        width: 120 },
-  { field: 'wbpContractingDate',  header: 'WBP Contracting Date',  width: 160 },
-  { field: 'ppvTag',              header: 'PPV Tag',               width: 100 },
-  { field: 'ppvTagDate',          header: 'PPV Tag Date',          width: 130 },
-  { field: 'ldaus',               header: 'LDAUs',                 width: 100 },
-  { field: 'h1EligibleLdau',      header: 'H1 Eligible LDAU',      width: 140 },
-  { field: 'h1Ret',               header: 'H1 Ret%',               width: 90  },
-  { field: 'h5EligibleLdau',      header: 'H5 Eligible LDAU',      width: 140 },
-  { field: 'h5Ret',               header: 'H5 Ret%',               width: 90  },
-  { field: 'h10EligibleLdau',     header: 'H10 Eligible LDAU',     width: 150 },
-  { field: 'h10Ret',              header: 'H10 Ret%',              width: 95  },
-  { field: 'h15EligibleLdau',     header: 'H15 Eligible LDAU',     width: 150 },
-  { field: 'h15Ret',              header: 'H15 Ret%',              width: 95  },
+  { field:'id',                   header:'Book ID',              width:140 },
+  { field:'authorId',             header:'Author ID',            width:160 },
+  { field:'title',                header:'Book Title',           width:200 },
+  { field:'showId',               header:'Show ID',              width:120 },
+  { field:'showTitle',            header:'Show Title',           width:180 },
+  { field:'createDate',           header:'Book Create Date',     width:140 },
+  { field:'status',               header:'Book Status',          width:120 },
+  { field:'pubWC',                header:'Pub WC',               width:100 },
+  { field:'chp1Published',        header:'Chp 1 Published',      width:130 },
+  { field:'chp1PublishedDate',    header:'Chp 1 Published Date', width:160 },
+  { field:'words10kCompleted',    header:'10k Words Completed',  width:150 },
+  { field:'words10kDate',         header:'10k Words Date',       width:140 },
+  { field:'moderationStatus',     header:'Moderation Status',    width:150 },
+  { field:'moderationPassedDate', header:'Mod Passed Date',      width:150 },
+  { field:'editorScore',          header:'Book Editor Score',    width:140 },
+  { field:'words50kCompleted',    header:'50k Words Completed',  width:150 },
+  { field:'words50kDate',         header:'50k Words Date',       width:140 },
+  { field:'llmScore5hr',          header:'5hr LLM Score',        width:120 },
+  { field:'wbpStatus',            header:'WBP Status',           width:120 },
+  { field:'wbpSubStatus',         header:'WBP Sub Status',       width:130 },
+  { field:'incentiveFlag',        header:'Incentive Flag',       width:120 },
+  { field:'wbpContractingDate',   header:'WBP Contracting Date', width:160 },
+  { field:'ppvTag',               header:'PPV Tag',              width:100 },
+  { field:'ppvTagDate',           header:'PPV Tag Date',         width:130 },
+  { field:'ldaus',                header:'LDAUs',                width:100 },
+  { field:'h1EligibleLdau',       header:'H1 Eligible LDAU',     width:140 },
+  { field:'h1Ret',                header:'H1 Ret%',              width:90  },
+  { field:'h5EligibleLdau',       header:'H5 Eligible LDAU',     width:140 },
+  { field:'h5Ret',                header:'H5 Ret%',              width:90  },
+  { field:'h10EligibleLdau',      header:'H10 Eligible LDAU',    width:150 },
+  { field:'h10Ret',               header:'H10 Ret%',             width:95  },
+  { field:'h15EligibleLdau',      header:'H15 Eligible LDAU',    width:150 },
+  { field:'h15Ret',               header:'H15 Ret%',             width:95  },
 ];
 
 const SPECIAL_AUTHORS = new Set(['name','regnDate','locale','email','phone','bucketTag','contestTag','sourceTag','authorTypeTag','preContractedTag','preContractCompany']);
 const SPECIAL_BOOKS   = new Set(['authorId','title','showId','showTitle','createDate','status']);
 
-// ── App state ─────────────────────────────────────────────────────────
+// ── State ──────────────────────────────────────────────────────────
 const BASE = '';
 let token = localStorage.getItem('crm_token') || '';
 let isRegister = false;
 
 const state = {
-  authors: { data: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {} },
-  books:   { data: [], pinned: new Set(['id']),  sort: { field: null, dir: 'asc' }, filter: {} }
+  authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {} },
+  books:   { data: [], sortedData: [], pinned: new Set(['id']),  sort: { field: null, dir: 'asc' }, filter: {} }
 };
 
-function api(path, opts = {}) {
-  return fetch(BASE + path, {
-    ...opts,
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, ...(opts.headers || {}) }
-  }).then(r => r.json());
+// Active filter dropdown context
+let fdCtx = null; // { entity, field, allVals, filteredVals }
+
+function api(path, opts={}) {
+  return fetch(BASE+path, { ...opts, headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, ...(opts.headers||{}) } }).then(r=>r.json());
 }
 
-// ── Auth ───────────────────────────────────────────────────────────────
+// ── Auth ────────────────────────────────────────────────────────────
 function toggleMode() {
   isRegister = !isRegister;
   document.getElementById('login-subtitle').textContent = isRegister ? 'Create a new account' : 'Sign in to your account';
@@ -327,457 +344,383 @@ function toggleMode() {
   document.querySelector('.btn-login').textContent = isRegister ? 'Register' : 'Sign In';
   document.getElementById('login-msg').textContent = '';
 }
-
 async function submitAuth() {
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const msg = document.getElementById('login-msg');
-  if (!email || !password) { msg.style.color = '#e74c3c'; msg.textContent = 'Please enter email and password.'; return; }
-  const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
-  const res = await api(endpoint, { method: 'POST', body: JSON.stringify({ email, password }) });
-  if (res.token) {
-    token = res.token;
-    localStorage.setItem('crm_token', token);
-    localStorage.setItem('crm_email', (res.user && res.user.email) || email);
-    showApp();
-  } else {
-    msg.style.color = '#e74c3c';
-    msg.textContent = res.error || 'Authentication failed.';
-  }
+  if (!email||!password) { msg.style.color='#e74c3c'; msg.textContent='Please enter email and password.'; return; }
+  const res = await api(isRegister?'/api/auth/register':'/api/auth/login', { method:'POST', body:JSON.stringify({ email, password }) });
+  if (res.token) { token=res.token; localStorage.setItem('crm_token',token); localStorage.setItem('crm_email',(res.user&&res.user.email)||email); showApp(); }
+  else { msg.style.color='#e74c3c'; msg.textContent=res.error||'Authentication failed.'; }
 }
+function logout() { token=''; localStorage.removeItem('crm_token'); localStorage.removeItem('crm_email'); document.getElementById('app').style.display='none'; document.getElementById('login-screen').style.display='flex'; }
+function showApp() { document.getElementById('login-screen').style.display='none'; document.getElementById('app').style.display='block'; document.getElementById('nav-email').textContent=localStorage.getItem('crm_email')||''; showTab('dashboard'); loadStats(); }
 
-function logout() {
-  token = '';
-  localStorage.removeItem('crm_token');
-  localStorage.removeItem('crm_email');
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-}
-
-function showApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('nav-email').textContent = localStorage.getItem('crm_email') || '';
-  showTab('dashboard');
-  loadStats();
-}
-
-const TAB_ORDER = ['dashboard', 'authors', 'books', 'settings'];
+const TAB_ORDER = ['dashboard','authors','books','settings'];
 function showTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
   const idx = TAB_ORDER.indexOf(name);
-  if (idx >= 0) document.querySelectorAll('.nav-link')[idx].classList.add('active');
-  if (name === 'authors') loadAuthors();
-  if (name === 'books') loadBooks();
-  if (name === 'dashboard') loadStats();
-  if (name === 'settings') loadBackups();
+  if (idx>=0) document.querySelectorAll('.nav-link')[idx].classList.add('active');
+  closeFD();
+  if (name==='authors') loadAuthors();
+  if (name==='books') loadBooks();
+  if (name==='dashboard') loadStats();
+  if (name==='settings') loadBackups();
 }
+async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
-async function loadStats() {
-  const res = await api('/api/stats');
-  if (res.totalAuthors !== undefined) {
-    document.getElementById('stat-authors').textContent = res.totalAuthors;
-    document.getElementById('stat-books').textContent = res.totalBooks;
-  }
-}
-
-// ── Table rendering ────────────────────────────────────────────────────
+// ── Table rendering ────────────────────────────────────────────────
 function getStickyOffsets(cols, pinned) {
-  const offsets = {};
-  let left = 0;
-  for (const col of cols) {
-    if (pinned.has(col.field)) {
-      offsets[col.field] = left;
-      left += col.width;
-    }
-  }
-  return offsets;
+  const o={}; let left=0;
+  for (const col of cols) { if (pinned.has(col.field)) { o[col.field]=left; left+=col.width; } }
+  return o;
 }
 
 function renderTable(entity) {
-  const cols   = entity === 'authors' ? AUTHOR_COLS : BOOK_COLS;
-  const s      = state[entity];
-  const idField = entity === 'authors' ? 'uid' : 'id';
-  const special = entity === 'authors' ? SPECIAL_AUTHORS : SPECIAL_BOOKS;
-  const apiBase = '/api/' + entity;
-
-  // Filter
-  let data = s.data.filter(row =>
-    Object.entries(s.filter).every(([f, v]) =>
-      !v || String(row[f] || '').toLowerCase().includes(v.toLowerCase())
-    )
-  );
+  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const s = state[entity];
+  const idField = entity==='authors'?'uid':'id';
+  const special = entity==='authors'?SPECIAL_AUTHORS:SPECIAL_BOOKS;
 
   // Sort
+  let sorted = [...s.data];
   if (s.sort.field) {
-    const sf = s.sort.field, dir = s.sort.dir;
-    data = [...data].sort((a, b) => {
-      const av = a[sf] ?? '', bv = b[sf] ?? '';
-      const n = Number(av), m = Number(bv);
-      const cmp = (!isNaN(n) && !isNaN(m)) ? n - m : String(av).localeCompare(String(bv), undefined, { numeric: true });
-      return dir === 'asc' ? cmp : -cmp;
-    });
+    const sf=s.sort.field, dir=s.sort.dir;
+    sorted.sort((a,b)=>{ const av=a[sf]??'',bv=b[sf]??''; const n=Number(av),m=Number(bv); const cmp=(!isNaN(n)&&!isNaN(m))?n-m:String(av).localeCompare(String(bv),undefined,{numeric:true}); return dir==='asc'?cmp:-cmp; });
   }
+  s.sortedData = sorted;
 
   const offsets = getStickyOffsets(cols, s.pinned);
-  const tbody = document.getElementById(entity + '-body');
+  const container = document.getElementById(entity+'-body');
 
-  if (!data.length) {
-    tbody.innerHTML = '<div class="empty">No data yet. Use Import above.</div>';
-    return;
-  }
+  if (!sorted.length) { container.innerHTML='<div class="empty">No data yet. Use Import above.</div>'; return; }
 
-  // Build table
-  let html = '<table class="wide"><thead>';
-
-  // Header row
-  html += '<tr>';
+  let html = '<table class="wide"><thead><tr>';
   for (const col of cols) {
     const isSticky = s.pinned.has(col.field);
-    const isPinned = isSticky && col.field !== idField;
-    const stickyStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;z-index:10;` : '';
-    const bgStyle = isPinned ? 'background:#e8eeff;' : isSticky ? 'background:#f0f3fc;' : '';
-    const shadow = isSticky ? 'box-shadow:2px 0 4px rgba(0,0,0,0.07);' : '';
-    const sortDir = (s.sort.field === col.field) ? s.sort.dir : null;
+    const isPinned = isSticky && col.field!==idField;
+    const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
+    const sortDir = s.sort.field===col.field ? s.sort.dir : null;
+    const filterSet = s.filter[col.field] || new Set();
+    const hasFilter = filterSet.size > 0;
+    const filterLabel = hasFilter ? filterSet.size+' selected' : 'All';
 
-    html += `<th style="width:${col.width}px;min-width:${col.width}px;${stickyStyle}${bgStyle}${shadow}">
+    html += `<th class="${isSticky?'is-sticky':''} ${isPinned?'is-pinned':''}" style="width:${col.width}px;min-width:${col.width}px;${stStyle}">
       <div class="th-inner">
         <div class="th-top">
           <span class="th-label">${col.header}</span>
           <span class="th-icons">
-            <button class="sort-btn ${sortDir === 'asc' ? 'active' : ''}" title="Sort A→Z / Low→High" onclick="setSort('${entity}','${col.field}','asc')">▲</button>
-            <button class="sort-btn ${sortDir === 'desc' ? 'active' : ''}" title="Sort Z→A / High→Low" onclick="setSort('${entity}','${col.field}','desc')">▼</button>
-            ${col.field !== idField ? `<button class="pin-btn ${isSticky ? 'pinned' : ''}" title="${isSticky ? 'Unpin column' : 'Pin column'}" onclick="togglePin('${entity}','${col.field}')">📌</button>` : ''}
+            <button class="sort-btn ${sortDir==='asc'?'active':''}" title="Sort A→Z" onclick="setSort('${entity}','${col.field}','asc')">▲</button>
+            <button class="sort-btn ${sortDir==='desc'?'active':''}" title="Sort Z→A" onclick="setSort('${entity}','${col.field}','desc')">▼</button>
+            ${col.field!==idField?`<button class="pin-btn ${isSticky?'pinned':''}" title="${isSticky?'Unpin':'Pin column'}" onclick="togglePin('${entity}','${col.field}')">📌</button>`:''}
           </span>
         </div>
-        <div class="th-filter"><input type="text" placeholder="Filter…" value="${s.filter[col.field] || ''}" oninput="setFilter('${entity}','${col.field}',this.value)" /></div>
+        <div class="th-filter">
+          <button class="filter-btn ${hasFilter?'has-filter':''}" id="fbtn-${entity}-${col.field}" onclick="openFD(event,'${entity}','${col.field}',this)">
+            <span class="filter-btn-text">${filterLabel}</span>
+            <span class="filter-btn-arrow">▾</span>
+          </button>
+        </div>
       </div>
     </th>`;
   }
   html += '</tr></thead><tbody>';
 
-  // Data rows
-  for (const row of data) {
-    const rowId = row[idField] || '';
-    html += '<tr>';
+  sorted.forEach((row, idx) => {
+    html += `<tr data-idx="${idx}">`;
     for (const col of cols) {
       const isSticky = s.pinned.has(col.field);
-      const isPinned = isSticky && col.field !== idField;
-      const stickyStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;z-index:5;` : '';
-      const bgStyle = isPinned ? 'background:#f5f7ff;' : isSticky ? 'background:#fff;' : '';
-      const shadow = isSticky ? 'box-shadow:2px 0 4px rgba(0,0,0,0.04);' : '';
-      const val = row[col.field] !== undefined && row[col.field] !== null ? row[col.field] : '';
-      const isId = col.field === idField;
-      const editAttr = isId ? '' : `class="editable" onclick="startEdit('${entity}','${escAttr(rowId)}','${col.field}','${escAttr(String(val))}',this)"`;
-
-      html += `<td ${editAttr} style="${stickyStyle}${bgStyle}${shadow}" title="${escAttr(String(val))}">${escHtml(String(val))}</td>`;
+      const isPinned = isSticky && col.field!==idField;
+      const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
+      const val = row[col.field]!==undefined && row[col.field]!==null ? row[col.field] : '';
+      const isId = col.field===idField;
+      const editAttr = isId ? '' : `class="editable" onclick="startEdit('${entity}','${escAttr(String(row[idField]||''))}','${col.field}','${escAttr(String(val))}',this)"`;
+      html += `<td ${editAttr} class="${isSticky?'is-sticky':''} ${isPinned?'is-pinned':''}" style="${stStyle}" title="${escAttr(String(val))}">${escHtml(String(val))}</td>`;
     }
     html += '</tr>';
-  }
+  });
 
   html += '</tbody></table>';
-  tbody.innerHTML = html;
+  container.innerHTML = html;
+  applyRowFilters(entity);
+}
+
+function applyRowFilters(entity) {
+  const s = state[entity];
+  const idField = entity==='authors'?'uid':'id';
+  const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
+  const rows = document.querySelectorAll(`#${entity}-body tbody tr`);
+  rows.forEach(tr => {
+    const idx = parseInt(tr.dataset.idx);
+    const row = s.sortedData[idx];
+    if (!row) return;
+    const visible = activeFilters.every(([f, vals]) => vals.has(String(row[f]??'')));
+    tr.classList.toggle('row-hidden', !visible);
+  });
 }
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s) { return s.replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 
-// ── Sort / filter / pin ────────────────────────────────────────────────
+// ── Sort & Pin ─────────────────────────────────────────────────────
 function setSort(entity, field, dir) {
   const s = state[entity];
-  if (s.sort.field === field && s.sort.dir === dir) {
-    s.sort = { field: null, dir: 'asc' }; // toggle off
-  } else {
-    s.sort = { field, dir };
-  }
+  s.sort = (s.sort.field===field && s.sort.dir===dir) ? { field:null, dir:'asc' } : { field, dir };
   renderTable(entity);
 }
-
-function setFilter(entity, field, value) {
-  state[entity].filter[field] = value;
-  renderTable(entity);
-}
-
 function togglePin(entity, field) {
-  const pinned = state[entity].pinned;
-  if (pinned.has(field)) pinned.delete(field);
-  else pinned.add(field);
+  const p = state[entity].pinned;
+  p.has(field) ? p.delete(field) : p.add(field);
   renderTable(entity);
 }
 
-// ── Inline editing ─────────────────────────────────────────────────────
+// ── Filter Dropdown ────────────────────────────────────────────────
+function openFD(event, entity, field, btn) {
+  event.stopPropagation();
+  const dd = document.getElementById('filter-dropdown');
+
+  // Toggle closed if same button
+  if (fdCtx && fdCtx.entity===entity && fdCtx.field===field && dd.classList.contains('open')) {
+    closeFD(); return;
+  }
+
+  const s = state[entity];
+  const filterSet = s.filter[field] || new Set();
+
+  // Collect unique values for this column
+  const allVals = [...new Set(s.data.map(r => String(r[field]??'')).filter(v=>v!==''))].sort((a,b)=>{
+    const n=Number(a),m=Number(b); return (!isNaN(n)&&!isNaN(m))?n-m:a.localeCompare(b,undefined,{numeric:true});
+  });
+
+  fdCtx = { entity, field, allVals, filterSet };
+  document.getElementById('fd-search').value = '';
+  renderFDOptions(allVals, filterSet, '');
+
+  // Position below the button
+  const rect = btn.getBoundingClientRect();
+  dd.style.top  = (rect.bottom + 4) + 'px';
+  dd.style.left = rect.left + 'px';
+  // Keep within viewport
+  const ddW = 240;
+  if (rect.left + ddW > window.innerWidth - 8) dd.style.left = (window.innerWidth - ddW - 8) + 'px';
+
+  dd.classList.add('open');
+}
+
+function closeFD() {
+  document.getElementById('filter-dropdown').classList.remove('open');
+  fdCtx = null;
+}
+
+function renderFDOptions(vals, selected, search) {
+  const container = document.getElementById('fd-options');
+  const filtered = search ? vals.filter(v => v.toLowerCase().includes(search.toLowerCase())) : vals;
+  if (!filtered.length) { container.innerHTML = '<div class="fd-empty">No values found</div>'; return; }
+  container.innerHTML = filtered.map(v => {
+    const checked = selected.has(v) ? 'checked' : '';
+    return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle('${escAttr(v)}',this.checked)"><span class="fd-option-label" title="${escAttr(v)}">${escHtml(v)}</span></label>`;
+  }).join('');
+}
+
+function fdSearch(val) {
+  if (!fdCtx) return;
+  renderFDOptions(fdCtx.allVals, fdCtx.filterSet, val);
+}
+
+function fdToggle(value, checked) {
+  if (!fdCtx) return;
+  const { entity, field } = fdCtx;
+  if (!state[entity].filter[field]) state[entity].filter[field] = new Set();
+  const set = state[entity].filter[field];
+  checked ? set.add(value) : set.delete(value);
+  fdCtx.filterSet = set;
+  updateFilterBtn(entity, field);
+  applyRowFilters(entity);
+}
+
+function fdSelectAll() {
+  if (!fdCtx) return;
+  const { entity, field, allVals } = fdCtx;
+  const search = document.getElementById('fd-search').value;
+  const visible = search ? allVals.filter(v=>v.toLowerCase().includes(search.toLowerCase())) : allVals;
+  if (!state[entity].filter[field]) state[entity].filter[field] = new Set();
+  visible.forEach(v => state[entity].filter[field].add(v));
+  fdCtx.filterSet = state[entity].filter[field];
+  renderFDOptions(allVals, fdCtx.filterSet, search);
+  updateFilterBtn(entity, field);
+  applyRowFilters(entity);
+}
+
+function fdClearAll() {
+  if (!fdCtx) return;
+  const { entity, field, allVals } = fdCtx;
+  const search = document.getElementById('fd-search').value;
+  const visible = search ? allVals.filter(v=>v.toLowerCase().includes(search.toLowerCase())) : allVals;
+  const set = state[entity].filter[field] || new Set();
+  visible.forEach(v => set.delete(v));
+  state[entity].filter[field] = set;
+  fdCtx.filterSet = set;
+  renderFDOptions(allVals, fdCtx.filterSet, search);
+  updateFilterBtn(entity, field);
+  applyRowFilters(entity);
+}
+
+function updateFilterBtn(entity, field) {
+  const btn = document.getElementById(`fbtn-${entity}-${field}`);
+  if (!btn) return;
+  const set = state[entity].filter[field] || new Set();
+  const hasFilter = set.size > 0;
+  btn.className = 'filter-btn' + (hasFilter ? ' has-filter' : '');
+  btn.querySelector('.filter-btn-text').textContent = hasFilter ? set.size+' selected' : 'All';
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+  const dd = document.getElementById('filter-dropdown');
+  if (dd.classList.contains('open') && !dd.contains(e.target)) closeFD();
+});
+
+// ── Inline editing ─────────────────────────────────────────────────
 function startEdit(entity, rowId, field, currentVal, cell) {
   if (cell.classList.contains('editing')) return;
-  const special = entity === 'authors' ? SPECIAL_AUTHORS : SPECIAL_BOOKS;
+  closeFD();
+  const special = entity==='authors'?SPECIAL_AUTHORS:SPECIAL_BOOKS;
   const isSpecial = special.has(field);
-
-  cell.classList.add('editing');
-  cell.classList.remove('editable');
+  cell.classList.add('editing'); cell.classList.remove('editable');
   const input = document.createElement('input');
-  input.className = 'cell-input' + (isSpecial ? ' cell-special' : '');
+  input.className = 'cell-input'+(isSpecial?' cell-special':'');
   input.value = currentVal;
-  input.title = isSpecial ? '⚠️ Special field — you will be asked to confirm before saving' : '';
-  cell.innerHTML = '';
-  cell.appendChild(input);
-  input.focus();
-  input.select();
+  if (isSpecial) input.title = '⚠️ Special field — confirmation required';
+  cell.innerHTML = ''; cell.appendChild(input); input.focus(); input.select();
 
   const save = () => {
     const newVal = input.value.trim();
-    if (newVal === currentVal) {
-      cell.classList.remove('editing');
-      cell.classList.add('editable');
-      cell.textContent = currentVal;
-      return;
-    }
+    if (newVal===currentVal) { cell.classList.remove('editing'); cell.classList.add('editable'); cell.textContent=currentVal; return; }
     if (isSpecial) {
-      const col = (entity === 'authors' ? AUTHOR_COLS : BOOK_COLS).find(c => c.field === field);
-      if (!confirm(`"${col ? col.header : field}" is a special field.\n\nChange from:\n  "${currentVal}"\nto:\n  "${newVal}"\n\nConfirm?`)) {
-        cell.classList.remove('editing');
-        cell.classList.add('editable');
-        cell.textContent = currentVal;
-        return;
+      const col = (entity==='authors'?AUTHOR_COLS:BOOK_COLS).find(c=>c.field===field);
+      if (!confirm(`"${col?col.header:field}" is a special field.\n\nChange:\n  "${currentVal}" → "${newVal}"\n\nConfirm?`)) {
+        cell.classList.remove('editing'); cell.classList.add('editable'); cell.textContent=currentVal; return;
       }
     }
-    saveEdit(entity, rowId, field, newVal, cell);
+    saveEdit(entity, rowId, field, newVal, currentVal, cell);
   };
 
   input.addEventListener('blur', save);
   input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-    if (e.key === 'Escape') {
-      input.removeEventListener('blur', save);
-      cell.classList.remove('editing');
-      cell.classList.add('editable');
-      cell.textContent = currentVal;
-    }
+    if (e.key==='Enter') { e.preventDefault(); input.blur(); }
+    if (e.key==='Escape') { input.removeEventListener('blur',save); cell.classList.remove('editing'); cell.classList.add('editable'); cell.textContent=currentVal; }
   });
 }
 
-async function saveEdit(entity, rowId, field, newVal, cell) {
-  const idField = entity === 'authors' ? 'uid' : 'id';
-  const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, {
-    method: 'PUT',
-    body: JSON.stringify({ [field]: newVal })
-  });
-
-  cell.classList.remove('editing');
-  cell.classList.add('editable');
-
+async function saveEdit(entity, rowId, field, newVal, oldVal, cell) {
+  const idField = entity==='authors'?'uid':'id';
+  const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, { method:'PUT', body:JSON.stringify({ [field]:newVal }) });
+  cell.classList.remove('editing'); cell.classList.add('editable');
   if (res.success) {
     cell.textContent = newVal;
-    // Update local state
-    const row = state[entity].data.find(r => String(r[idField]) === String(rowId));
-    if (row) row[field] = newVal;
-    showSaveIndicator(true);
-  } else {
-    cell.textContent = cell.getAttribute('data-original') || '';
-    showSaveIndicator(false, res.error);
-  }
+    const row = state[entity].data.find(r=>String(r[idField])===String(rowId));
+    if (row) { row[field]=newVal; const sr=state[entity].sortedData.find(r=>String(r[idField])===String(rowId)); if(sr) sr[field]=newVal; }
+    showSave(true);
+  } else { cell.textContent=oldVal; showSave(false, res.error); }
 }
 
 let saveTimer;
-function showSaveIndicator(ok, err) {
-  const el = document.getElementById('save-indicator');
-  el.className = 'save-indicator' + (ok ? '' : ' error');
-  el.textContent = ok ? 'Saved ✓' : ('Error: ' + (err || 'Save failed'));
-  el.style.display = 'block';
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { el.style.display = 'none'; }, 2500);
+function showSave(ok, err) {
+  const el=document.getElementById('save-indicator');
+  el.className='save-indicator'+(ok?'':' error');
+  el.textContent=ok?'Saved ✓':'Error: '+(err||'Save failed');
+  el.style.display='block'; clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{el.style.display='none';},2500);
 }
 
-// ── Load data ─────────────────────────────────────────────────────────
+// ── Load data ──────────────────────────────────────────────────────
 async function loadAuthors() {
-  document.getElementById('authors-body').innerHTML = '<div class="loading">Loading...</div>';
-  const res = await api('/api/authors?limit=1000');
-  state.authors.data = res.data || (Array.isArray(res) ? res : []);
+  document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
+  const res = await api('/api/authors?limit=5000');
+  state.authors.data = res.data||(Array.isArray(res)?res:[]);
   renderTable('authors');
 }
-
 async function loadBooks() {
-  document.getElementById('books-body').innerHTML = '<div class="loading">Loading...</div>';
-  const res = await api('/api/books?limit=1000');
-  state.books.data = res.data || (Array.isArray(res) ? res : []);
+  document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
+  const res = await api('/api/books?limit=5000');
+  state.books.data = res.data||(Array.isArray(res)?res:[]);
   renderTable('books');
 }
 
-async function deleteAllAuthors() {
-  if (!confirm('Delete ALL author data? This cannot be undone.')) return;
-  const res = await api('/api/authors/all', { method: 'DELETE' });
-  if (res.success) { state.authors.data = []; renderTable('authors'); loadStats(); }
-  else alert(res.error || 'Delete failed.');
+async function deleteAllEntity(entity) {
+  if (!confirm(`Delete ALL ${entity} data? This cannot be undone.`)) return;
+  const res = await api(`/api/${entity}/all`, { method:'DELETE' });
+  if (res.success) { state[entity].data=[]; state[entity].sortedData=[]; state[entity].filter={}; renderTable(entity); loadStats(); }
+  else alert(res.error||'Delete failed.');
 }
 
-async function deleteAllBooks() {
-  if (!confirm('Delete ALL book data? This cannot be undone.')) return;
-  const res = await api('/api/books/all', { method: 'DELETE' });
-  if (res.success) { state.books.data = []; renderTable('books'); loadStats(); }
-  else alert(res.error || 'Delete failed.');
-}
-
-// ── CSV Parsers ────────────────────────────────────────────────────────
+// ── CSV Parsers ────────────────────────────────────────────────────
 function parseCSVRow(headers, line) {
-  const vals = [];
-  let cur = '', inQuote = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') { inQuote = !inQuote; }
-    else if (c === ',' && !inQuote) { vals.push(cur.trim()); cur = ''; }
-    else { cur += c; }
-  }
+  const vals=[]; let cur='', inQuote=false;
+  for (let i=0;i<line.length;i++) { const c=line[i]; if(c==='"'){inQuote=!inQuote;}else if(c===','&&!inQuote){vals.push(cur.trim());cur='';}else{cur+=c;} }
   vals.push(cur.trim());
-  const row = {};
-  headers.forEach((h, i) => { row[h] = (vals[i] || '').replace(/^"|"$/g, ''); });
+  const row={}; headers.forEach((h,i)=>{row[h]=(vals[i]||'').replace(/^"|"$/g,'');});
   return row;
 }
-
 function parseCSVAuthors(text) {
-  const lines = text.trim().split('\n').filter(l => l.trim());
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  return lines.slice(1).map(line => {
-    const r = parseCSVRow(headers, line);
-    return {
-      uid: r['Author ID'] || r['Author UID'] || '',
-      name: r['Author Name'] || '',
-      regnDate: r['Author Reg. Date'] || '',
-      locale: r['Author Locale'] || '',
-      email: r['Author Email ID'] || '',
-      phone: r['Author Phone No.'] || '',
-      bucketTag: r['Bucket Tag'] || '',
-      contestTag: r['Contest Tag'] || '',
-      sourceTag: r['Source Tag'] || '',
-      authorTypeTag: r['Author Type Tag'] || '',
-      form1MailSent: r['Form 1 Mail Sent'] || '',
-      form1FollowUp1Sent: r['Form 1 Follow Up 1 Sent'] || '',
-      form1FollowUp2Sent: r['Form 1 Follow Up 2 Sent'] || '',
-      form1Filled: r['Form 1 Filled'] || '',
-      preContractedTag: r['Pre-Contract Validation'] || '',
-      preContractCompany: r['Pre-Contract Company'] || '',
-      booksCreated: r['No. of Books Created'] || '',
-      booksChp1Published: r['No. of Books Chp1 Published'] || '',
-      books10kCompleted: r['No. of Books 10k Words Completed'] || '',
-      booksModPassed: r['No. of Books Mod Passed'] || '',
-      booksExpressContracted: r['No. of Books Express Contracted'] || '',
-      booksWBPContracted: r['No. of Books WBP Contracted'] || '',
-      booksOFW: r['No. of Books OFW'] || ''
-    };
-  });
+  const lines=text.trim().split('\n').filter(l=>l.trim()); if(lines.length<2) return [];
+  const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line=>{ const r=parseCSVRow(headers,line); return { uid:r['Author ID']||r['Author UID']||'', name:r['Author Name']||'', regnDate:r['Author Reg. Date']||'', locale:r['Author Locale']||'', email:r['Author Email ID']||'', phone:r['Author Phone No.']||'', bucketTag:r['Bucket Tag']||'', contestTag:r['Contest Tag']||'', sourceTag:r['Source Tag']||'', authorTypeTag:r['Author Type Tag']||'', form1MailSent:r['Form 1 Mail Sent']||'', form1FollowUp1Sent:r['Form 1 Follow Up 1 Sent']||'', form1FollowUp2Sent:r['Form 1 Follow Up 2 Sent']||'', form1Filled:r['Form 1 Filled']||'', preContractedTag:r['Pre-Contract Validation']||'', preContractCompany:r['Pre-Contract Company']||'', booksCreated:r['No. of Books Created']||'', booksChp1Published:r['No. of Books Chp1 Published']||'', books10kCompleted:r['No. of Books 10k Words Completed']||'', booksModPassed:r['No. of Books Mod Passed']||'', booksExpressContracted:r['No. of Books Express Contracted']||'', booksWBPContracted:r['No. of Books WBP Contracted']||'', booksOFW:r['No. of Books OFW']||'' }; });
 }
-
 function parseCSVBooks(text) {
-  const lines = text.trim().split('\n').filter(l => l.trim());
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  return lines.slice(1).map(line => {
-    const r = parseCSVRow(headers, line);
-    return {
-      id: r['Book ID'] || '',
-      authorId: r['Author ID'] || '',
-      title: r['Book Title'] || '',
-      showId: r['Show ID'] || '',
-      showTitle: r['Show Title'] || '',
-      createDate: r['Book Create Date'] || '',
-      status: r['Book Status'] || '',
-      pubWC: r['Pub WC'] || '',
-      chp1Published: r['Chp 1 Published'] || '',
-      chp1PublishedDate: r['Chp 1 Published Date'] || '',
-      words10kCompleted: r['10k Words Completed?'] || '',
-      words10kDate: r['10k words completion Date'] || '',
-      moderationStatus: r['Moderation Status'] || '',
-      moderationPassedDate: r['Moderation Passed Date'] || '',
-      editorScore: r['Book Editor Score'] || '',
-      words50kCompleted: r['50k Words Completed?'] || '',
-      words50kDate: r['50k words completed date?'] || '',
-      llmScore5hr: r['5 hr LLM Score'] || '',
-      wbpStatus: r['WBP Status'] || '',
-      wbpSubStatus: r['WBP Sub Status'] || '',
-      incentiveFlag: r['Incentive Flag'] || '',
-      wbpContractingDate: r['WBP Contracting Date?'] || '',
-      ppvTag: r['PPV Tag'] || '',
-      ppvTagDate: r['PPV Tag Date'] || '',
-      ldaus: r['LDAUs'] || '',
-      h1EligibleLdau: r['H1 Eligible LDAU'] || '',
-      h1Ret: r['H1 Ret%'] || '',
-      h5EligibleLdau: r['H5 Eligible LDAU'] || '',
-      h5Ret: r['H5 Ret%'] || '',
-      h10EligibleLdau: r['H10 Eligible LDAU'] || '',
-      h10Ret: r['H10 Ret%'] || '',
-      h15EligibleLdau: r['H15 Eligible LDAU'] || '',
-      h15Ret: r['H15 Ret%'] || ''
-    };
-  });
+  const lines=text.trim().split('\n').filter(l=>l.trim()); if(lines.length<2) return [];
+  const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line=>{ const r=parseCSVRow(headers,line); return { id:r['Book ID']||'', authorId:r['Author ID']||'', title:r['Book Title']||'', showId:r['Show ID']||'', showTitle:r['Show Title']||'', createDate:r['Book Create Date']||'', status:r['Book Status']||'', pubWC:r['Pub WC']||'', chp1Published:r['Chp 1 Published']||'', chp1PublishedDate:r['Chp 1 Published Date']||'', words10kCompleted:r['10k Words Completed?']||'', words10kDate:r['10k words completion Date']||'', moderationStatus:r['Moderation Status']||'', moderationPassedDate:r['Moderation Passed Date']||'', editorScore:r['Book Editor Score']||'', words50kCompleted:r['50k Words Completed?']||'', words50kDate:r['50k words completed date?']||'', llmScore5hr:r['5 hr LLM Score']||'', wbpStatus:r['WBP Status']||'', wbpSubStatus:r['WBP Sub Status']||'', incentiveFlag:r['Incentive Flag']||'', wbpContractingDate:r['WBP Contracting Date?']||'', ppvTag:r['PPV Tag']||'', ppvTagDate:r['PPV Tag Date']||'', ldaus:r['LDAUs']||'', h1EligibleLdau:r['H1 Eligible LDAU']||'', h1Ret:r['H1 Ret%']||'', h5EligibleLdau:r['H5 Eligible LDAU']||'', h5Ret:r['H5 Ret%']||'', h10EligibleLdau:r['H10 Eligible LDAU']||'', h10Ret:r['H10 Ret%']||'', h15EligibleLdau:r['H15 Eligible LDAU']||'', h15Ret:r['H15 Ret%']||'' }; });
 }
 
-// ── Import handler ─────────────────────────────────────────────────────
+// ── Import ─────────────────────────────────────────────────────────
 function handleImport(event, fileType, entity) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const msgEl = document.getElementById(entity + '-import-msg');
-  setMsg(msgEl, 'info', 'Reading file...');
-  const reader = new FileReader();
-  reader.onload = async e => {
-    const text = e.target.result;
-    let records = [];
-    try {
-      if (fileType === 'json') {
-        const parsed = JSON.parse(text);
-        records = entity === 'authors' ? (parsed.authors || (Array.isArray(parsed) ? parsed : [])) : (parsed.books || (Array.isArray(parsed) ? parsed : []));
-      } else {
-        records = entity === 'authors' ? parseCSVAuthors(text) : parseCSVBooks(text);
-      }
-    } catch { setMsg(msgEl, 'error', 'Could not parse file. Check format.'); return; }
-    if (!records.length) { setMsg(msgEl, 'error', 'No data found in file.'); return; }
-    setMsg(msgEl, 'info', `Importing ${records.length} ${entity}...`);
-    const body = entity === 'authors' ? { authors: records } : { books: records };
-    const res = await api('/api/import/' + entity, { method: 'POST', body: JSON.stringify(body) });
-    if (res.success) {
-      let msg = `Done! ${res.inserted} added, ${res.updated} updated.`;
-      if (res.skipped > 0) msg += ` ${res.skipped} skipped.`;
-      if (res.stubAuthorsCreated > 0) msg += ` ${res.stubAuthorsCreated} stub author(s) auto-created.`;
-      setMsg(msgEl, 'success', msg);
-      if (entity === 'authors') loadAuthors();
-      if (entity === 'books') loadBooks();
-      loadStats();
-    } else { setMsg(msgEl, 'error', res.error || 'Import failed.'); }
-    event.target.value = '';
+  const file=event.target.files[0]; if(!file) return;
+  const msgEl=document.getElementById(entity+'-import-msg');
+  setMsg(msgEl,'info','Reading file…');
+  const reader=new FileReader();
+  reader.onload=async e => {
+    const text=e.target.result; let records=[];
+    try { if(fileType==='json'){const p=JSON.parse(text);records=entity==='authors'?(p.authors||(Array.isArray(p)?p:[])):(p.books||(Array.isArray(p)?p:[]));} else {records=entity==='authors'?parseCSVAuthors(text):parseCSVBooks(text);} }
+    catch { setMsg(msgEl,'error','Could not parse file.'); return; }
+    if(!records.length){setMsg(msgEl,'error','No data found in file.');return;}
+    setMsg(msgEl,'info',`Importing ${records.length} ${entity}…`);
+    const body=entity==='authors'?{authors:records}:{books:records};
+    const res=await api('/api/import/'+entity,{method:'POST',body:JSON.stringify(body)});
+    if(res.success){
+      let msg=`Done! ${res.inserted} added, ${res.updated} updated.`;
+      if(res.skipped>0) msg+=` ${res.skipped} skipped.`;
+      if(res.stubAuthorsCreated>0) msg+=` ${res.stubAuthorsCreated} stub author(s) created.`;
+      setMsg(msgEl,'success',msg);
+      if(entity==='authors') loadAuthors(); else loadBooks(); loadStats();
+    } else setMsg(msgEl,'error',res.error||'Import failed.');
+    event.target.value='';
   };
   reader.readAsText(file);
 }
+function setMsg(el,type,text){el.className='inline-msg '+type;el.textContent=text;}
 
-function setMsg(el, type, text) { el.className = 'inline-msg ' + type; el.textContent = text; }
-
-// ── Backups ────────────────────────────────────────────────────────────
+// ── Backups ────────────────────────────────────────────────────────
 async function loadBackups() {
-  document.getElementById('backups-body').innerHTML = '<div class="loading">Loading backups...</div>';
-  const res = await api('/api/backups');
-  const all = [...(res.authors||[]).map(b=>({...b,entity:'authors'})), ...(res.books||[]).map(b=>({...b,entity:'books'}))];
-  all.sort((a,b) => new Date(b.backedUpAt) - new Date(a.backedUpAt));
-  if (!all.length) {
-    document.getElementById('backups-body').innerHTML = '<div class="empty">No backups yet. Backups are created automatically when imports or edits overwrite existing data, and kept for 24 hours.</div>';
-    return;
-  }
-  document.getElementById('backups-body').innerHTML = all.map(b => `
-    <div class="backup-row">
-      <div><strong>${b.entity === 'authors' ? 'Authors' : 'Books'}</strong> &nbsp;·&nbsp; ${b.count} record(s) &nbsp;·&nbsp; <span style="color:#888">${new Date(b.backedUpAt).toLocaleString()}</span> &nbsp;·&nbsp; <code style="font-size:0.78rem;color:#aaa">ID: ${b.importId}</code></div>
-      <button class="btn-restore" onclick="restoreBackup('${b.importId}','${b.entity}')">Restore</button>
-    </div>`).join('');
+  document.getElementById('backups-body').innerHTML='<div class="loading">Loading…</div>';
+  const res=await api('/api/backups');
+  const all=[...(res.authors||[]).map(b=>({...b,entity:'authors'})),...(res.books||[]).map(b=>({...b,entity:'books'}))];
+  all.sort((a,b)=>new Date(b.backedUpAt)-new Date(a.backedUpAt));
+  if(!all.length){document.getElementById('backups-body').innerHTML='<div class="empty">No backups yet.</div>';return;}
+  document.getElementById('backups-body').innerHTML=all.map(b=>`<div class="backup-row"><div><strong>${b.entity==='authors'?'Authors':'Books'}</strong> &nbsp;·&nbsp; ${b.count} record(s) &nbsp;·&nbsp; <span style="color:#888">${new Date(b.backedUpAt).toLocaleString()}</span> &nbsp;·&nbsp; <code style="font-size:0.78rem;color:#aaa">ID: ${b.importId}</code></div><button class="btn-restore" onclick="restoreBackup('${b.importId}','${b.entity}')">Restore</button></div>`).join('');
+}
+async function restoreBackup(importId,entity) {
+  if(!confirm(`Restore ${entity} backup? Current data for these records will be replaced.`)) return;
+  const res=await api('/api/backups/restore',{method:'POST',body:JSON.stringify({importId,entity})});
+  if(res.success){alert(`Restored ${res.restored} record(s).`);loadBackups();entity==='authors'?loadAuthors():loadBooks();}
+  else alert(res.error||'Restore failed.');
 }
 
-async function restoreBackup(importId, entity) {
-  if (!confirm(`Restore ${entity} backup? Current data for these records will be replaced.`)) return;
-  const res = await api('/api/backups/restore', { method: 'POST', body: JSON.stringify({ importId, entity }) });
-  if (res.success) { alert(`Restored ${res.restored} record(s).`); loadBackups(); entity === 'authors' ? loadAuthors() : loadBooks(); }
-  else alert(res.error || 'Restore failed.');
-}
-
-// ── Boot ───────────────────────────────────────────────────────────────
-if (token) showApp();
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('login-screen').style.display !== 'none') submitAuth();
-});
+// ── Boot ───────────────────────────────────────────────────────────
+if(token) showApp();
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('login-screen').style.display!=='none')submitAuth();});
 </script>
 </body>
 </html>
