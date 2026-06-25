@@ -154,6 +154,7 @@ Every import returns a summary:
 | `contestTag` | Contest Tag | Text → Dropdown (later) | Special Field |
 | `sourceTag` | Source Tag | Text (single line) | Special Field |
 | `authorTypeTag` | Author Type Tag | Text (single line) | Special Field |
+| `authorTag` | Author Tag | **Dropdown** | Values: `New Writer` / `Created Only` / `Non-activated` / `Non-contracted` / `Contracted` / *(blank)* |
 | `form1MailSent` | Form 1 Mail Sent | **Checkbox** (boolean) | |
 | `form1FollowUp1Sent` | Form 1 Follow Up 1 Sent | **Checkbox** (boolean) | |
 | `form1FollowUp2Sent` | Form 1 Follow Up 2 Sent | **Checkbox** (boolean) | |
