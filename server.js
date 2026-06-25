@@ -275,6 +275,24 @@ app.get('/api/authors/:id', authMiddleware, async (req, res) => {
   }
 });
 
+app.put('/api/authors/:id', authMiddleware, async (req, res) => {
+  try {
+    const existing = await db.collection('authors').findOne({ uid: req.params.id });
+    if (!existing) return res.status(404).json({ error: 'Author not found' });
+    const updates = {};
+    for (const [key, val] of Object.entries(req.body)) {
+      if (key === '_id' || key === 'uid') continue;
+      if (!isBlankOrError(val)) updates[key] = val;
+    }
+    if (Object.keys(updates).length === 0) return res.json({ success: true, message: 'Nothing to update' });
+    await db.collection('authors_backups').insertOne({ ...existing, importId: 'direct-edit', backedUpAt: new Date() });
+    await db.collection('authors').updateOne({ uid: req.params.id }, { $set: { ...updates, updatedAt: new Date() } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.delete('/api/authors/:id', authMiddleware, async (req, res) => {
   try {
     const result = await db.collection('authors').deleteOne({ uid: req.params.id });
@@ -319,6 +337,24 @@ app.get('/api/books/:id', authMiddleware, async (req, res) => {
     const book = await db.collection('books').findOne({ id: req.params.id });
     if (!book) return res.status(404).json({ error: 'Book not found' });
     res.json(book);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/books/:id', authMiddleware, async (req, res) => {
+  try {
+    const existing = await db.collection('books').findOne({ id: req.params.id });
+    if (!existing) return res.status(404).json({ error: 'Book not found' });
+    const updates = {};
+    for (const [key, val] of Object.entries(req.body)) {
+      if (key === '_id' || key === 'id') continue;
+      if (!isBlankOrError(val)) updates[key] = val;
+    }
+    if (Object.keys(updates).length === 0) return res.json({ success: true, message: 'Nothing to update' });
+    await db.collection('books_backups').insertOne({ ...existing, importId: 'direct-edit', backedUpAt: new Date() });
+    await db.collection('books').updateOne({ id: req.params.id }, { $set: { ...updates, updatedAt: new Date() } });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
