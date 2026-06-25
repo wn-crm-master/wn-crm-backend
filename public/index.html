@@ -159,6 +159,12 @@
     .empty { text-align: center; padding: 40px; color: #bbb; font-size: 0.95rem; }
     .save-indicator { position: fixed; bottom: 20px; right: 20px; background: #1a7f52; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.88rem; display: none; z-index: 9998; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .save-indicator.error { background: #e74c3c; }
+    td.checkbox-cell { cursor: pointer; text-align: center; }
+    td.checkbox-cell:hover { background: #e8f0ff !important; }
+    .cb-check { color: #1a7f52; font-weight: 700; font-size: 1rem; }
+    .cb-uncheck { color: #ccc; font-size: 1rem; }
+    td.rollup-cell { background: #f8f9ff; color: #667; text-align: right; font-variant-numeric: tabular-nums; cursor: default; }
+    tr:hover td.rollup-cell { background: #edf0ff; }
   </style>
 </head>
 <body>
@@ -258,7 +264,7 @@
 const AUTHOR_COLS = [
   { field:'uid',                    header:'Author ID',                width:160 },
   { field:'name',                   header:'Author Name',              width:160 },
-  { field:'regnDate',               header:'Author Reg. Date',         width:140 },
+  { field:'regnDate',               header:'Author Reg. Date',         width:140, type:'date' },
   { field:'locale',                 header:'Author Locale',            width:120 },
   { field:'email',                  header:'Author Email ID',          width:200 },
   { field:'phone',                  header:'Author Phone No.',         width:140 },
@@ -266,19 +272,19 @@ const AUTHOR_COLS = [
   { field:'contestTag',             header:'Contest Tag',              width:120 },
   { field:'sourceTag',              header:'Source Tag',               width:120 },
   { field:'authorTypeTag',          header:'Author Type Tag',          width:140 },
-  { field:'form1MailSent',          header:'Form 1 Mail Sent',         width:140 },
-  { field:'form1FollowUp1Sent',     header:'Form 1 FU1 Sent',         width:130 },
-  { field:'form1FollowUp2Sent',     header:'Form 1 FU2 Sent',         width:130 },
-  { field:'form1Filled',            header:'Form 1 Filled',            width:110 },
+  { field:'form1MailSent',          header:'Form 1 Mail Sent',         width:140, type:'checkbox' },
+  { field:'form1FollowUp1Sent',     header:'Form 1 FU1 Sent',         width:130, type:'checkbox' },
+  { field:'form1FollowUp2Sent',     header:'Form 1 FU2 Sent',         width:130, type:'checkbox' },
+  { field:'form1Filled',            header:'Form 1 Filled',            width:110, type:'checkbox' },
   { field:'preContractedTag',       header:'Pre-Contract Validation',  width:180 },
   { field:'preContractCompany',     header:'Pre-Contract Company',     width:170 },
-  { field:'booksCreated',           header:'Books Created',            width:120 },
-  { field:'booksChp1Published',     header:'Books Chp1 Published',     width:160 },
-  { field:'books10kCompleted',      header:'Books 10k Completed',      width:160 },
-  { field:'booksModPassed',         header:'Books Mod Passed',         width:150 },
-  { field:'booksExpressContracted', header:'Books Express Contracted', width:190 },
-  { field:'booksWBPContracted',     header:'Books WBP Contracted',     width:170 },
-  { field:'booksOFW',               header:'Books OFW',                width:110 },
+  { field:'booksCreated',           header:'Books Created',            width:120, type:'rollup' },
+  { field:'booksChp1Published',     header:'Books Chp1 Published',     width:160, type:'rollup' },
+  { field:'books10kCompleted',      header:'Books 10k Completed',      width:160, type:'rollup' },
+  { field:'booksModPassed',         header:'Books Mod Passed',         width:150, type:'rollup' },
+  { field:'booksExpressContracted', header:'Books Express Contracted', width:190, type:'rollup' },
+  { field:'booksWBPContracted',     header:'Books WBP Contracted',     width:170, type:'rollup' },
+  { field:'booksOFW',               header:'Books OFW',                width:110, type:'rollup' },
 ];
 const BOOK_COLS = [
   { field:'id',                   header:'Book ID',              width:140 },
@@ -331,6 +337,28 @@ const state = {
 
 // Active filter dropdown context
 let fdCtx = null; // { entity, field, allVals, filteredVals }
+
+// Rollup fields — computed from books, read-only on author rows
+const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW']);
+
+function isTruthy(val) {
+  if (val === true || val === 1) return true;
+  return ['true','yes','y','1','x','✓'].includes(String(val).trim().toLowerCase());
+}
+
+function formatDate(val) {
+  if (!val) return '';
+  const s = String(val).trim();
+  // ISO: YYYY-MM-DD
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) return `${iso[3].padStart(2,'0')}/${iso[2].padStart(2,'0')}/${iso[1]}`;
+  // Already DD/MM/YYYY
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) return s;
+  // JS Date fallback
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  return s;
+}
 
 function api(path, opts={}) {
   return fetch(BASE+path, { ...opts, headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, ...(opts.headers||{}) } }).then(r=>r.json());
@@ -434,10 +462,36 @@ function renderTable(entity) {
       const isSticky = s.pinned.has(col.field);
       const isPinned = isSticky && col.field!==idField;
       const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
-      const val = row[col.field]!==undefined && row[col.field]!==null ? row[col.field] : '';
+      const rawVal = row[col.field]!==undefined && row[col.field]!==null ? row[col.field] : '';
       const isId = col.field===idField;
-      const editAttr = isId ? '' : `class="editable" onclick="startEdit('${entity}','${escAttr(String(row[idField]||''))}','${col.field}','${escAttr(String(val))}',this)"`;
-      html += `<td ${editAttr} class="${isSticky?'is-sticky':''} ${isPinned?'is-pinned':''}" style="${stStyle}" title="${escAttr(String(val))}">${escHtml(String(val))}</td>`;
+      const ctype = col.type || 'text';
+      const rowId = escAttr(String(row[idField]||''));
+
+      let tdClass = (isSticky?'is-sticky ':'')+( isPinned?'is-pinned ':'');
+      let tdClick = '';
+      let tdContent = '';
+
+      if (isId) {
+        tdContent = escHtml(String(rawVal));
+      } else if (ctype === 'rollup') {
+        tdClass += 'rollup-cell';
+        tdContent = rawVal !== '' ? String(rawVal) : '0';
+      } else if (ctype === 'checkbox') {
+        const checked = isTruthy(rawVal);
+        tdClass += 'checkbox-cell';
+        tdClick = `onclick="toggleCheckbox('${entity}','${rowId}','${col.field}',${checked},this)"`;
+        tdContent = checked ? '<span class="cb-check">✓</span>' : '<span class="cb-uncheck">✗</span>';
+      } else if (ctype === 'date') {
+        tdClass += 'editable';
+        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdContent = escHtml(formatDate(String(rawVal)));
+      } else {
+        tdClass += 'editable';
+        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdContent = escHtml(String(rawVal));
+      }
+
+      html += `<td ${tdClick} class="${tdClass.trim()}" style="${stStyle}" title="${escAttr(String(rawVal))}">${tdContent}</td>`;
     }
     html += '</tr>';
   });
@@ -624,6 +678,21 @@ async function saveEdit(entity, rowId, field, newVal, oldVal, cell) {
     if (row) { row[field]=newVal; const sr=state[entity].sortedData.find(r=>String(r[idField])===String(rowId)); if(sr) sr[field]=newVal; }
     showSave(true);
   } else { cell.textContent=oldVal; showSave(false, res.error); }
+}
+
+async function toggleCheckbox(entity, rowId, field, currentChecked, cell) {
+  const newVal = !currentChecked;
+  const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, { method:'PUT', body:JSON.stringify({ [field]: newVal }) });
+  if (res.success) {
+    cell.innerHTML = newVal ? '<span class="cb-check">✓</span>' : '<span class="cb-uncheck">✗</span>';
+    cell.onclick = () => toggleCheckbox(entity, rowId, field, newVal, cell);
+    const idField = entity==='authors'?'uid':'id';
+    [state[entity].data, state[entity].sortedData].forEach(arr => {
+      const r = arr.find(x => String(x[idField])===String(rowId));
+      if (r) r[field] = newVal;
+    });
+    showSave(true);
+  } else { showSave(false, res.error); }
 }
 
 let saveTimer;

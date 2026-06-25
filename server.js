@@ -200,7 +200,9 @@ app.post('/api/import/authors', authMiddleware, async (req, res) => {
     if (!Array.isArray(authors) || authors.length === 0)
       return res.status(400).json({ error: 'authors array is required' });
 
-    const result = await importRecords('authors', 'authors_backups', authors, 'uid', SPECIAL_FIELDS_AUTHORS);
+    // Strip computed rollup fields — these are derived from books, not stored
+    const cleaned = authors.map(a => { const r={...a}; ROLLUP_AUTHOR_FIELDS.forEach(f=>delete r[f]); return r; });
+    const result = await importRecords('authors', 'authors_backups', cleaned, 'uid', SPECIAL_FIELDS_AUTHORS);
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -237,19 +239,41 @@ app.post('/api/import/books', authMiddleware, async (req, res) => {
   }
 });
 
+// Rollup fields are computed from books — never stored on author documents
+const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW']);
+
 // ============ AUTHORS ============
 app.get('/api/authors', authMiddleware, async (req, res) => {
   try {
     const { search, page = 1, limit = 100 } = req.query;
-    const query = {};
-    if (search) query.$or = [
+    const matchQuery = {};
+    if (search) matchQuery.$or = [
       { name: { $regex: search, $options: 'i' } },
       { uid: { $regex: search, $options: 'i' } },
       { email: { $regex: search, $options: 'i' } }
     ];
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const total = await db.collection('authors').countDocuments(query);
-    const data = await db.collection('authors').find(query).skip(skip).limit(parseInt(limit)).toArray();
+    const total = await db.collection('authors').countDocuments(matchQuery);
+
+    const TRUTHY_VALS = [true, 1, 'true', 'TRUE', 'True', 'yes', 'YES', 'Yes', 'y', 'Y', '1'];
+    const pipeline = [
+      ...(Object.keys(matchQuery).length ? [{ $match: matchQuery }] : []),
+      { $lookup: { from: 'books', localField: 'uid', foreignField: 'authorId', as: '_books' } },
+      { $addFields: {
+        booksCreated:           { $size: '$_books' },
+        booksChp1Published:     { $size: { $filter: { input: '$_books', cond: { $in: ['$$this.chp1Published',     TRUTHY_VALS] } } } },
+        books10kCompleted:      { $size: { $filter: { input: '$_books', cond: { $in: ['$$this.words10kCompleted', TRUTHY_VALS] } } } },
+        booksModPassed:         { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.moderationStatus',''] } }, regex: 'pass'    } } } } },
+        booksExpressContracted: { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'express' } } } } },
+        booksWBPContracted:     { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'wbp'     } } } } },
+        booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',    ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } }
+      }},
+      { $project: { _books: 0 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) }
+    ];
+
+    const data = await db.collection('authors').aggregate(pipeline).toArray();
     res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
   } catch (err) {
     res.status(500).json({ error: err.message });
