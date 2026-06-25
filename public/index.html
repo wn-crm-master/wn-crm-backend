@@ -281,6 +281,7 @@ const AUTHOR_COLS = [
   { field:'form1Filled',            header:'Form 1 Filled',            width:110, type:'checkbox' },
   { field:'preContractedTag',       header:'Pre-Contract Validation',  width:180 },
   { field:'preContractCompany',     header:'Pre-Contract Company',     width:170 },
+  { field:'incentiveFlag',          header:'Author Incentive Flag',    width:170, type:'dropdown', options:['','0','1'] },
   { field:'booksCreated',           header:'Books Created',            width:120, type:'rollup' },
   { field:'booksChp1Published',     header:'Books Chp1 Published',     width:160, type:'rollup' },
   { field:'books10kCompleted',      header:'Books 10k Completed',      width:160, type:'rollup' },
@@ -295,8 +296,9 @@ const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
   { field:'showId',               header:'Show ID',              width:120 },
   { field:'showTitle',            header:'Show Title',           width:180 },
+  { field:'showStatus',           header:'Show Status',          width:130, type:'dropdown', options:['','Disabled','Published','Unpublished'] },
   { field:'createDate',           header:'Book Create Date',     width:140, type:'date' },
-  { field:'status',               header:'Book Status',          width:120, type:'dropdown' },
+  { field:'status',               header:'Book Status',          width:130, type:'dropdown', options:['','Disabled','Published','Unpublished'] },
   { field:'pubWC',                header:'Pub WC',               width:110, type:'number' },
   { field:'chp1Published',        header:'Chp 1 Published',      width:130, type:'checkbox' },
   { field:'chp1PublishedDate',    header:'Chp 1 Published Date', width:160, type:'date' },
@@ -308,9 +310,9 @@ const BOOK_COLS = [
   { field:'words50kCompleted',    header:'50k Words Completed',  width:150, type:'checkbox' },
   { field:'words50kDate',         header:'50k Words Date',       width:140, type:'date' },
   { field:'llmScore5hr',          header:'5hr LLM Score',        width:120, type:'decimal' },
-  { field:'wbpStatus',            header:'WBP Status',           width:120, type:'dropdown' },
-  { field:'wbpSubStatus',         header:'WBP Sub Status',       width:130, type:'dropdown' },
-  { field:'incentiveFlag',        header:'Incentive Flag',       width:120, type:'number' },
+  { field:'wbpStatus',            header:'WBP Status',           width:130, type:'dropdown', options:['','Pending','Ongoing','Rejected','Completion'] },
+  { field:'wbpSubStatus',         header:'WBP Sub Status',       width:190, type:'dropdown', options:['','Open for Withdrawal','Payment Info Pending','Signing Pending'] },
+  { field:'incentiveFlag',        header:'Book Incentive Flag',  width:160, type:'dropdown', options:['','0','1'] },
   { field:'wbpContractingDate',   header:'WBP Contracting Date', width:160, type:'date' },
   { field:'ppvTag',               header:'PPV Tag',              width:100, type:'dropdown' },
   { field:'ppvTagDate',           header:'PPV Tag Date',         width:130, type:'date' },
@@ -814,12 +816,12 @@ function parseCSVRow(headers, line) {
 function parseCSVAuthors(text) {
   const lines=text.trim().split('\n').filter(l=>l.trim()); if(lines.length<2) return [];
   const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-  return lines.slice(1).map(line=>{ const r=parseCSVRow(headers,line); return { uid:r['Author ID']||r['Author UID']||'', name:r['Author Name']||'', regnDate:r['Author Reg. Date']||'', locale:r['Author Locale']||'', email:r['Author Email ID']||'', phone:r['Author Phone No.']||'', bucketTag:r['Bucket Tag']||'', contestTag:r['Contest Tag']||'', sourceTag:r['Source Tag']||'', authorTypeTag:r['Author Type Tag']||'', form1MailSent:r['Form 1 Mail Sent']||'', form1FollowUp1Sent:r['Form 1 Follow Up 1 Sent']||'', form1FollowUp2Sent:r['Form 1 Follow Up 2 Sent']||'', form1Filled:r['Form 1 Filled']||'', preContractedTag:r['Pre-Contract Validation']||'', preContractCompany:r['Pre-Contract Company']||'', booksCreated:r['No. of Books Created']||'', booksChp1Published:r['No. of Books Chp1 Published']||'', books10kCompleted:r['No. of Books 10k Words Completed']||'', booksModPassed:r['No. of Books Mod Passed']||'', booksExpressContracted:r['No. of Books Express Contracted']||'', booksWBPContracted:r['No. of Books WBP Contracted']||'', booksOFW:r['No. of Books OFW']||'' }; });
+  return lines.slice(1).map(line=>{ const r=parseCSVRow(headers,line); return { uid:r['Author ID']||r['Author UID']||'', name:r['Author Name']||'', regnDate:r['Author Reg. Date']||'', locale:r['Author Locale']||'', email:r['Author Email ID']||'', phone:r['Author Phone No.']||'', bucketTag:r['Bucket Tag']||'', contestTag:r['Contest Tag']||'', sourceTag:r['Source Tag']||'', authorTypeTag:r['Author Type Tag']||'', form1MailSent:r['Form 1 Mail Sent']||'', form1FollowUp1Sent:r['Form 1 Follow Up 1 Sent']||'', form1FollowUp2Sent:r['Form 1 Follow Up 2 Sent']||'', form1Filled:r['Form 1 Filled']||'', preContractedTag:r['Pre-Contract Validation']||'', preContractCompany:r['Pre-Contract Company']||'', incentiveFlag:r['Author Incentive Flag']||r['Incentive Flag']||'', booksCreated:r['No. of Books Created']||'', booksChp1Published:r['No. of Books Chp1 Published']||'', books10kCompleted:r['No. of Books 10k Words Completed']||'', booksModPassed:r['No. of Books Mod Passed']||'', booksExpressContracted:r['No. of Books Express Contracted']||'', booksWBPContracted:r['No. of Books WBP Contracted']||'', booksOFW:r['No. of Books OFW']||'' }; });
 }
 function parseCSVBooks(text) {
   const lines=text.trim().split('\n').filter(l=>l.trim()); if(lines.length<2) return [];
   const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-  return lines.slice(1).map(line=>{ const r=parseCSVRow(headers,line); return { id:r['Book ID']||'', authorId:r['Author ID']||'', title:r['Book Title']||'', showId:r['Show ID']||'', showTitle:r['Show Title']||'', createDate:r['Book Create Date']||'', status:r['Book Status']||'', pubWC:r['Pub WC']||'', chp1Published:r['Chp 1 Published']||'', chp1PublishedDate:r['Chp 1 Published Date']||'', words10kCompleted:r['10k Words Completed?']||'', words10kDate:r['10k words completion Date']||'', moderationStatus:r['Moderation Status']||'', moderationPassedDate:r['Moderation Passed Date']||'', editorScore:r['Book Editor Score']||'', words50kCompleted:r['50k Words Completed?']||'', words50kDate:r['50k words completed date?']||'', llmScore5hr:r['5 hr LLM Score']||'', wbpStatus:r['WBP Status']||'', wbpSubStatus:r['WBP Sub Status']||'', incentiveFlag:r['Incentive Flag']||'', wbpContractingDate:r['WBP Contracting Date?']||'', ppvTag:r['PPV Tag']||'', ppvTagDate:r['PPV Tag Date']||'', ldaus:r['LDAUs']||'', h1EligibleLdau:r['H1 Eligible LDAU']||'', h1Ret:r['H1 Ret%']||'', h5EligibleLdau:r['H5 Eligible LDAU']||'', h5Ret:r['H5 Ret%']||'', h10EligibleLdau:r['H10 Eligible LDAU']||'', h10Ret:r['H10 Ret%']||'', h15EligibleLdau:r['H15 Eligible LDAU']||'', h15Ret:r['H15 Ret%']||'' }; });
+  return lines.slice(1).map(line=>{ const r=parseCSVRow(headers,line); return { id:r['Book ID']||'', authorId:r['Author ID']||'', title:r['Book Title']||'', showId:r['Show ID']||'', showTitle:r['Show Title']||'', showStatus:r['Show Status']||'', createDate:r['Book Create Date']||'', status:r['Book Status']||'', pubWC:r['Pub WC']||'', chp1Published:r['Chp 1 Published']||'', chp1PublishedDate:r['Chp 1 Published Date']||'', words10kCompleted:r['10k Words Completed?']||'', words10kDate:r['10k words completion Date']||'', moderationStatus:r['Moderation Status']||'', moderationPassedDate:r['Moderation Passed Date']||'', editorScore:r['Book Editor Score']||'', words50kCompleted:r['50k Words Completed?']||'', words50kDate:r['50k words completed date?']||'', llmScore5hr:r['5 hr LLM Score']||'', wbpStatus:r['WBP Status']||'', wbpSubStatus:r['WBP Sub Status']||'', incentiveFlag:r['Book Incentive Flag']||r['Incentive Flag']||'', wbpContractingDate:r['WBP Contracting Date?']||'', ppvTag:r['PPV Tag']||'', ppvTagDate:r['PPV Tag Date']||'', ldaus:r['LDAUs']||'', h1EligibleLdau:r['H1 Eligible LDAU']||'', h1Ret:r['H1 Ret%']||'', h5EligibleLdau:r['H5 Eligible LDAU']||'', h5Ret:r['H5 Ret%']||'', h10EligibleLdau:r['H10 Eligible LDAU']||'', h10Ret:r['H10 Ret%']||'', h15EligibleLdau:r['H15 Eligible LDAU']||'', h15Ret:r['H15 Ret%']||'' }; });
 }
 
 // ── Import ─────────────────────────────────────────────────────────

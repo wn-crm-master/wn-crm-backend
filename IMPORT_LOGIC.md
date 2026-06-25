@@ -160,6 +160,7 @@ Every import returns a summary:
 | `form1Filled` | Form 1 Filled | **Checkbox** (boolean) | |
 | `preContractedTag` | Pre-Contract Validation | **Dropdown** | Special Field — values TBD |
 | `preContractCompany` | Pre-Contract Company | Text (single line) | Special Field |
+| `incentiveFlag` | Author Incentive Flag | **Dropdown** | Values: `0` / `1` / *(blank)* |
 | `booksCreated` | Books Created | **Rollup** (read-only) | Count of all books linked to this author |
 | `booksChp1Published` | Books Chp1 Published | **Rollup** (read-only) | Count of linked books where `chp1Published` = true |
 | `books10kCompleted` | Books 10k Completed | **Rollup** (read-only) | Count of linked books where `words10kCompleted` = true |
@@ -209,8 +210,9 @@ Every import returns a summary:
 | `title` | Book Title | Text (single line) | Special Field |
 | `showId` | Show ID | Text (single line) | Special Field |
 | `showTitle` | Show Title | Text (single line) | Special Field |
+| `showStatus` | Show Status | **Dropdown** | Values: `Disabled` / `Published` / `Unpublished` / *(blank)* |
 | `createDate` | Book Create Date | **Date** | DD/MM/YYYY — Special Field |
-| `status` | Book Status | **Dropdown** | Values TBD — Special Field |
+| `status` | Book Status | **Dropdown** | Values: `Disabled` / `Published` / `Unpublished` / *(blank)* — Special Field |
 | `pubWC` | Pub WC | **Number** | Comma-formatted (e.g. 12,500) |
 | `chp1Published` | Chp 1 Published | **Checkbox** (boolean) | |
 | `chp1PublishedDate` | Chp 1 Published Date | **Date** | DD/MM/YYYY |
@@ -222,9 +224,9 @@ Every import returns a summary:
 | `words50kCompleted` | 50k Words Completed | **Checkbox** (boolean) | |
 | `words50kDate` | 50k Words Date | **Date** | DD/MM/YYYY |
 | `llmScore5hr` | 5hr LLM Score | **Decimal** | Decimal number |
-| `wbpStatus` | WBP Status | **Dropdown** | Values TBD |
-| `wbpSubStatus` | WBP Sub Status | **Dropdown** | Values TBD |
-| `incentiveFlag` | Incentive Flag | **Number** | |
+| `wbpStatus` | WBP Status | **Dropdown** | Values: `Pending` / `Ongoing` / `Rejected` / `Completion` / *(blank)* |
+| `wbpSubStatus` | WBP Sub Status | **Dropdown** | Values: `Open for Withdrawal` / `Payment Info Pending` / `Signing Pending` / *(blank)* |
+| `incentiveFlag` | Book Incentive Flag | **Dropdown** | Values: `0` / `1` / *(blank)* |
 | `wbpContractingDate` | WBP Contracting Date | **Date** | DD/MM/YYYY |
 | `ppvTag` | PPV Tag | **Dropdown** | Values TBD |
 | `ppvTagDate` | PPV Tag Date | **Date** | DD/MM/YYYY |
