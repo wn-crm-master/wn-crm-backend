@@ -139,6 +139,39 @@ Every import returns a summary:
 
 ---
 
+## Field Types
+
+### Author Field Types
+| Internal Field | Display Name | Type | Rules / Notes |
+|---|---|---|---|
+| `uid` | Author ID | Text | Unique key — any alphanumeric combination, no rules |
+| `name` | Author Name | Text (single line) | Special Field |
+| `regnDate` | Author Reg. Date | **Date** | Display as **DD/MM/YYYY** — Special Field |
+| `locale` | Author Locale | Text (single line) | Country or city — no rules |
+| `email` | Author Email ID | Email (single line) | Special Field |
+| `phone` | Author Phone No. | Text (single line) | Special Field |
+| `bucketTag` | Bucket Tag | Text → Dropdown (later) | Special Field |
+| `contestTag` | Contest Tag | Text → Dropdown (later) | Special Field |
+| `sourceTag` | Source Tag | Text (single line) | Special Field |
+| `authorTypeTag` | Author Type Tag | Text (single line) | Special Field |
+| `form1MailSent` | Form 1 Mail Sent | **Checkbox** (boolean) | |
+| `form1FollowUp1Sent` | Form 1 Follow Up 1 Sent | **Checkbox** (boolean) | |
+| `form1FollowUp2Sent` | Form 1 Follow Up 2 Sent | **Checkbox** (boolean) | |
+| `form1Filled` | Form 1 Filled | **Checkbox** (boolean) | |
+| `preContractedTag` | Pre-Contract Validation | **Dropdown** | Special Field — values TBD |
+| `preContractCompany` | Pre-Contract Company | Text (single line) | Special Field |
+| `booksCreated` | Books Created | **Rollup** (read-only) | Count of all books linked to this author |
+| `booksChp1Published` | Books Chp1 Published | **Rollup** (read-only) | Count of linked books where `chp1Published` = true |
+| `books10kCompleted` | Books 10k Completed | **Rollup** (read-only) | Count of linked books where `words10kCompleted` = true |
+| `booksModPassed` | Books Mod Passed | **Rollup** (read-only) | Count of linked books where `moderationStatus` contains "pass" |
+| `booksExpressContracted` | Books Express Contracted | **Rollup** (read-only) | Count of linked books where `wbpStatus` contains "express" |
+| `booksWBPContracted` | Books WBP Contracted | **Rollup** (read-only) | Count of linked books where `wbpStatus` contains "wbp" |
+| `booksOFW` | Books OFW | **Rollup** (read-only) | Count of linked books where `wbpSubStatus` contains "open for withdrawal" / "ofw" |
+
+> Rollup fields are computed live from the books collection — never stored on author records, never imported from CSV.
+
+---
+
 ## CSV Column Mapping
 
 ### Authors CSV (Author Level Data)
@@ -146,7 +179,7 @@ Every import returns a summary:
 |---|---|---|
 | Author ID | `uid` | **Unique ID** |
 | Author Name | `name` | Special Field |
-| Author Reg. Date | `regnDate` | Special Field |
+| Author Reg. Date | `regnDate` | Special Field — date, display DD/MM/YYYY |
 | Author Locale | `locale` | Special Field |
 | Author Email ID | `email` | Special Field |
 | Author Phone No. | `phone` | Special Field |
@@ -154,19 +187,24 @@ Every import returns a summary:
 | Contest Tag | `contestTag` | Special Field |
 | Source Tag | `sourceTag` | Special Field |
 | Author Type Tag | `authorTypeTag` | Special Field |
-| Form 1 Mail Sent | `form1MailSent` | |
-| Form 1 Follow Up 1 Sent | `form1FollowUp1Sent` | |
-| Form 1 Follow Up 2 Sent | `form1FollowUp2Sent` | |
-| Form 1 Filled | `form1Filled` | |
-| Pre-Contract Validation | `preContractedTag` | Special Field |
+| Form 1 Mail Sent | `form1MailSent` | Checkbox |
+| Form 1 Follow Up 1 Sent | `form1FollowUp1Sent` | Checkbox |
+| Form 1 Follow Up 2 Sent | `form1FollowUp2Sent` | Checkbox |
+| Form 1 Filled | `form1Filled` | Checkbox |
+| Pre-Contract Validation | `preContractedTag` | Special Field — dropdown |
 | Pre-Contract Company | `preContractCompany` | Special Field |
-| No. of Books Created | `booksCreated` | |
-| No. of Books Chp1 Published | `booksChp1Published` | |
-| No. of Books 10k Words Completed | `books10kCompleted` | |
-| No. of Books Mod Passed | `booksModPassed` | |
-| No. of Books Express Contracted | `booksExpressContracted` | |
-| No. of Books WBP Contracted | `booksWBPContracted` | |
-| No. of Books OFW | `booksOFW` | |
+| No. of Books Created | `booksCreated` | **Ignored on import** — rollup |
+| No. of Books Chp1 Published | `booksChp1Published` | **Ignored on import** — rollup |
+| No. of Books 10k Words Completed | `books10kCompleted` | **Ignored on import** — rollup |
+| No. of Books Mod Passed | `booksModPassed` | **Ignored on import** — rollup |
+| No. of Books Express Contracted | `booksExpressContracted` | **Ignored on import** — rollup |
+| No. of Books WBP Contracted | `booksWBPContracted` | **Ignored on import** — rollup |
+| No. of Books OFW | `booksOFW` | **Ignored on import** — rollup |
+
+### Book Field Types
+> To be defined — in progress.
+
+---
 
 ### Books CSV (Book Level Data)
 | CSV Column | Internal Field | Notes |
