@@ -36,7 +36,8 @@ Core module — the primary entity in this CRM.
 | Import (CSV / JSON) | Bulk import author data — separate endpoint, ID-keyed upsert, no-blank-overwrite, 24hr backup | Done |
 | Delete Data | Wipe all author records | Done |
 | Tags & Segments | Prev Platform Tag, Pre-Contracted, Active, Churned, etc. | Partial (import only) |
-| **Special Fields** | **Fields that require user approval before overwrite — list TBD** | **⚠️ PENDING DEFINITION** |
+| Special Fields (Authors) | 11 fields confirmed — approval required before overwrite (Name, Email, Phone, Reg. Date, Locale, Bucket/Contest/Source/Type Tags, Pre-Contract Validation & Company) | Done |
+| Special Fields (Books) | List not yet defined | ⚠️ Pending |
 | Notes & Activity | Log calls, meetings, emails per author | Planned |
 | Status Tracking | Track author lifecycle (Lead → Contracted → Active → Churned) | Planned |
 

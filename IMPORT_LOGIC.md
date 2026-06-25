@@ -52,10 +52,23 @@ Certain fields are designated as **Special Fields**. If an import attempts to ch
 - If rejected, the old value is preserved.
 - All other (non-special) fields in the same record proceed normally without needing approval.
 
-> **⚠️ SPECIAL FIELDS LIST — PENDING DEFINITION**
-> The list of Special Fields has not yet been defined. It must be confirmed with the product owner before implementation.
-> Placeholder: `SPECIAL_FIELDS_AUTHORS = []` and `SPECIAL_FIELDS_BOOKS = []`
-> Once defined, update `server.js` and this document.
+**Authors — Special Fields (confirmed):**
+
+| Field (Internal) | Display Name |
+|---|---|
+| `name` | Author Name |
+| `regnDate` | Author Reg. Date |
+| `locale` | Author Locale |
+| `email` | Author Email ID |
+| `phone` | Author Phone No. |
+| `bucketTag` | Bucket Tag |
+| `contestTag` | Contest Tag |
+| `sourceTag` | Source Tag |
+| `authorTypeTag` | Author Type Tag |
+| `preContractedTag` | Pre-Contract Validation |
+| `preContractCompany` | Pre-Contract Company |
+
+**Books — Special Fields:** Not yet defined. Pending input from product owner.
 
 ### Rule 4 — Normal Fields
 All fields not in the Special Fields list are overwritten freely with the incoming value, subject to Rules 1 and 2.

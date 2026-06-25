@@ -19,9 +19,20 @@ const upload = multer({ storage: multer.memoryStorage() });
 const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || 'wn-crm-secret-change-in-production';
 
-// ⚠️ SPECIAL FIELDS — PENDING DEFINITION by product owner
-// Add field names here once confirmed. These fields trigger user approval before overwrite.
-const SPECIAL_FIELDS_AUTHORS = [];
+// Special Fields — changing these on an existing record requires user approval before overwrite.
+const SPECIAL_FIELDS_AUTHORS = [
+  'name',              // Author Name
+  'regnDate',          // Author Reg. Date
+  'locale',            // Author Locale
+  'email',             // Author Email ID
+  'phone',             // Author Phone No.
+  'bucketTag',         // Bucket Tag
+  'contestTag',        // Contest Tag
+  'sourceTag',         // Source Tag
+  'authorTypeTag',     // Author Type Tag
+  'preContractedTag',  // Pre-Contract Validation
+  'preContractCompany' // Pre-Contract Company
+];
 const SPECIAL_FIELDS_BOOKS = [];
 
 // Values that must never overwrite existing data
