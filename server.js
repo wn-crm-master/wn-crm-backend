@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,6 +19,19 @@ const upload = multer({ storage: multer.memoryStorage() });
 const MONGO_URI = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET || 'wn-crm-secret-change-in-production';
 
+// ⚠️ SPECIAL FIELDS — PENDING DEFINITION by product owner
+// Add field names here once confirmed. These fields trigger user approval before overwrite.
+const SPECIAL_FIELDS_AUTHORS = [];
+const SPECIAL_FIELDS_BOOKS = [];
+
+// Values that must never overwrite existing data
+const REJECT_VALUES = new Set(['', 'null', 'undefined', 'n/a', '#error', '#ref!']);
+function isBlankOrError(val) {
+  if (val === null || val === undefined) return true;
+  const s = String(val).trim();
+  return s === '' || REJECT_VALUES.has(s.toLowerCase());
+}
+
 let db;
 
 MongoClient.connect(MONGO_URI)
@@ -27,6 +41,8 @@ MongoClient.connect(MONGO_URI)
     db.collection('authors').createIndex({ id: 1 }, { unique: true }).catch(() => {});
     db.collection('books').createIndex({ id: 1 }, { unique: true }).catch(() => {});
     db.collection('users').createIndex({ email: 1 }, { unique: true }).catch(() => {});
+    db.collection('authors_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
+    db.collection('books_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);
@@ -44,12 +60,92 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
-// Health
+// Core import function used by both authors and books
+async function importRecords(collection, backupCollection, records, idField, specialFields) {
+  const importId = crypto.randomBytes(6).toString('hex');
+  let inserted = 0, updated = 0, skipped = 0;
+  const skippedReasons = [];
+  const specialFieldChanges = [];
+
+  for (const record of records) {
+    const uid = record[idField];
+
+    // Reject records with no unique ID
+    if (!uid || isBlankOrError(uid)) {
+      skipped++;
+      skippedReasons.push({ id: null, reason: 'Missing unique ID' });
+      continue;
+    }
+
+    const existing = await db.collection(collection).findOne({ [idField]: uid });
+
+    if (!existing) {
+      // New record — insert directly
+      await db.collection(collection).insertOne({ ...record, createdAt: new Date(), updatedAt: new Date() });
+      inserted++;
+    } else {
+      // Backup existing record before any overwrite
+      await db.collection(backupCollection).insertOne({
+        ...existing,
+        _originalId: existing._id,
+        importId,
+        backedUpAt: new Date()
+      });
+
+      // Build the update object respecting blank/error and special field rules
+      const updateFields = {};
+      let allBlank = true;
+
+      for (const [key, newVal] of Object.entries(record)) {
+        if (key === '_id') continue;
+        if (isBlankOrError(newVal)) continue; // Rule 1 & 2: skip blanks/errors
+
+        allBlank = false;
+
+        if (specialFields.includes(key) && existing[key] !== undefined && existing[key] !== newVal) {
+          // Special field changed — flag for approval, don't write yet
+          specialFieldChanges.push({
+            importId,
+            entityId: uid,
+            field: key,
+            oldValue: existing[key],
+            newValue: newVal,
+            status: 'pending_approval'
+          });
+        } else {
+          updateFields[key] = newVal;
+        }
+      }
+
+      if (allBlank) {
+        skipped++;
+        skippedReasons.push({ id: uid, reason: 'All incoming fields were blank or error values' });
+        continue;
+      }
+
+      if (Object.keys(updateFields).length > 0) {
+        updateFields.updatedAt = new Date();
+        await db.collection(collection).updateOne({ [idField]: uid }, { $set: updateFields });
+      }
+
+      updated++;
+    }
+  }
+
+  // Store pending special field changes for approval
+  if (specialFieldChanges.length > 0) {
+    await db.collection('pending_approvals').insertMany(specialFieldChanges);
+  }
+
+  return { importId, inserted, updated, skipped, skippedReasons, specialFieldChanges };
+}
+
+// ============ HEALTH ============
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: db ? 'connected' : 'disconnected' });
 });
 
-// Auth
+// ============ AUTH ============
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
@@ -79,58 +175,44 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Import - supports JSON body or file upload
-app.post('/api/import', authMiddleware, upload.single('file'), async (req, res) => {
+// ============ IMPORT — AUTHORS ============
+app.post('/api/import/authors', authMiddleware, async (req, res) => {
   try {
-    let data;
-    if (req.file) {
-      data = JSON.parse(req.file.buffer.toString('utf8'));
-    } else {
-      data = req.body;
-    }
-    const { authors = [], books = [] } = data;
+    const { authors = [] } = req.body;
+    if (!Array.isArray(authors) || authors.length === 0)
+      return res.status(400).json({ error: 'authors array is required' });
 
-    let authorInserted = 0, authorUpdated = 0;
-    let bookInserted = 0, bookUpdated = 0;
-
-    if (authors.length > 0) {
-      const ops = authors.map(a => ({
-        updateOne: { filter: { id: a.id }, update: { $set: { ...a, updatedAt: new Date() } }, upsert: true }
-      }));
-      const r = await db.collection('authors').bulkWrite(ops);
-      authorInserted = r.upsertedCount;
-      authorUpdated = r.modifiedCount;
-    }
-
-    if (books.length > 0) {
-      const ops = books.map(b => ({
-        updateOne: { filter: { id: b.id }, update: { $set: { ...b, updatedAt: new Date() } }, upsert: true }
-      }));
-      const r = await db.collection('books').bulkWrite(ops);
-      bookInserted = r.upsertedCount;
-      bookUpdated = r.modifiedCount;
-    }
-
-    res.json({
-      success: true,
-      authors: { inserted: authorInserted, updated: authorUpdated },
-      books: { inserted: bookInserted, updated: bookUpdated }
-    });
+    const result = await importRecords('authors', 'authors_backups', authors, 'uid', SPECIAL_FIELDS_AUTHORS);
+    res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Authors
+// ============ IMPORT — BOOKS ============
+app.post('/api/import/books', authMiddleware, async (req, res) => {
+  try {
+    const { books = [] } = req.body;
+    if (!Array.isArray(books) || books.length === 0)
+      return res.status(400).json({ error: 'books array is required' });
+
+    const result = await importRecords('books', 'books_backups', books, 'id', SPECIAL_FIELDS_BOOKS);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ AUTHORS ============
 app.get('/api/authors', authMiddleware, async (req, res) => {
   try {
-    const { search, genre, page = 1, limit = 20 } = req.query;
+    const { search, page = 1, limit = 100 } = req.query;
     const query = {};
     if (search) query.$or = [
       { name: { $regex: search, $options: 'i' } },
-      { penName: { $regex: search, $options: 'i' } }
+      { uid: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } }
     ];
-    if (genre) query.genres = { $regex: genre, $options: 'i' };
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await db.collection('authors').countDocuments(query);
     const data = await db.collection('authors').find(query).skip(skip).limit(parseInt(limit)).toArray();
@@ -151,7 +233,7 @@ app.delete('/api/authors/all', authMiddleware, async (req, res) => {
 
 app.get('/api/authors/:id', authMiddleware, async (req, res) => {
   try {
-    const author = await db.collection('authors').findOne({ id: req.params.id });
+    const author = await db.collection('authors').findOne({ uid: req.params.id });
     if (!author) return res.status(404).json({ error: 'Author not found' });
     res.json(author);
   } catch (err) {
@@ -161,7 +243,7 @@ app.get('/api/authors/:id', authMiddleware, async (req, res) => {
 
 app.delete('/api/authors/:id', authMiddleware, async (req, res) => {
   try {
-    const result = await db.collection('authors').deleteOne({ id: req.params.id });
+    const result = await db.collection('authors').deleteOne({ uid: req.params.id });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Author not found' });
     res.json({ success: true });
   } catch (err) {
@@ -169,10 +251,10 @@ app.delete('/api/authors/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Books
+// ============ BOOKS ============
 app.get('/api/books', authMiddleware, async (req, res) => {
   try {
-    const { search, genre, authorId, year, page = 1, limit = 20 } = req.query;
+    const { search, genre, authorId, page = 1, limit = 100 } = req.query;
     const query = {};
     if (search) query.$or = [
       { title: { $regex: search, $options: 'i' } },
@@ -180,11 +262,19 @@ app.get('/api/books', authMiddleware, async (req, res) => {
     ];
     if (genre) query.genre = { $regex: genre, $options: 'i' };
     if (authorId) query.authorId = authorId;
-    if (year) query.publishedYear = parseInt(year);
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await db.collection('books').countDocuments(query);
     const data = await db.collection('books').find(query).skip(skip).limit(parseInt(limit)).toArray();
     res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/books/all', authMiddleware, async (req, res) => {
+  try {
+    const result = await db.collection('books').deleteMany({});
+    res.json({ success: true, deleted: result.deletedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -210,19 +300,51 @@ app.delete('/api/books/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Stats
+// ============ BACKUPS (Settings) ============
+app.get('/api/backups', authMiddleware, async (req, res) => {
+  try {
+    const authorBackups = await db.collection('authors_backups')
+      .aggregate([{ $group: { _id: '$importId', count: { $sum: 1 }, backedUpAt: { $max: '$backedUpAt' } } }])
+      .toArray();
+    const bookBackups = await db.collection('books_backups')
+      .aggregate([{ $group: { _id: '$importId', count: { $sum: 1 }, backedUpAt: { $max: '$backedUpAt' } } }])
+      .toArray();
+    res.json({
+      authors: authorBackups.map(b => ({ importId: b._id, count: b.count, backedUpAt: b.backedUpAt, entity: 'authors' })),
+      books: bookBackups.map(b => ({ importId: b._id, count: b.count, backedUpAt: b.backedUpAt, entity: 'books' }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/backups/restore', authMiddleware, async (req, res) => {
+  try {
+    const { importId, entity } = req.body;
+    if (!importId || !entity) return res.status(400).json({ error: 'importId and entity required' });
+    const backupCol = entity === 'authors' ? 'authors_backups' : 'books_backups';
+    const liveCol = entity === 'authors' ? 'authors' : 'books';
+    const idField = entity === 'authors' ? 'uid' : 'id';
+    const records = await db.collection(backupCol).find({ importId }).toArray();
+    if (records.length === 0) return res.status(404).json({ error: 'Backup not found or expired' });
+    let restored = 0;
+    for (const rec of records) {
+      const { _id, _originalId, importId: _imp, backedUpAt, ...data } = rec;
+      await db.collection(liveCol).replaceOne({ [idField]: data[idField] }, data, { upsert: true });
+      restored++;
+    }
+    res.json({ success: true, restored });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============ STATS ============
 app.get('/api/stats', authMiddleware, async (req, res) => {
   try {
     const totalAuthors = await db.collection('authors').countDocuments();
     const totalBooks = await db.collection('books').countDocuments();
-    const genresFromAuthors = await db.collection('authors').distinct('genres');
-    const genresFromBooks = await db.collection('books').distinct('genre');
-    const genres = [...new Set([...genresFromAuthors, ...genresFromBooks])].filter(Boolean);
-    const ratingAgg = await db.collection('books').aggregate([
-      { $group: { _id: null, avg: { $avg: '$rating' } } }
-    ]).toArray();
-    const avgRating = ratingAgg.length > 0 ? Math.round(ratingAgg[0].avg * 10) / 10 : 0;
-    res.json({ totalAuthors, totalBooks, genres, avgRating });
+    res.json({ totalAuthors, totalBooks });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -230,6 +352,6 @@ app.get('/api/stats', authMiddleware, async (req, res) => {
 
 // Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
