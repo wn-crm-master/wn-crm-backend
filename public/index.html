@@ -295,15 +295,22 @@
     }
     document.getElementById('authors-body').innerHTML = `
       <table>
-        <thead><tr><th>Author Name</th><th>Email ID</th><th>Author UID</th><th>Regn. Date</th><th>Prev Platform Tag</th><th>Pre-Contracted Tag</th></tr></thead>
+        <thead><tr>
+          <th>Author ID</th><th>Author Name</th><th>Author Reg. Date</th><th>Author Locale</th>
+          <th>Author Email ID</th><th>Author Phone No.</th><th>Bucket Tag</th><th>Contest Tag</th>
+          <th>Source Tag</th><th>Author Type Tag</th><th>Form 1 Mail Sent</th><th>Form 1 FU1 Sent</th>
+          <th>Form 1 FU2 Sent</th><th>Form 1 Filled</th><th>Pre-Contract Validation</th><th>Pre-Contract Company</th>
+          <th>Books Created</th><th>Books Chp1 Published</th><th>Books 10k Completed</th><th>Books Mod Passed</th>
+          <th>Books Express Contracted</th><th>Books WBP Contracted</th><th>Books OFW</th>
+        </tr></thead>
         <tbody>${authors.map(a => `
           <tr>
-            <td>${a.name || '—'}</td>
-            <td>${a.email || '—'}</td>
-            <td>${a.uid || '—'}</td>
-            <td>${a.regnDate || '—'}</td>
-            <td>${a.prevPlatformTag || '—'}</td>
-            <td>${a.preContractedTag || '—'}</td>
+            <td>${a.uid||'—'}</td><td>${a.name||'—'}</td><td>${a.regnDate||'—'}</td><td>${a.locale||'—'}</td>
+            <td>${a.email||'—'}</td><td>${a.phone||'—'}</td><td>${a.bucketTag||'—'}</td><td>${a.contestTag||'—'}</td>
+            <td>${a.sourceTag||'—'}</td><td>${a.authorTypeTag||'—'}</td><td>${a.form1MailSent||'—'}</td><td>${a.form1FollowUp1Sent||'—'}</td>
+            <td>${a.form1FollowUp2Sent||'—'}</td><td>${a.form1Filled||'—'}</td><td>${a.preContractedTag||'—'}</td><td>${a.preContractCompany||'—'}</td>
+            <td>${a.booksCreated||'—'}</td><td>${a.booksChp1Published||'—'}</td><td>${a.books10kCompleted||'—'}</td><td>${a.booksModPassed||'—'}</td>
+            <td>${a.booksExpressContracted||'—'}</td><td>${a.booksWBPContracted||'—'}</td><td>${a.booksOFW||'—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>`;
@@ -327,16 +334,26 @@
     }
     document.getElementById('books-body').innerHTML = `
       <table>
-        <thead><tr><th>Book ID</th><th>Title</th><th>Author</th><th>Genre</th><th>Year</th><th>Rating</th><th>Pages</th></tr></thead>
+        <thead><tr>
+          <th>Book ID</th><th>Author ID</th><th>Book Title</th><th>Show ID</th><th>Show Title</th>
+          <th>Book Create Date</th><th>Book Status</th><th>Pub WC</th><th>Chp 1 Published</th><th>Chp 1 Published Date</th>
+          <th>10k Words Completed</th><th>10k Words Date</th><th>Moderation Status</th><th>Moderation Passed Date</th>
+          <th>Book Editor Score</th><th>50k Words Completed</th><th>50k Words Date</th><th>5hr LLM Score</th>
+          <th>WBP Status</th><th>WBP Sub Status</th><th>Incentive Flag</th><th>WBP Contracting Date</th>
+          <th>PPV Tag</th><th>PPV Tag Date</th><th>LDAUs</th>
+          <th>H1 Eligible LDAU</th><th>H1 Ret%</th><th>H5 Eligible LDAU</th><th>H5 Ret%</th>
+          <th>H10 Eligible LDAU</th><th>H10 Ret%</th><th>H15 Eligible LDAU</th><th>H15 Ret%</th>
+        </tr></thead>
         <tbody>${books.map(b => `
           <tr>
-            <td>${b.id || '—'}</td>
-            <td>${b.title || '—'}</td>
-            <td>${b.authorName || '—'}</td>
-            <td>${b.genre || '—'}</td>
-            <td>${b.publishedYear || '—'}</td>
-            <td>${b.rating !== undefined ? b.rating : '—'}</td>
-            <td>${b.pages || '—'}</td>
+            <td>${b.id||'—'}</td><td>${b.authorId||'—'}</td><td>${b.title||'—'}</td><td>${b.showId||'—'}</td><td>${b.showTitle||'—'}</td>
+            <td>${b.createDate||'—'}</td><td>${b.status||'—'}</td><td>${b.pubWC||'—'}</td><td>${b.chp1Published||'—'}</td><td>${b.chp1PublishedDate||'—'}</td>
+            <td>${b.words10kCompleted||'—'}</td><td>${b.words10kDate||'—'}</td><td>${b.moderationStatus||'—'}</td><td>${b.moderationPassedDate||'—'}</td>
+            <td>${b.editorScore||'—'}</td><td>${b.words50kCompleted||'—'}</td><td>${b.words50kDate||'—'}</td><td>${b.llmScore5hr||'—'}</td>
+            <td>${b.wbpStatus||'—'}</td><td>${b.wbpSubStatus||'—'}</td><td>${b.incentiveFlag||'—'}</td><td>${b.wbpContractingDate||'—'}</td>
+            <td>${b.ppvTag||'—'}</td><td>${b.ppvTagDate||'—'}</td><td>${b.ldaus||'—'}</td>
+            <td>${b.h1EligibleLdau||'—'}</td><td>${b.h1Ret||'—'}</td><td>${b.h5EligibleLdau||'—'}</td><td>${b.h5Ret||'—'}</td>
+            <td>${b.h10EligibleLdau||'—'}</td><td>${b.h10Ret||'—'}</td><td>${b.h15EligibleLdau||'—'}</td><td>${b.h15Ret||'—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>`;
@@ -350,21 +367,52 @@
   }
 
   // ── CSV PARSERS ───────────────────────────────────────────
+  function parseCSVRow(headers, line) {
+    // Handle quoted fields that may contain commas
+    const vals = [];
+    let cur = '', inQuote = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQuote = !inQuote; }
+      else if (c === ',' && !inQuote) { vals.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    vals.push(cur.trim());
+    const row = {};
+    headers.forEach((h, i) => { row[h] = (vals[i] || '').replace(/^"|"$/g, ''); });
+    return row;
+  }
+
   function parseCSVAuthors(text) {
     const lines = text.trim().split('\n').filter(l => l.trim());
     if (lines.length < 2) return [];
     const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     return lines.slice(1).map(line => {
-      const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-      const row = {};
-      headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+      const r = parseCSVRow(headers, line);
       return {
-        name: row['Author Name'] || '',
-        email: row['Email ID'] || '',
-        uid: row['Author UID'] || '',
-        regnDate: row['Regn. Date'] || '',
-        prevPlatformTag: row['Prev Platform Tag'] || '',
-        preContractedTag: row['Pre-Contracted Tag'] || ''
+        uid:                    r['Author ID'] || r['Author UID'] || '',
+        name:                   r['Author Name'] || '',
+        regnDate:               r['Author Reg. Date'] || '',
+        locale:                 r['Author Locale'] || '',
+        email:                  r['Author Email ID'] || '',
+        phone:                  r['Author Phone No.'] || '',
+        bucketTag:              r['Bucket Tag'] || '',
+        contestTag:             r['Contest Tag'] || '',
+        sourceTag:              r['Source Tag'] || '',
+        authorTypeTag:          r['Author Type Tag'] || '',
+        form1MailSent:          r['Form 1 Mail Sent'] || '',
+        form1FollowUp1Sent:     r['Form 1 Follow Up 1 Sent'] || '',
+        form1FollowUp2Sent:     r['Form 1 Follow Up 2 Sent'] || '',
+        form1Filled:            r['Form 1 Filled'] || '',
+        preContractedTag:       r['Pre-Contract Validation'] || '',
+        preContractCompany:     r['Pre-Contract Company'] || '',
+        booksCreated:           r['No. of Books Created'] || '',
+        booksChp1Published:     r['No. of Books Chp1 Published'] || '',
+        books10kCompleted:      r['No. of Books 10k Words Completed'] || '',
+        booksModPassed:         r['No. of Books Mod Passed'] || '',
+        booksExpressContracted: r['No. of Books Express Contracted'] || '',
+        booksWBPContracted:     r['No. of Books WBP Contracted'] || '',
+        booksOFW:               r['No. of Books OFW'] || ''
       };
     });
   }
@@ -374,20 +422,41 @@
     if (lines.length < 2) return [];
     const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     return lines.slice(1).map(line => {
-      const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-      const row = {};
-      headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+      const r = parseCSVRow(headers, line);
       return {
-        id: row['Book ID'] || row['id'] || '',
-        title: row['Title'] || '',
-        authorId: row['Author UID'] || row['authorId'] || '',
-        authorName: row['Author Name'] || row['authorName'] || '',
-        genre: row['Genre'] || '',
-        publishedYear: row['Published Year'] ? parseInt(row['Published Year']) : '',
-        rating: row['Rating'] ? parseFloat(row['Rating']) : '',
-        pages: row['Pages'] ? parseInt(row['Pages']) : '',
-        language: row['Language'] || '',
-        description: row['Description'] || ''
+        id:                   r['Book ID'] || '',
+        authorId:             r['Author ID'] || '',
+        title:                r['Book Title'] || '',
+        showId:               r['Show ID'] || '',
+        showTitle:            r['Show Title'] || '',
+        createDate:           r['Book Create Date'] || '',
+        status:               r['Book Status'] || '',
+        pubWC:                r['Pub WC'] || '',
+        chp1Published:        r['Chp 1 Published'] || '',
+        chp1PublishedDate:    r['Chp 1 Published Date'] || '',
+        words10kCompleted:    r['10k Words Completed?'] || '',
+        words10kDate:         r['10k words completion Date'] || '',
+        moderationStatus:     r['Moderation Status'] || '',
+        moderationPassedDate: r['Moderation Passed Date'] || '',
+        editorScore:          r['Book Editor Score'] || '',
+        words50kCompleted:    r['50k Words Completed?'] || '',
+        words50kDate:         r['50k words completed date?'] || '',
+        llmScore5hr:          r['5 hr LLM Score'] || '',
+        wbpStatus:            r['WBP Status'] || '',
+        wbpSubStatus:         r['WBP Sub Status'] || '',
+        incentiveFlag:        r['Incentive Flag'] || '',
+        wbpContractingDate:   r['WBP Contracting Date?'] || '',
+        ppvTag:               r['PPV Tag'] || '',
+        ppvTagDate:           r['PPV Tag Date'] || '',
+        ldaus:                r['LDAUs'] || '',
+        h1EligibleLdau:       r['H1 Eligible LDAU'] || '',
+        h1Ret:                r['H1 Ret%'] || '',
+        h5EligibleLdau:       r['H5 Eligible LDAU'] || '',
+        h5Ret:                r['H5 Ret%'] || '',
+        h10EligibleLdau:      r['H10 Eligible LDAU'] || '',
+        h10Ret:               r['H10 Ret%'] || '',
+        h15EligibleLdau:      r['H15 Eligible LDAU'] || '',
+        h15Ret:               r['H15 Ret%'] || ''
       };
     });
   }

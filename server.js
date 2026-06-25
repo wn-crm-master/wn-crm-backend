@@ -33,7 +33,14 @@ const SPECIAL_FIELDS_AUTHORS = [
   'preContractedTag',  // Pre-Contract Validation
   'preContractCompany' // Pre-Contract Company
 ];
-const SPECIAL_FIELDS_BOOKS = [];
+const SPECIAL_FIELDS_BOOKS = [
+  'authorId',    // Author ID
+  'title',       // Book Title
+  'showId',      // Show ID
+  'showTitle',   // Show Title
+  'createDate',  // Book Create Date
+  'status'       // Book Status
+];
 
 // Values that must never overwrite existing data
 const REJECT_VALUES = new Set(['', 'null', 'undefined', 'n/a', '#error', '#ref!']);
@@ -207,8 +214,24 @@ app.post('/api/import/books', authMiddleware, async (req, res) => {
     if (!Array.isArray(books) || books.length === 0)
       return res.status(400).json({ error: 'books array is required' });
 
+    // Auto-create stub author entries for any authorId not yet in authors collection
+    const authorIds = [...new Set(books.map(b => b.authorId).filter(id => id && !isBlankOrError(id)))];
+    let stubsCreated = 0;
+    for (const authorId of authorIds) {
+      const exists = await db.collection('authors').findOne({ uid: authorId });
+      if (!exists) {
+        await db.collection('authors').insertOne({
+          uid: authorId,
+          _stub: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        stubsCreated++;
+      }
+    }
+
     const result = await importRecords('books', 'books_backups', books, 'id', SPECIAL_FIELDS_BOOKS);
-    res.json({ success: true, ...result });
+    res.json({ success: true, ...result, stubAuthorsCreated: stubsCreated });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

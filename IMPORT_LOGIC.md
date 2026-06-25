@@ -68,7 +68,16 @@ Certain fields are designated as **Special Fields**. If an import attempts to ch
 | `preContractedTag` | Pre-Contract Validation |
 | `preContractCompany` | Pre-Contract Company |
 
-**Books — Special Fields:** Not yet defined. Pending input from product owner.
+**Books — Special Fields (confirmed):**
+
+| Field (Internal) | Display Name |
+|---|---|
+| `authorId` | Author ID |
+| `title` | Book Title |
+| `showId` | Show ID |
+| `showTitle` | Show Title |
+| `createDate` | Book Create Date |
+| `status` | Book Status |
 
 ### Rule 4 — Normal Fields
 All fields not in the Special Fields list are overwritten freely with the incoming value, subject to Rules 1 and 2.
@@ -122,33 +131,79 @@ Every import returns a summary:
 
 ---
 
+## Author → Book Relationship
+
+- Every Book must have an `Author ID` (`authorId`) that maps to an Author record.
+- One Author can have many Books; one Book has exactly one Author.
+- **If a book import contains an `Author ID` not found in the authors collection, the system will automatically create a stub author entry** with just the `uid` field set. This stub can be filled in later via an author import.
+
+---
+
 ## CSV Column Mapping
 
-### Authors CSV
-| CSV Column | Internal Field |
-|---|---|
-| Author Name | `name` |
-| Email ID | `email` |
-| Author UID | `uid` (unique ID) |
-| Regn. Date | `regnDate` |
-| Prev Platform Tag | `prevPlatformTag` |
-| Pre-Contracted Tag | `preContractedTag` |
+### Authors CSV (Author Level Data)
+| CSV Column | Internal Field | Notes |
+|---|---|---|
+| Author ID | `uid` | **Unique ID** |
+| Author Name | `name` | Special Field |
+| Author Reg. Date | `regnDate` | Special Field |
+| Author Locale | `locale` | Special Field |
+| Author Email ID | `email` | Special Field |
+| Author Phone No. | `phone` | Special Field |
+| Bucket Tag | `bucketTag` | Special Field |
+| Contest Tag | `contestTag` | Special Field |
+| Source Tag | `sourceTag` | Special Field |
+| Author Type Tag | `authorTypeTag` | Special Field |
+| Form 1 Mail Sent | `form1MailSent` | |
+| Form 1 Follow Up 1 Sent | `form1FollowUp1Sent` | |
+| Form 1 Follow Up 2 Sent | `form1FollowUp2Sent` | |
+| Form 1 Filled | `form1Filled` | |
+| Pre-Contract Validation | `preContractedTag` | Special Field |
+| Pre-Contract Company | `preContractCompany` | Special Field |
+| No. of Books Created | `booksCreated` | |
+| No. of Books Chp1 Published | `booksChp1Published` | |
+| No. of Books 10k Words Completed | `books10kCompleted` | |
+| No. of Books Mod Passed | `booksModPassed` | |
+| No. of Books Express Contracted | `booksExpressContracted` | |
+| No. of Books WBP Contracted | `booksWBPContracted` | |
+| No. of Books OFW | `booksOFW` | |
 
-### Books CSV
-| CSV Column | Internal Field |
-|---|---|
-| Book ID | `id` (unique ID) |
-| Title | `title` |
-| Author UID | `authorId` |
-| Author Name | `authorName` |
-| Genre | `genre` |
-| Published Year | `publishedYear` |
-| Rating | `rating` |
-| Pages | `pages` |
-| Language | `language` |
-| Description | `description` |
-
-> These mappings can be extended as new fields are added to either module.
+### Books CSV (Book Level Data)
+| CSV Column | Internal Field | Notes |
+|---|---|---|
+| Book ID | `id` | **Unique ID** |
+| Author ID | `authorId` | Foreign key → Author `uid` — Special Field |
+| Book Title | `title` | Special Field |
+| Show ID | `showId` | Special Field |
+| Show Title | `showTitle` | Special Field |
+| Book Create Date | `createDate` | Special Field |
+| Book Status | `status` | Special Field |
+| Pub WC | `pubWC` | |
+| Chp 1 Published | `chp1Published` | |
+| Chp 1 Published Date | `chp1PublishedDate` | |
+| 10k Words Completed? | `words10kCompleted` | |
+| 10k words completion Date | `words10kDate` | |
+| Moderation Status | `moderationStatus` | |
+| Moderation Passed Date | `moderationPassedDate` | |
+| Book Editor Score | `editorScore` | |
+| 50k Words Completed? | `words50kCompleted` | |
+| 50k words completed date? | `words50kDate` | |
+| 5 hr LLM Score | `llmScore5hr` | |
+| WBP Status | `wbpStatus` | |
+| WBP Sub Status | `wbpSubStatus` | |
+| Incentive Flag | `incentiveFlag` | |
+| WBP Contracting Date? | `wbpContractingDate` | |
+| PPV Tag | `ppvTag` | |
+| PPV Tag Date | `ppvTagDate` | |
+| LDAUs | `ldaus` | |
+| H1 Eligible LDAU | `h1EligibleLdau` | |
+| H1 Ret% | `h1Ret` | |
+| H5 Eligible LDAU | `h5EligibleLdau` | |
+| H5 Ret% | `h5Ret` | |
+| H10 Eligible LDAU | `h10EligibleLdau` | |
+| H10 Ret% | `h10Ret` | |
+| H15 Eligible LDAU | `h15EligibleLdau` | |
+| H15 Ret% | `h15Ret` | |
 
 ---
 
