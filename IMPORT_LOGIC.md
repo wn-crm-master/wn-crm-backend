@@ -228,7 +228,7 @@ Every import returns a summary:
 | `wbpSubStatus` | WBP Sub Status | **Dropdown** | Values: `Open for Withdrawal` / `Payment Info Pending` / `Signing Pending` / *(blank)* |
 | `incentiveFlag` | Book Incentive Flag | **Dropdown** | Values: `0` / `1` / *(blank)* |
 | `wbpContractingDate` | WBP Contracting Date | **Date** | DD/MM/YYYY |
-| `ppvTag` | PPV Tag | **Dropdown** | Values TBD |
+| `ppvTag` | PPV Tag | **Dropdown** | Values: `Average` / `Bad` / `PPV` / `Testing P1` / `Testing P2` / `Testing P3` / `Untested` / `Action Needed` / `P3 Failed` / *(blank)* |
 | `ppvTagDate` | PPV Tag Date | **Date** | DD/MM/YYYY |
 | `ldaus` | LDAUs | **Number** | |
 | `h1EligibleLdau` | H1 Eligible LDAU | **Number** | |
