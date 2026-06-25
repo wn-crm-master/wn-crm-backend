@@ -165,6 +165,9 @@
     .cb-uncheck { color: #ccc; font-size: 1rem; }
     td.rollup-cell { background: #f8f9ff; color: #667; text-align: right; font-variant-numeric: tabular-nums; cursor: default; }
     tr:hover td.rollup-cell { background: #edf0ff; }
+    td.number-cell { text-align: right; font-variant-numeric: tabular-nums; }
+    td.percent-cell { text-align: right; font-variant-numeric: tabular-nums; color: #2a7ab5; }
+    .cell-select { width: 100%; padding: 4px 6px; border: 2px solid #3b6cf7; border-radius: 4px; font-size: 0.85rem; outline: none; font-family: inherit; background: #fff; }
   </style>
 </head>
 <body>
@@ -292,34 +295,34 @@ const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
   { field:'showId',               header:'Show ID',              width:120 },
   { field:'showTitle',            header:'Show Title',           width:180 },
-  { field:'createDate',           header:'Book Create Date',     width:140 },
-  { field:'status',               header:'Book Status',          width:120 },
-  { field:'pubWC',                header:'Pub WC',               width:100 },
-  { field:'chp1Published',        header:'Chp 1 Published',      width:130 },
-  { field:'chp1PublishedDate',    header:'Chp 1 Published Date', width:160 },
-  { field:'words10kCompleted',    header:'10k Words Completed',  width:150 },
-  { field:'words10kDate',         header:'10k Words Date',       width:140 },
-  { field:'moderationStatus',     header:'Moderation Status',    width:150 },
-  { field:'moderationPassedDate', header:'Mod Passed Date',      width:150 },
-  { field:'editorScore',          header:'Book Editor Score',    width:140 },
-  { field:'words50kCompleted',    header:'50k Words Completed',  width:150 },
-  { field:'words50kDate',         header:'50k Words Date',       width:140 },
-  { field:'llmScore5hr',          header:'5hr LLM Score',        width:120 },
-  { field:'wbpStatus',            header:'WBP Status',           width:120 },
-  { field:'wbpSubStatus',         header:'WBP Sub Status',       width:130 },
-  { field:'incentiveFlag',        header:'Incentive Flag',       width:120 },
-  { field:'wbpContractingDate',   header:'WBP Contracting Date', width:160 },
-  { field:'ppvTag',               header:'PPV Tag',              width:100 },
-  { field:'ppvTagDate',           header:'PPV Tag Date',         width:130 },
-  { field:'ldaus',                header:'LDAUs',                width:100 },
-  { field:'h1EligibleLdau',       header:'H1 Eligible LDAU',     width:140 },
-  { field:'h1Ret',                header:'H1 Ret%',              width:90  },
-  { field:'h5EligibleLdau',       header:'H5 Eligible LDAU',     width:140 },
-  { field:'h5Ret',                header:'H5 Ret%',              width:90  },
-  { field:'h10EligibleLdau',      header:'H10 Eligible LDAU',    width:150 },
-  { field:'h10Ret',               header:'H10 Ret%',             width:95  },
-  { field:'h15EligibleLdau',      header:'H15 Eligible LDAU',    width:150 },
-  { field:'h15Ret',               header:'H15 Ret%',             width:95  },
+  { field:'createDate',           header:'Book Create Date',     width:140, type:'date' },
+  { field:'status',               header:'Book Status',          width:120, type:'dropdown' },
+  { field:'pubWC',                header:'Pub WC',               width:110, type:'number' },
+  { field:'chp1Published',        header:'Chp 1 Published',      width:130, type:'checkbox' },
+  { field:'chp1PublishedDate',    header:'Chp 1 Published Date', width:160, type:'date' },
+  { field:'words10kCompleted',    header:'10k Words Completed',  width:150, type:'checkbox' },
+  { field:'words10kDate',         header:'10k Words Date',       width:140, type:'date' },
+  { field:'moderationStatus',     header:'Moderation Status',    width:150, type:'dropdown', options:['','Passed','Failed'] },
+  { field:'moderationPassedDate', header:'Mod Passed Date',      width:150, type:'date' },
+  { field:'editorScore',          header:'Book Editor Score',    width:130, type:'number' },
+  { field:'words50kCompleted',    header:'50k Words Completed',  width:150, type:'checkbox' },
+  { field:'words50kDate',         header:'50k Words Date',       width:140, type:'date' },
+  { field:'llmScore5hr',          header:'5hr LLM Score',        width:120, type:'decimal' },
+  { field:'wbpStatus',            header:'WBP Status',           width:120, type:'dropdown' },
+  { field:'wbpSubStatus',         header:'WBP Sub Status',       width:130, type:'dropdown' },
+  { field:'incentiveFlag',        header:'Incentive Flag',       width:120, type:'number' },
+  { field:'wbpContractingDate',   header:'WBP Contracting Date', width:160, type:'date' },
+  { field:'ppvTag',               header:'PPV Tag',              width:100, type:'dropdown' },
+  { field:'ppvTagDate',           header:'PPV Tag Date',         width:130, type:'date' },
+  { field:'ldaus',                header:'LDAUs',                width:100, type:'number' },
+  { field:'h1EligibleLdau',       header:'H1 Eligible LDAU',     width:140, type:'number' },
+  { field:'h1Ret',                header:'H1 Ret%',              width:90,  type:'percent' },
+  { field:'h5EligibleLdau',       header:'H5 Eligible LDAU',     width:140, type:'number' },
+  { field:'h5Ret',                header:'H5 Ret%',              width:90,  type:'percent' },
+  { field:'h10EligibleLdau',      header:'H10 Eligible LDAU',    width:150, type:'number' },
+  { field:'h10Ret',               header:'H10 Ret%',             width:95,  type:'percent' },
+  { field:'h15EligibleLdau',      header:'H15 Eligible LDAU',    width:150, type:'number' },
+  { field:'h15Ret',               header:'H15 Ret%',             width:95,  type:'percent' },
 ];
 
 const SPECIAL_AUTHORS = new Set(['name','regnDate','locale','email','phone','bucketTag','contestTag','sourceTag','authorTypeTag','preContractedTag','preContractCompany']);
@@ -346,6 +349,18 @@ function isTruthy(val) {
   return ['true','yes','y','1','x','✓'].includes(String(val).trim().toLowerCase());
 }
 
+function formatNumber(val) {
+  if (val===''||val===null||val===undefined) return '';
+  const n = Number(String(val).replace(/,/g,''));
+  return isNaN(n) ? String(val) : n.toLocaleString('en-US');
+}
+function formatPercent(val) {
+  if (val===''||val===null||val===undefined) return '';
+  const s = String(val).trim();
+  if (s.endsWith('%')) return s;
+  const n = parseFloat(s);
+  return isNaN(n) ? s : n+'%';
+}
 function formatDate(val) {
   if (!val) return '';
   const s = String(val).trim();
@@ -485,6 +500,22 @@ function renderTable(entity) {
         tdClass += 'editable';
         tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
         tdContent = escHtml(formatDate(String(rawVal)));
+      } else if (ctype === 'number') {
+        tdClass += 'editable number-cell';
+        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdContent = escHtml(formatNumber(rawVal));
+      } else if (ctype === 'decimal') {
+        tdClass += 'editable number-cell';
+        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdContent = escHtml(String(rawVal));
+      } else if (ctype === 'percent') {
+        tdClass += 'editable percent-cell';
+        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdContent = escHtml(formatPercent(rawVal));
+      } else if (ctype === 'dropdown') {
+        tdClass += 'editable';
+        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdContent = escHtml(String(rawVal));
       } else {
         tdClass += 'editable';
         tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
@@ -640,44 +671,91 @@ document.addEventListener('click', e => {
 function startEdit(entity, rowId, field, currentVal, cell) {
   if (cell.classList.contains('editing')) return;
   closeFD();
+  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const col = cols.find(c=>c.field===field);
+  const ctype = col?.type || 'text';
   const special = entity==='authors'?SPECIAL_AUTHORS:SPECIAL_BOOKS;
   const isSpecial = special.has(field);
-  cell.classList.add('editing'); cell.classList.remove('editable');
+  cell.classList.add('editing'); cell.classList.remove('editable','number-cell','percent-cell');
+
+  const confirmSpecial = (newVal) => {
+    if (!isSpecial || newVal===currentVal) return true;
+    return confirm(`"${col?col.header:field}" is a special field.\n\nChange:\n  "${currentVal}" → "${newVal}"\n\nConfirm?`);
+  };
+
+  const cancel = () => {
+    cell.classList.remove('editing');
+    cell.classList.add('editable');
+    // Restore formatted display
+    if (ctype==='date') cell.textContent = formatDate(currentVal);
+    else if (ctype==='number') { cell.textContent=formatNumber(currentVal); cell.classList.add('number-cell'); }
+    else if (ctype==='percent') { cell.textContent=formatPercent(currentVal); cell.classList.add('percent-cell'); }
+    else cell.textContent = currentVal;
+  };
+
+  // Dropdown with known options → <select>
+  if (ctype==='dropdown' && col?.options) {
+    const sel = document.createElement('select');
+    sel.className = 'cell-select'+(isSpecial?' cell-special':'');
+    col.options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value=opt; o.textContent=opt||'(blank)';
+      if (opt===currentVal) o.selected=true;
+      sel.appendChild(o);
+    });
+    cell.innerHTML=''; cell.appendChild(sel); sel.focus();
+    const save = () => {
+      const newVal = sel.value;
+      if (newVal===currentVal) { cancel(); return; }
+      if (!confirmSpecial(newVal)) { cancel(); return; }
+      saveEdit(entity, rowId, field, newVal, currentVal, cell);
+    };
+    sel.addEventListener('blur', save);
+    sel.addEventListener('change', () => sel.blur());
+    sel.addEventListener('keydown', e => { if(e.key==='Escape'){ sel.removeEventListener('blur',save); cancel(); } });
+    return;
+  }
+
+  // Text / number / date input
   const input = document.createElement('input');
   input.className = 'cell-input'+(isSpecial?' cell-special':'');
+  if (ctype==='number'||ctype==='decimal') input.type='number';
+  if (ctype==='decimal') input.step='any';
   input.value = currentVal;
   if (isSpecial) input.title = '⚠️ Special field — confirmation required';
-  cell.innerHTML = ''; cell.appendChild(input); input.focus(); input.select();
+  cell.innerHTML=''; cell.appendChild(input); input.focus(); input.select();
 
   const save = () => {
     const newVal = input.value.trim();
-    if (newVal===currentVal) { cell.classList.remove('editing'); cell.classList.add('editable'); cell.textContent=currentVal; return; }
-    if (isSpecial) {
-      const col = (entity==='authors'?AUTHOR_COLS:BOOK_COLS).find(c=>c.field===field);
-      if (!confirm(`"${col?col.header:field}" is a special field.\n\nChange:\n  "${currentVal}" → "${newVal}"\n\nConfirm?`)) {
-        cell.classList.remove('editing'); cell.classList.add('editable'); cell.textContent=currentVal; return;
-      }
-    }
+    if (newVal===currentVal) { cancel(); return; }
+    if (!confirmSpecial(newVal)) { cancel(); return; }
     saveEdit(entity, rowId, field, newVal, currentVal, cell);
   };
-
   input.addEventListener('blur', save);
   input.addEventListener('keydown', e => {
     if (e.key==='Enter') { e.preventDefault(); input.blur(); }
-    if (e.key==='Escape') { input.removeEventListener('blur',save); cell.classList.remove('editing'); cell.classList.add('editable'); cell.textContent=currentVal; }
+    if (e.key==='Escape') { input.removeEventListener('blur',save); cancel(); }
   });
 }
 
 async function saveEdit(entity, rowId, field, newVal, oldVal, cell) {
   const idField = entity==='authors'?'uid':'id';
+  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const col = cols.find(c=>c.field===field);
+  const ctype = col?.type||'text';
   const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, { method:'PUT', body:JSON.stringify({ [field]:newVal }) });
-  cell.classList.remove('editing'); cell.classList.add('editable');
+  cell.classList.remove('editing');
+  cell.classList.add('editable');
+  const displayVal = res.success ? newVal : oldVal;
+  if (ctype==='date')    { cell.textContent=formatDate(displayVal); }
+  else if (ctype==='number') { cell.textContent=formatNumber(displayVal); cell.classList.add('number-cell'); }
+  else if (ctype==='percent') { cell.textContent=formatPercent(displayVal); cell.classList.add('percent-cell'); }
+  else { cell.textContent=displayVal; }
   if (res.success) {
-    cell.textContent = newVal;
     const row = state[entity].data.find(r=>String(r[idField])===String(rowId));
     if (row) { row[field]=newVal; const sr=state[entity].sortedData.find(r=>String(r[idField])===String(rowId)); if(sr) sr[field]=newVal; }
     showSave(true);
-  } else { cell.textContent=oldVal; showSave(false, res.error); }
+  } else { showSave(false, res.error); }
 }
 
 async function toggleCheckbox(entity, rowId, field, currentChecked, cell) {

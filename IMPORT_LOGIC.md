@@ -202,7 +202,41 @@ Every import returns a summary:
 | No. of Books OFW | `booksOFW` | **Ignored on import** — rollup |
 
 ### Book Field Types
-> To be defined — in progress.
+| Internal Field | Display Name | Type | Rules / Notes |
+|---|---|---|---|
+| `id` | Book ID | Text | Unique key — alphanumeric, no rules |
+| `authorId` | Author ID | Text | Foreign key → Author `uid` — Special Field |
+| `title` | Book Title | Text (single line) | Special Field |
+| `showId` | Show ID | Text (single line) | Special Field |
+| `showTitle` | Show Title | Text (single line) | Special Field |
+| `createDate` | Book Create Date | **Date** | DD/MM/YYYY — Special Field |
+| `status` | Book Status | **Dropdown** | Values TBD — Special Field |
+| `pubWC` | Pub WC | **Number** | Comma-formatted (e.g. 12,500) |
+| `chp1Published` | Chp 1 Published | **Checkbox** (boolean) | |
+| `chp1PublishedDate` | Chp 1 Published Date | **Date** | DD/MM/YYYY |
+| `words10kCompleted` | 10k Words Completed | **Checkbox** (boolean) | |
+| `words10kDate` | 10k Words Date | **Date** | DD/MM/YYYY |
+| `moderationStatus` | Moderation Status | **Dropdown** | Values: `Passed` / `Failed` / *(blank)* |
+| `moderationPassedDate` | Mod Passed Date | **Date** | DD/MM/YYYY |
+| `editorScore` | Book Editor Score | **Number** | 0, 1, or 10 — plain number |
+| `words50kCompleted` | 50k Words Completed | **Checkbox** (boolean) | |
+| `words50kDate` | 50k Words Date | **Date** | DD/MM/YYYY |
+| `llmScore5hr` | 5hr LLM Score | **Decimal** | Decimal number |
+| `wbpStatus` | WBP Status | **Dropdown** | Values TBD |
+| `wbpSubStatus` | WBP Sub Status | **Dropdown** | Values TBD |
+| `incentiveFlag` | Incentive Flag | **Number** | |
+| `wbpContractingDate` | WBP Contracting Date | **Date** | DD/MM/YYYY |
+| `ppvTag` | PPV Tag | **Dropdown** | Values TBD |
+| `ppvTagDate` | PPV Tag Date | **Date** | DD/MM/YYYY |
+| `ldaus` | LDAUs | **Number** | |
+| `h1EligibleLdau` | H1 Eligible LDAU | **Number** | |
+| `h1Ret` | H1 Ret% | **Percentage** | |
+| `h5EligibleLdau` | H5 Eligible LDAU | **Number** | |
+| `h5Ret` | H5 Ret% | **Percentage** | |
+| `h10EligibleLdau` | H10 Eligible LDAU | **Number** | |
+| `h10Ret` | H10 Ret% | **Percentage** | |
+| `h15EligibleLdau` | H15 Eligible LDAU | **Number** | |
+| `h15Ret` | H15 Ret% | **Percentage** | |
 
 ---
 
