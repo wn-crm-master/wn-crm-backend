@@ -159,6 +159,28 @@
     .empty { text-align: center; padding: 40px; color: #bbb; font-size: 0.95rem; }
     .save-indicator { position: fixed; bottom: 20px; right: 20px; background: #1a7f52; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.88rem; display: none; z-index: 9998; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .save-indicator.error { background: #e74c3c; }
+
+    /* Field mapping modal */
+    #mapping-modal { display: none; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); }
+    #mapping-modal.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 12px; width: min(780px, 95vw); max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .modal-header { padding: 20px 24px 14px; border-bottom: 1px solid #eee; flex-shrink: 0; }
+    .modal-header h2 { font-size: 1.1rem; color: #1a2340; margin-bottom: 4px; }
+    .modal-header p { font-size: 0.83rem; color: #888; }
+    .modal-body { overflow-y: auto; flex: 1; }
+    .mapping-table { width: 100%; border-collapse: collapse; }
+    .mapping-table thead th { background: #f7f8fc; padding: 8px 14px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: #888; font-weight: 600; border-bottom: 2px solid #e8eaf0; text-align: left; position: sticky; top: 0; }
+    .mapping-table tbody tr:hover { background: #f9faff; }
+    .mapping-table td { padding: 8px 14px; border-bottom: 1px solid #f0f2f5; font-size: 0.84rem; vertical-align: middle; }
+    .map-col-name { font-weight: 600; color: #1a2340; }
+    .map-sample { color: #aaa; font-size: 0.78rem; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .map-select { width: 100%; padding: 5px 8px; border: 1px solid #dde2f0; border-radius: 5px; font-size: 0.83rem; outline: none; background: #fff; min-width: 200px; color: #333; }
+    .map-select:focus { border-color: #3b6cf7; }
+    .map-select.skip { color: #bbb; }
+    .modal-footer { padding: 14px 24px; border-top: 1px solid #eee; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-shrink: 0; }
+    .modal-note { font-size: 0.8rem; color: #888; }
+    .modal-note strong { color: #e67e22; }
+    .modal-actions { display: flex; gap: 10px; }
     td.checkbox-cell { cursor: pointer; text-align: center; }
     td.checkbox-cell:hover { background: #e8f0ff !important; }
     .cb-check { color: #1a7f52; font-weight: 700; font-size: 1rem; }
@@ -186,6 +208,29 @@
     <button class="fd-action-btn" onclick="fdClearAll()">Clear all</button>
   </div>
   <div class="fd-options" id="fd-options"></div>
+</div>
+
+<!-- Field mapping modal -->
+<div id="mapping-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Map Columns — <span id="mapping-entity-label"></span></h2>
+      <p>Match each column in your file to a database field, or set it to <em>Skip</em> to ignore it.</p>
+    </div>
+    <div class="modal-body">
+      <table class="mapping-table">
+        <thead><tr><th>Your Column</th><th>Sample Value</th><th>Maps to</th></tr></thead>
+        <tbody id="mapping-rows"></tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <div class="modal-note"><strong>⚠ Required:</strong> At least one column must map to the unique ID field.</div>
+      <div class="modal-actions">
+        <button class="btn" style="background:#f0f2f5;color:#555" onclick="cancelMapping()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmMapping()">Import</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Login -->
@@ -826,7 +871,68 @@ async function deleteAllEntity(entity) {
   else alert(res.error||'Delete failed.');
 }
 
-// ── CSV Parsers ────────────────────────────────────────────────────
+// ── Column alias dictionaries for auto-detection ──────────────────
+const AUTHOR_ALIASES = {
+  'author id':'uid','author uid':'uid','uid':'uid',
+  'author name':'name','name':'name',
+  'author reg. date':'regnDate','author reg date':'regnDate','regndate':'regnDate','registration date':'regnDate',
+  'author locale':'locale','locale':'locale',
+  'author email id':'email','author email':'email','email':'email',
+  'author phone no.':'phone','author phone no':'phone','phone no.':'phone','phone':'phone',
+  'bucket tag':'bucketTag','buckettag':'bucketTag',
+  'contest tag':'contestTag','contesttag':'contestTag',
+  'source tag':'sourceTag','sourcetag':'sourceTag',
+  'author type tag':'authorTypeTag','author type':'authorTypeTag','authortypetag':'authorTypeTag',
+  'author tag':'authorTag','authortag':'authorTag',
+  'form 1 mail sent':'form1MailSent','form1mailsent':'form1MailSent',
+  'form 1 follow up 1 sent':'form1FollowUp1Sent','form 1 fu1 sent':'form1FollowUp1Sent',
+  'form 1 follow up 2 sent':'form1FollowUp2Sent','form 1 fu2 sent':'form1FollowUp2Sent',
+  'form 1 filled':'form1Filled','form1filled':'form1Filled',
+  'pre-contract validation':'preContractedTag','pre contract validation':'preContractedTag','precontract validation':'preContractedTag',
+  'pre-contract company':'preContractCompany','pre contract company':'preContractCompany','precontract company':'preContractCompany',
+  'author incentive flag':'incentiveFlag','incentive flag':'incentiveFlag',
+  'no. of books created':'booksCreated','no of books created':'booksCreated',
+  'no. of books chp1 published':'booksChp1Published',
+  'no. of books 10k words completed':'books10kCompleted',
+  'no. of books mod passed':'booksModPassed',
+  'no. of books express contracted':'booksExpressContracted',
+  'no. of books wbp contracted':'booksWBPContracted',
+  'no. of books ofw':'booksOFW',
+};
+const BOOK_ALIASES = {
+  'book id':'id','id':'id',
+  'author id':'authorId','author uid':'authorId',
+  'book title':'title','title':'title',
+  'show id':'showId','showid':'showId',
+  'show title':'showTitle','showtitle':'showTitle',
+  'show status':'showStatus',
+  'book create date':'createDate','book created':'createDate','create date':'createDate',
+  'book status':'status','status':'status',
+  'pub wc':'pubWC','published word count':'pubWC','pubwc':'pubWC',
+  'chp 1 published':'chp1Published','chapter 1 published':'chp1Published',
+  'chp 1 published date':'chp1PublishedDate','chapter 1 published date':'chp1PublishedDate',
+  '10k words completed?':'words10kCompleted','10k words completed':'words10kCompleted',
+  '10k words completion date':'words10kDate','10k words date':'words10kDate',
+  'moderation status':'moderationStatus','moderationstatus':'moderationStatus',
+  'moderation passed date':'moderationPassedDate','mod passed date':'moderationPassedDate',
+  'book editor score':'editorScore','editor score':'editorScore',
+  '50k words completed?':'words50kCompleted','50k words completed':'words50kCompleted',
+  '50k words completed date?':'words50kDate','50k words date':'words50kDate',
+  '5 hr llm score':'llmScore5hr','5hr llm score':'llmScore5hr',
+  'wbp status':'wbpStatus','wbpstatus':'wbpStatus',
+  'wbp sub status':'wbpSubStatus','wbpsubstatus':'wbpSubStatus',
+  'book incentive flag':'incentiveFlag','incentive flag':'incentiveFlag',
+  'wbp contracting date?':'wbpContractingDate','wbp contracting date':'wbpContractingDate',
+  'ppv tag':'ppvTag','ppvtag':'ppvTag',
+  'ppv tag date':'ppvTagDate',
+  'ldaus':'ldaus',
+  'h1 eligible ldau':'h1EligibleLdau','h1 ret%':'h1Ret',
+  'h5 eligible ldau':'h5EligibleLdau','h5 ret%':'h5Ret',
+  'h10 eligible ldau':'h10EligibleLdau','h10 ret%':'h10Ret',
+  'h15 eligible ldau':'h15EligibleLdau','h15 ret%':'h15Ret',
+};
+
+// ── CSV raw parser (keeps original column names) ───────────────────
 function parseCSVRow(headers, line) {
   const vals=[]; let cur='', inQuote=false;
   for (let i=0;i<line.length;i++) { const c=line[i]; if(c==='"'){inQuote=!inQuote;}else if(c===','&&!inQuote){vals.push(cur.trim());cur='';}else{cur+=c;} }
@@ -834,42 +940,110 @@ function parseCSVRow(headers, line) {
   const row={}; headers.forEach((h,i)=>{row[h]=(vals[i]||'').replace(/^"|"$/g,'');});
   return row;
 }
-function parseCSVAuthors(text) {
-  const lines=text.trim().split('\n').filter(l=>l.trim()); if(lines.length<2) return [];
+function parseCSVRaw(text) {
+  const lines=text.trim().split('\n').filter(l=>l.trim());
+  if(lines.length<2) return {headers:[],records:[]};
   const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-  return lines.slice(1).map(line=>{ const r=parseCSVRow(headers,line); return { uid:r['Author ID']||r['Author UID']||'', name:r['Author Name']||'', regnDate:r['Author Reg. Date']||'', locale:r['Author Locale']||'', email:r['Author Email ID']||'', phone:r['Author Phone No.']||'', bucketTag:r['Bucket Tag']||'', contestTag:r['Contest Tag']||'', sourceTag:r['Source Tag']||'', authorTypeTag:r['Author Type Tag']||'', authorTag:r['Author Tag']||'', form1MailSent:r['Form 1 Mail Sent']||'', form1FollowUp1Sent:r['Form 1 Follow Up 1 Sent']||'', form1FollowUp2Sent:r['Form 1 Follow Up 2 Sent']||'', form1Filled:r['Form 1 Filled']||'', preContractedTag:r['Pre-Contract Validation']||'', preContractCompany:r['Pre-Contract Company']||'', incentiveFlag:r['Author Incentive Flag']||r['Incentive Flag']||'', booksCreated:r['No. of Books Created']||'', booksChp1Published:r['No. of Books Chp1 Published']||'', books10kCompleted:r['No. of Books 10k Words Completed']||'', booksModPassed:r['No. of Books Mod Passed']||'', booksExpressContracted:r['No. of Books Express Contracted']||'', booksWBPContracted:r['No. of Books WBP Contracted']||'', booksOFW:r['No. of Books OFW']||'' }; });
-}
-function parseCSVBooks(text) {
-  const lines=text.trim().split('\n').filter(l=>l.trim()); if(lines.length<2) return [];
-  const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));
-  return lines.slice(1).map(line=>{ const r=parseCSVRow(headers,line); return { id:r['Book ID']||'', authorId:r['Author ID']||'', title:r['Book Title']||'', showId:r['Show ID']||'', showTitle:r['Show Title']||'', showStatus:r['Show Status']||'', createDate:r['Book Create Date']||'', status:r['Book Status']||'', pubWC:r['Pub WC']||'', chp1Published:r['Chp 1 Published']||'', chp1PublishedDate:r['Chp 1 Published Date']||'', words10kCompleted:r['10k Words Completed?']||'', words10kDate:r['10k words completion Date']||'', moderationStatus:r['Moderation Status']||'', moderationPassedDate:r['Moderation Passed Date']||'', editorScore:r['Book Editor Score']||'', words50kCompleted:r['50k Words Completed?']||'', words50kDate:r['50k words completed date?']||'', llmScore5hr:r['5 hr LLM Score']||'', wbpStatus:r['WBP Status']||'', wbpSubStatus:r['WBP Sub Status']||'', incentiveFlag:r['Book Incentive Flag']||r['Incentive Flag']||'', wbpContractingDate:r['WBP Contracting Date?']||'', ppvTag:r['PPV Tag']||'', ppvTagDate:r['PPV Tag Date']||'', ldaus:r['LDAUs']||'', h1EligibleLdau:r['H1 Eligible LDAU']||'', h1Ret:r['H1 Ret%']||'', h5EligibleLdau:r['H5 Eligible LDAU']||'', h5Ret:r['H5 Ret%']||'', h10EligibleLdau:r['H10 Eligible LDAU']||'', h10Ret:r['H10 Ret%']||'', h15EligibleLdau:r['H15 Eligible LDAU']||'', h15Ret:r['H15 Ret%']||'' }; });
+  const records=lines.slice(1).map(line=>parseCSVRow(headers,line));
+  return {headers,records};
 }
 
-// ── Import ─────────────────────────────────────────────────────────
+// ── Import — opens mapping modal ──────────────────────────────────
+let mappingCtx = null;
+
 function handleImport(event, fileType, entity) {
   const file=event.target.files[0]; if(!file) return;
   const msgEl=document.getElementById(entity+'-import-msg');
   setMsg(msgEl,'info','Reading file…');
   const reader=new FileReader();
-  reader.onload=async e => {
-    const text=e.target.result; let records=[];
-    try { if(fileType==='json'){const p=JSON.parse(text);records=entity==='authors'?(p.authors||(Array.isArray(p)?p:[])):(p.books||(Array.isArray(p)?p:[]));} else {records=entity==='authors'?parseCSVAuthors(text):parseCSVBooks(text);} }
-    catch { setMsg(msgEl,'error','Could not parse file.'); return; }
-    if(!records.length){setMsg(msgEl,'error','No data found in file.');return;}
-    setMsg(msgEl,'info',`Importing ${records.length} ${entity}…`);
-    const body=entity==='authors'?{authors:records}:{books:records};
-    const res=await api('/api/import/'+entity,{method:'POST',body:JSON.stringify(body)});
-    if(res.success){
-      let msg=`Done! ${res.inserted} added, ${res.updated} updated.`;
-      if(res.skipped>0) msg+=` ${res.skipped} skipped.`;
-      if(res.stubAuthorsCreated>0) msg+=` ${res.stubAuthorsCreated} stub author(s) created.`;
-      setMsg(msgEl,'success',msg);
-      if(entity==='authors') loadAuthors(); else loadBooks(); loadStats();
-    } else setMsg(msgEl,'error',res.error||'Import failed.');
+  reader.onload=e=>{
+    const text=e.target.result;
+    let headers=[], rawRecords=[];
+    try {
+      if(fileType==='json') {
+        const p=JSON.parse(text);
+        const arr=entity==='authors'?(p.authors||(Array.isArray(p)?p:[])):(p.books||(Array.isArray(p)?p:[]));
+        if(!arr.length){setMsg(msgEl,'error','No data found in file.');return;}
+        headers=Object.keys(arr[0]);
+        rawRecords=arr;
+      } else {
+        const parsed=parseCSVRaw(text);
+        headers=parsed.headers; rawRecords=parsed.records;
+      }
+    } catch(err) { setMsg(msgEl,'error','Could not parse file.'); return; }
+    if(!rawRecords.length){setMsg(msgEl,'error','No data found in file.');return;}
+    setMsg(msgEl,'info',`${rawRecords.length} rows found — please map the columns.`);
+    openMappingModal(entity, rawRecords, headers, msgEl);
     event.target.value='';
   };
   reader.readAsText(file);
 }
+
+function openMappingModal(entity, rawRecords, headers, msgEl) {
+  mappingCtx={entity,rawRecords,msgEl};
+  const aliases=entity==='authors'?AUTHOR_ALIASES:BOOK_ALIASES;
+  const cols=entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const sample=rawRecords[0]||{};
+
+  const rows=headers.map(col=>{
+    const detected=aliases[col.trim().toLowerCase()]||'';
+    const sampleVal=String(sample[col]||'').substring(0,50);
+    const opts='<option value="">— Skip —</option>'+cols.map(c=>`<option value="${c.field}"${detected===c.field?' selected':''}>${escHtml(c.header)}</option>`).join('');
+    return `<tr>
+      <td class="map-col-name">${escHtml(col)}</td>
+      <td class="map-sample" title="${escAttr(sampleVal)}">${escHtml(sampleVal)}</td>
+      <td><select class="map-select${detected?'':' skip'}" data-col="${escAttr(col)}" onchange="this.classList.toggle('skip',!this.value)">${opts}</select></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('mapping-rows').innerHTML=rows;
+  document.getElementById('mapping-entity-label').textContent=entity==='authors'?'Authors':'Books';
+  document.getElementById('mapping-modal').classList.add('open');
+}
+
+function cancelMapping() {
+  document.getElementById('mapping-modal').classList.remove('open');
+  mappingCtx=null;
+}
+
+async function confirmMapping() {
+  if(!mappingCtx) return;
+  const {entity,rawRecords,msgEl}=mappingCtx;
+  const idField=entity==='authors'?'uid':'id';
+
+  const mapping={};
+  document.querySelectorAll('#mapping-rows .map-select').forEach(sel=>{
+    if(sel.value) mapping[sel.dataset.col]=sel.value;
+  });
+
+  if(!Object.values(mapping).includes(idField)){
+    alert(`Please map a column to "${entity==='authors'?'Author ID (uid)':'Book ID (id)}". This is required as the unique identifier.`);
+    return;
+  }
+
+  const records=rawRecords.map(raw=>{
+    const rec={};
+    for(const [col,field] of Object.entries(mapping)){
+      if(raw[col]!==undefined) rec[field]=raw[col];
+    }
+    return rec;
+  });
+
+  document.getElementById('mapping-modal').classList.remove('open');
+  mappingCtx=null;
+
+  setMsg(msgEl,'info',`Importing ${records.length} ${entity}…`);
+  const body=entity==='authors'?{authors:records}:{books:records};
+  const res=await api('/api/import/'+entity,{method:'POST',body:JSON.stringify(body)});
+  if(res.success){
+    let msg=`Done! ${res.inserted} added, ${res.updated} updated.`;
+    if(res.skipped>0) msg+=` ${res.skipped} skipped.`;
+    if(res.stubAuthorsCreated>0) msg+=` ${res.stubAuthorsCreated} stub author(s) created.`;
+    setMsg(msgEl,'success',msg);
+    if(entity==='authors') loadAuthors(); else loadBooks(); loadStats();
+  } else { setMsg(msgEl,'error',res.error||'Import failed.'); }
+}
+
 function setMsg(el,type,text){el.className='inline-msg '+type;el.textContent=text;}
 
 // ── Backups ────────────────────────────────────────────────────────
