@@ -427,7 +427,9 @@ function formatDate(val) {
 }
 
 function api(path, opts={}) {
-  return fetch(BASE+path, { ...opts, headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, ...(opts.headers||{}) } }).then(r=>r.json());
+  return fetch(BASE+path, { ...opts, headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, ...(opts.headers||{}) } })
+    .then(r => r.json().catch(() => ({ error: `Server error (${r.status})` })))
+    .catch(err => ({ error: err.message || 'Network error' }));
 }
 
 // ── Auth ────────────────────────────────────────────────────────────
@@ -443,9 +445,12 @@ async function submitAuth() {
   const password = document.getElementById('auth-password').value;
   const msg = document.getElementById('login-msg');
   if (!email||!password) { msg.style.color='#e74c3c'; msg.textContent='Please enter email and password.'; return; }
-  const res = await api(isRegister?'/api/auth/register':'/api/auth/login', { method:'POST', body:JSON.stringify({ email, password }) });
-  if (res.token) { token=res.token; localStorage.setItem('crm_token',token); localStorage.setItem('crm_email',(res.user&&res.user.email)||email); showApp(); }
-  else { msg.style.color='#e74c3c'; msg.textContent=res.error||'Authentication failed.'; }
+  msg.style.color='#888'; msg.textContent='Signing in…';
+  try {
+    const res = await api(isRegister?'/api/auth/register':'/api/auth/login', { method:'POST', body:JSON.stringify({ email, password }) });
+    if (res.token) { token=res.token; localStorage.setItem('crm_token',token); localStorage.setItem('crm_email',(res.user&&res.user.email)||email); showApp(); }
+    else { msg.style.color='#e74c3c'; msg.textContent=res.error||'Authentication failed.'; }
+  } catch(e) { msg.style.color='#e74c3c'; msg.textContent='Could not reach server. Please try again.'; }
 }
 function logout() { token=''; localStorage.removeItem('crm_token'); localStorage.removeItem('crm_email'); document.getElementById('app').style.display='none'; document.getElementById('login-screen').style.display='flex'; }
 function showApp() { document.getElementById('login-screen').style.display='none'; document.getElementById('app').style.display='block'; document.getElementById('nav-email').textContent=localStorage.getItem('crm_email')||''; showTab('dashboard'); loadStats(); }
