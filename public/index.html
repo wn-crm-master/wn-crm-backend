@@ -164,6 +164,9 @@
     .cb-check { color: #1a7f52; font-weight: 700; font-size: 1rem; }
     .cb-uncheck { color: #ccc; font-size: 1rem; }
     td.rollup-cell { background: #f8f9ff; color: #667; text-align: right; font-variant-numeric: tabular-nums; cursor: default; }
+    td.del-cell, th.del-cell { text-align: center; width: 36px; min-width: 36px; }
+    .row-del-btn { background: none; border: none; cursor: pointer; color: #ddd; font-size: 0.9rem; padding: 2px 4px; border-radius: 4px; line-height: 1; }
+    .row-del-btn:hover { color: #e74c3c; background: #fdecea; }
     tr:hover td.rollup-cell { background: #edf0ff; }
     td.number-cell { text-align: right; font-variant-numeric: tabular-nums; }
     td.percent-cell { text-align: right; font-variant-numeric: tabular-nums; color: #2a7ab5; }
@@ -472,6 +475,7 @@ function renderTable(entity) {
       </div>
     </th>`;
   }
+  html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
   html += '</tr></thead><tbody>';
 
   sorted.forEach((row, idx) => {
@@ -527,6 +531,7 @@ function renderTable(entity) {
 
       html += `<td ${tdClick} class="${tdClass.trim()}" style="${stStyle}" title="${escAttr(String(rawVal))}">${tdContent}</td>`;
     }
+    html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(String(row[idField]||''))}',this)">✕</button></td>`;
     html += '</tr>';
   });
 
@@ -759,6 +764,19 @@ async function saveEdit(entity, rowId, field, newVal, oldVal, cell) {
     if (row) { row[field]=newVal; const sr=state[entity].sortedData.find(r=>String(r[idField])===String(rowId)); if(sr) sr[field]=newVal; }
     showSave(true);
   } else { showSave(false, res.error); }
+}
+
+async function deleteRow(entity, rowId, btn) {
+  if (!confirm(`Delete this ${entity.slice(0,-1)} (ID: ${rowId})? This cannot be undone.`)) return;
+  btn.disabled = true;
+  const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, { method:'DELETE' });
+  if (res.success) {
+    const idField = entity==='authors'?'uid':'id';
+    state[entity].data = state[entity].data.filter(r=>String(r[idField])!==String(rowId));
+    state[entity].sortedData = state[entity].sortedData.filter(r=>String(r[idField])!==String(rowId));
+    btn.closest('tr').remove();
+    loadStats();
+  } else { btn.disabled=false; showSave(false, res.error||'Delete failed'); }
 }
 
 async function toggleCheckbox(entity, rowId, field, currentChecked, cell) {
