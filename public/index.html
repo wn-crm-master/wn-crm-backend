@@ -809,7 +809,7 @@ async function loadAuthors() {
   const res = await api('/api/authors?limit=5000');
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
   const n = state.authors.data.length;
-  document.getElementById('authors-count').textContent = n ? `(${n.toLocaleString()})` : '';
+  document.getElementById('authors-count').textContent = `(${n.toLocaleString()})`;
   renderTable('authors');
 }
 async function loadBooks() {

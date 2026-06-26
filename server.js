@@ -246,7 +246,7 @@ const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books
 app.get('/api/authors', authMiddleware, async (req, res) => {
   try {
     const { search, page = 1, limit = 100 } = req.query;
-    const matchQuery = { uid: { $exists: true, $nin: [null, ''] } };
+    const matchQuery = { uid: { $exists: true, $ne: '' } };
     if (search) matchQuery.$or = [
       { name: { $regex: search, $options: 'i' } },
       { uid: { $regex: search, $options: 'i' } },
