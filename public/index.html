@@ -229,7 +229,7 @@
 
     <div id="tab-authors" class="tab">
       <div class="tab-toolbar">
-        <div class="page-title">Authors</div>
+        <div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div>
         <div class="import-btns">
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
@@ -808,6 +808,8 @@ async function loadAuthors() {
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
   const res = await api('/api/authors?limit=5000');
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
+  const n = state.authors.data.length;
+  document.getElementById('authors-count').textContent = n ? `(${n.toLocaleString()})` : '';
   renderTable('authors');
 }
 async function loadBooks() {
