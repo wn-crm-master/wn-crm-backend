@@ -1022,7 +1022,7 @@ async function confirmMapping() {
   });
 
   if(!Object.values(mapping).includes(idField)){
-    alert(`Please map a column to "${entity==='authors'?'Author ID (uid)':'Book ID (id)}". This is required as the unique identifier.`);
+    alert(`Please map a column to "${entity==='authors'?'Author ID (uid)':'Book ID (id)'}". This is required as the unique identifier.`);
     return;
   }
 
