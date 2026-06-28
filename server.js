@@ -56,7 +56,9 @@ MongoClient.connect(MONGO_URI)
   .then(client => {
     console.log('Connected to MongoDB Atlas');
     db = client.db('author-books-db');
-    db.collection('authors').createIndex({ id: 1 }, { unique: true }).catch(() => {});
+    db.collection('authors').createIndex({ uid: 1 }, { unique: true, sparse: true }).catch(() => {});
+    // Drop the wrong id_1 index on authors if it exists from a previous version
+    db.collection('authors').dropIndex('id_1').catch(() => {});
     db.collection('books').createIndex({ id: 1 }, { unique: true }).catch(() => {});
     db.collection('users').createIndex({ email: 1 }, { unique: true }).catch(() => {});
     db.collection('authors_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
