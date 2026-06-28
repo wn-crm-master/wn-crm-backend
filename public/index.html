@@ -189,6 +189,11 @@
     td.del-cell, th.del-cell { text-align: center; width: 36px; min-width: 36px; }
     .row-del-btn { background: none; border: none; cursor: pointer; color: #ddd; font-size: 0.9rem; padding: 2px 4px; border-radius: 4px; line-height: 1; }
     .row-del-btn:hover { color: #e74c3c; background: #fdecea; }
+    td.sel-cell, th.sel-cell { text-align: center; width: 36px; min-width: 36px; position: sticky; left: 0; z-index: 3; background: #fff; }
+    th.sel-cell { background: #f8f9fc; z-index: 4; }
+    tr.row-selected td { background: #eef3ff !important; }
+    tr.row-selected td.sel-cell { background: #eef3ff !important; }
+    .row-cb { width: 15px; height: 15px; cursor: pointer; accent-color: #3b6cf7; }
     tr:hover td.rollup-cell { background: #edf0ff; }
     td.number-cell { text-align: right; font-variant-numeric: tabular-nums; }
     td.percent-cell { text-align: right; font-variant-numeric: tabular-nums; color: #2a7ab5; }
@@ -278,6 +283,7 @@
         <div class="import-btns">
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
+          <button class="btn btn-danger btn-del-selected" id="authors-del-selected" style="display:none" onclick="deleteSelected('authors')">Delete Selected</button>
           <button class="btn btn-danger" onclick="deleteAllEntity('authors')">Delete Data</button>
         </div>
       </div>
@@ -291,6 +297,7 @@
         <div class="import-btns">
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
+          <button class="btn btn-danger btn-del-selected" id="books-del-selected" style="display:none" onclick="deleteSelected('books')">Delete Selected</button>
           <button class="btn btn-danger" onclick="deleteAllEntity('books')">Delete Data</button>
         </div>
       </div>
@@ -385,8 +392,8 @@ let token = localStorage.getItem('crm_token') || '';
 let isRegister = false;
 
 const state = {
-  authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {} },
-  books:   { data: [], sortedData: [], pinned: new Set(['id']),  sort: { field: null, dir: 'asc' }, filter: {} }
+  authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  books:   { data: [], sortedData: [], pinned: new Set(['id']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() }
 };
 
 // Active filter dropdown context
@@ -497,6 +504,8 @@ function renderTable(entity) {
   if (!sorted.length) { container.innerHTML='<div class="empty">No data yet. Use Import above.</div>'; return; }
 
   let html = '<table class="wide"><thead><tr>';
+  // Select-all checkbox column
+  html += `<th class="sel-cell"><input type="checkbox" class="row-cb" title="Select all" onchange="toggleSelectAll('${entity}',this)"></th>`;
   for (const col of cols) {
     const isSticky = s.pinned.has(col.field);
     const isPinned = isSticky && col.field!==idField;
@@ -529,7 +538,10 @@ function renderTable(entity) {
   html += '</tr></thead><tbody>';
 
   sorted.forEach((row, idx) => {
-    html += `<tr data-idx="${idx}">`;
+    const rowId = String(row[idField]||'');
+    const isSelected = s.selected.has(rowId);
+    html += `<tr data-idx="${idx}" data-id="${escAttr(rowId)}" class="${isSelected?'row-selected':''}">`;
+    html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)"></td>`;
     for (const col of cols) {
       const isSticky = s.pinned.has(col.field);
       const isPinned = isSticky && col.field!==idField;
@@ -537,7 +549,7 @@ function renderTable(entity) {
       const rawVal = row[col.field]!==undefined && row[col.field]!==null ? row[col.field] : '';
       const isId = col.field===idField;
       const ctype = col.type || 'text';
-      const rowId = escAttr(String(row[idField]||''));
+      const rowIdEsc = escAttr(rowId);
 
       let tdClass = (isSticky?'is-sticky ':'')+( isPinned?'is-pinned ':'');
       let tdClick = '';
@@ -551,37 +563,37 @@ function renderTable(entity) {
       } else if (ctype === 'checkbox') {
         const checked = isTruthy(rawVal);
         tdClass += 'checkbox-cell';
-        tdClick = `onclick="toggleCheckbox('${entity}','${rowId}','${col.field}',${checked},this)"`;
+        tdClick = `onclick="toggleCheckbox('${entity}','${rowIdEsc}','${col.field}',${checked},this)"`;
         tdContent = checked ? '<span class="cb-check">✓</span>' : '<span class="cb-uncheck">✗</span>';
       } else if (ctype === 'date') {
         tdClass += 'editable';
-        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdClick = `onclick="startEdit('${entity}','${rowIdEsc}','${col.field}','${escAttr(String(rawVal))}',this)"`;
         tdContent = escHtml(formatDate(String(rawVal)));
       } else if (ctype === 'number') {
         tdClass += 'editable number-cell';
-        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdClick = `onclick="startEdit('${entity}','${rowIdEsc}','${col.field}','${escAttr(String(rawVal))}',this)"`;
         tdContent = escHtml(formatNumber(rawVal));
       } else if (ctype === 'decimal') {
         tdClass += 'editable number-cell';
-        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdClick = `onclick="startEdit('${entity}','${rowIdEsc}','${col.field}','${escAttr(String(rawVal))}',this)"`;
         tdContent = escHtml(String(rawVal));
       } else if (ctype === 'percent') {
         tdClass += 'editable percent-cell';
-        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdClick = `onclick="startEdit('${entity}','${rowIdEsc}','${col.field}','${escAttr(String(rawVal))}',this)"`;
         tdContent = escHtml(formatPercent(rawVal));
       } else if (ctype === 'dropdown') {
         tdClass += 'editable';
-        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdClick = `onclick="startEdit('${entity}','${rowIdEsc}','${col.field}','${escAttr(String(rawVal))}',this)"`;
         tdContent = escHtml(String(rawVal));
       } else {
         tdClass += 'editable';
-        tdClick = `onclick="startEdit('${entity}','${rowId}','${col.field}','${escAttr(String(rawVal))}',this)"`;
+        tdClick = `onclick="startEdit('${entity}','${rowIdEsc}','${col.field}','${escAttr(String(rawVal))}',this)"`;
         tdContent = escHtml(String(rawVal));
       }
 
       html += `<td ${tdClick} class="${tdClass.trim()}" style="${stStyle}" title="${escAttr(String(rawVal))}">${tdContent}</td>`;
     }
-    html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(String(row[idField]||''))}',this)">✕</button></td>`;
+    html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(rowId)}',this)">✕</button></td>`;
     html += '</tr>';
   });
 
@@ -824,9 +836,71 @@ async function deleteRow(entity, rowId, btn) {
     const idField = entity==='authors'?'uid':'id';
     state[entity].data = state[entity].data.filter(r=>String(r[idField])!==String(rowId));
     state[entity].sortedData = state[entity].sortedData.filter(r=>String(r[idField])!==String(rowId));
+    state[entity].selected.delete(rowId);
     btn.closest('tr').remove();
+    updateSelectionUI(entity);
     loadStats();
   } else { btn.disabled=false; showSave(false, res.error||'Delete failed'); }
+}
+
+function toggleRowSelect(entity, rowId, cb) {
+  const sel = state[entity].selected;
+  cb.checked ? sel.add(rowId) : sel.delete(rowId);
+  const tr = cb.closest('tr');
+  tr.classList.toggle('row-selected', cb.checked);
+  updateSelectionUI(entity);
+}
+
+function toggleSelectAll(entity, masterCb) {
+  const sel = state[entity].selected;
+  const idField = entity==='authors'?'uid':'id';
+  const rows = document.querySelectorAll(`#${entity}-body tbody tr`);
+  rows.forEach(tr => {
+    if (tr.style.display === 'none') return; // respect active filters
+    const rowId = tr.dataset.id;
+    const cb = tr.querySelector('.row-cb');
+    if (masterCb.checked) { sel.add(rowId); tr.classList.add('row-selected'); if(cb) cb.checked=true; }
+    else { sel.delete(rowId); tr.classList.remove('row-selected'); if(cb) cb.checked=false; }
+  });
+  updateSelectionUI(entity);
+}
+
+function updateSelectionUI(entity) {
+  const count = state[entity].selected.size;
+  const btn = document.getElementById(`${entity}-del-selected`);
+  if (btn) { btn.style.display = count > 0 ? '' : 'none'; btn.textContent = `Delete Selected (${count})`; }
+  // Sync master checkbox state
+  const rows = [...document.querySelectorAll(`#${entity}-body tbody tr`)].filter(tr=>tr.style.display!=='none');
+  const master = document.querySelector(`#${entity}-body thead .row-cb`);
+  if (master && rows.length) {
+    const allChecked = rows.every(tr=>state[entity].selected.has(tr.dataset.id));
+    const noneChecked = rows.every(tr=>!state[entity].selected.has(tr.dataset.id));
+    master.checked = allChecked;
+    master.indeterminate = !allChecked && !noneChecked;
+  }
+}
+
+async function deleteSelected(entity) {
+  const sel = state[entity].selected;
+  if (!sel.size) return;
+  if (!confirm(`Delete ${sel.size} selected ${entity}? This cannot be undone.`)) return;
+  const idField = entity==='authors'?'uid':'id';
+  const ids = [...sel];
+  let done = 0;
+  for (const rowId of ids) {
+    const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, { method:'DELETE' });
+    if (res.success) {
+      state[entity].data = state[entity].data.filter(r=>String(r[idField])!==String(rowId));
+      state[entity].sortedData = state[entity].sortedData.filter(r=>String(r[idField])!==String(rowId));
+      sel.delete(rowId);
+      const tr = document.querySelector(`#${entity}-body tbody tr[data-id="${CSS.escape(rowId)}"]`);
+      if (tr) tr.remove();
+      done++;
+    }
+  }
+  updateSelectionUI(entity);
+  loadStats();
+  if (done < ids.length) showSave(false, `${ids.length - done} record(s) failed to delete`);
 }
 
 async function toggleCheckbox(entity, rowId, field, currentChecked, cell) {
@@ -858,15 +932,19 @@ async function loadAuthors() {
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
   const res = await api('/api/authors?limit=5000');
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
+  state.authors.selected.clear();
   const n = state.authors.data.length;
   document.getElementById('authors-count').textContent = `(${n.toLocaleString()})`;
   renderTable('authors');
+  updateSelectionUI('authors');
 }
 async function loadBooks() {
   document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
   const res = await api('/api/books?limit=5000');
   state.books.data = res.data||(Array.isArray(res)?res:[]);
+  state.books.selected.clear();
   renderTable('books');
+  updateSelectionUI('books');
 }
 
 async function deleteAllEntity(entity) {
