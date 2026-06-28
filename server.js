@@ -105,9 +105,11 @@ async function importRecords(collection, backupCollection, records, idField, spe
       inserted++;
     } else {
       // Backup existing record before any overwrite
+      // Omit _id so MongoDB generates a fresh one — avoids duplicate key on repeated imports
+      const { _id, ...existingData } = existing;
       await db.collection(backupCollection).insertOne({
-        ...existing,
-        _originalId: existing._id,
+        ...existingData,
+        _originalId: _id,
         importId,
         backedUpAt: new Date()
       });
