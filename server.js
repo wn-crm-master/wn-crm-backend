@@ -202,8 +202,13 @@ app.post('/api/import/authors', authMiddleware, async (req, res) => {
     if (!Array.isArray(authors) || authors.length === 0)
       return res.status(400).json({ error: 'authors array is required' });
 
+    // Normalize: treat `id` as `uid` if uid is missing (Author ID and Author UID are interchangeable)
+    const normalized = authors.map(a => {
+      if (!a.uid && a.id) { const r = {...a}; r.uid = r.id; delete r.id; return r; }
+      return a;
+    });
     // Strip computed rollup fields — these are derived from books, not stored
-    const cleaned = authors.map(a => { const r={...a}; ROLLUP_AUTHOR_FIELDS.forEach(f=>delete r[f]); return r; });
+    const cleaned = normalized.map(a => { const r={...a}; ROLLUP_AUTHOR_FIELDS.forEach(f=>delete r[f]); return r; });
     const result = await importRecords('authors', 'authors_backups', cleaned, 'uid', SPECIAL_FIELDS_AUTHORS);
     res.json({ success: true, ...result });
   } catch (err) {
