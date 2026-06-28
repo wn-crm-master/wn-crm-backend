@@ -159,8 +159,8 @@ Every import returns a summary:
 | `form1FollowUp1Sent` | Form 1 Follow Up 1 Sent | **Checkbox** (boolean) | |
 | `form1FollowUp2Sent` | Form 1 Follow Up 2 Sent | **Checkbox** (boolean) | |
 | `form1Filled` | Form 1 Filled | **Checkbox** (boolean) | |
-| `preContractedTag` | Pre-Contract Validation | **Dropdown** | Special Field — values TBD |
-| `preContractCompany` | Pre-Contract Company | Text (single line) | Special Field |
+| `preContractedTag` | Pre-Contract Validation | **Dropdown** | Special Field — Values: `Pre-Contracted` / `Pre-Contracted (w/ Other Proof)` / `Uncontracted` / *(blank)* |
+| `preContractCompany` | Pre-Contract Company | **Dropdown** | Special Field — Values: `Webnovel` / `Goodnovel` / `Dreame` / `Meganovel` / *(blank)* |
 | `incentiveFlag` | Author Incentive Flag | **Dropdown** | Values: `0` / `1` / *(blank)* |
 | `booksCreated` | Books Created | **Rollup** (read-only) | Count of all books linked to this author |
 | `booksChp1Published` | Books Chp1 Published | **Rollup** (read-only) | Count of linked books where `chp1Published` = true |
@@ -297,4 +297,4 @@ The following incoming values must never overwrite existing data:
 ---
 
 *Last updated: June 2026*
-*Status: Special Fields list PENDING — must be defined before full implementation*
+*Status: Special Fields list CONFIRMED. All dropdown values defined.*

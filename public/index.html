@@ -74,14 +74,20 @@
     table { border-collapse: collapse; table-layout: fixed; }
     table.wide { min-width: max-content; }
 
+    thead { position: sticky; top: 0; z-index: 20; }
     th {
       background: #f7f8fc; text-align: left; padding: 0;
       font-size: 0.8rem; color: #555;
       border-bottom: 2px solid #e0e4f0; border-right: 1px solid #e8eaf0;
       white-space: nowrap; position: relative; vertical-align: top;
     }
-    th.is-sticky { position: sticky; z-index: 10; background: #eef1fb; box-shadow: 2px 0 5px rgba(0,0,0,0.08); }
+    th.is-sticky { position: sticky; z-index: 22; background: #eef1fb; box-shadow: 2px 0 5px rgba(0,0,0,0.08); }
     th.is-pinned { background: #e6eaff; }
+    th.sel-cell { z-index: 22; }
+    tfoot { position: sticky; bottom: 0; z-index: 20; }
+    tfoot td { background: #f0f2f5; font-weight: 600; font-size: 0.82rem; color: #1a2340; border-top: 2px solid #d0d4e0; border-bottom: none; }
+    tfoot td.is-sticky { z-index: 22; background: #e4e7f2; }
+    tfoot td.sel-cell { background: #e4e7f2; }
 
     .th-inner { display: flex; flex-direction: column; }
     .th-top { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; }
@@ -634,7 +640,31 @@ function renderTable(entity) {
     html += '</tr>';
   });
 
-  html += '</tbody></table>';
+  html += '</tbody>';
+
+  // Totals footer
+  html += '<tfoot><tr>';
+  html += '<td class="sel-cell" id="'+entity+'-totals-count" style="font-size:0.75rem;text-align:center"></td>';
+  for (const col of cols) {
+    const isSticky = s.pinned.has(col.field);
+    const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
+    const ctype = col.type||'text';
+    const isId = col.field===idField;
+    let cls = isSticky?'is-sticky':'';
+    if (isId) {
+      html += `<td class="${cls}" style="${stStyle}" id="${entity}-totals-label">Total</td>`;
+    } else if (['number','decimal','rollup'].includes(ctype)) {
+      html += `<td class="${cls} number-cell" style="${stStyle}" id="tot-${entity}-${col.field}"></td>`;
+    } else if (ctype === 'percent') {
+      html += `<td class="${cls} percent-cell" style="${stStyle}" id="tot-${entity}-${col.field}"></td>`;
+    } else {
+      html += `<td class="${cls}" style="${stStyle}"></td>`;
+    }
+  }
+  html += '<td class="del-cell"></td>';
+  html += '</tr></tfoot>';
+
+  html += '</table>';
   container.innerHTML = html;
   applyRowFilters(entity);
 }
@@ -644,13 +674,44 @@ function applyRowFilters(entity) {
   const idField = entity==='authors'?'uid':'id';
   const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
   const rows = document.querySelectorAll(`#${entity}-body tbody tr`);
+  const visibleRows = [];
   rows.forEach(tr => {
     const idx = parseInt(tr.dataset.idx);
     const row = s.sortedData[idx];
     if (!row) return;
     const visible = activeFilters.every(([f, vals]) => vals.has(String(row[f]??'')));
     tr.classList.toggle('row-hidden', !visible);
+    if (visible) visibleRows.push(row);
   });
+  updateTotals(entity, visibleRows);
+}
+
+function updateTotals(entity, visibleRows) {
+  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const sel = state[entity].selected;
+  const idField = entity==='authors'?'uid':'id';
+  const sourceRows = sel.size > 0 ? visibleRows.filter(r => sel.has(String(r[idField]||''))) : visibleRows;
+
+  const countEl = document.getElementById(entity+'-totals-count');
+  if (countEl) countEl.textContent = sourceRows.length;
+
+  const labelEl = document.getElementById(entity+'-totals-label');
+  if (labelEl) labelEl.textContent = sel.size > 0 ? `Selected (${sourceRows.length})` : `Total (${sourceRows.length})`;
+
+  for (const col of cols) {
+    const el = document.getElementById('tot-'+entity+'-'+col.field);
+    if (!el) continue;
+    const ctype = col.type||'text';
+    if (['number','decimal','rollup'].includes(ctype)) {
+      let sum = 0;
+      sourceRows.forEach(r => { const v = parseFloat(String(r[col.field]||'0').replace(/,/g,'')); if (!isNaN(v)) sum += v; });
+      el.textContent = ctype==='decimal' ? sum.toFixed(2) : sum.toLocaleString('en-US');
+    } else if (ctype === 'percent') {
+      let sum = 0, count = 0;
+      sourceRows.forEach(r => { const v = parseFloat(String(r[col.field]||'').replace(/%/g,'')); if (!isNaN(v)) { sum += v; count++; } });
+      el.textContent = count > 0 ? (sum/count).toFixed(1)+'% avg' : '';
+    }
+  }
 }
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -924,6 +985,12 @@ function updateSelectionUI(entity) {
     master.checked = allChecked;
     master.indeterminate = !allChecked && !noneChecked;
   }
+  // Recalculate totals based on selection
+  const s = state[entity];
+  const idField = entity==='authors'?'uid':'id';
+  const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
+  const visibleRows = s.sortedData.filter(r => activeFilters.every(([f, vals]) => vals.has(String(r[f]??''))));
+  updateTotals(entity, visibleRows);
 }
 
 async function deleteSelected(entity) {
