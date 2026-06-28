@@ -315,10 +315,11 @@ app.put('/api/authors/:id', authMiddleware, async (req, res) => {
     const updates = {};
     for (const [key, val] of Object.entries(req.body)) {
       if (key === '_id' || key === 'uid') continue;
-      if (!isBlankOrError(val)) updates[key] = val;
+      updates[key] = val;
     }
     if (Object.keys(updates).length === 0) return res.json({ success: true, message: 'Nothing to update' });
-    await db.collection('authors_backups').insertOne({ ...existing, importId: 'direct-edit', backedUpAt: new Date() });
+    const { _id: aId, ...authData } = existing;
+    await db.collection('authors_backups').insertOne({ ...authData, _originalId: aId, importId: 'direct-edit', backedUpAt: new Date() });
     await db.collection('authors').updateOne({ uid: req.params.id }, { $set: { ...updates, updatedAt: new Date() } });
     res.json({ success: true });
   } catch (err) {
@@ -382,10 +383,11 @@ app.put('/api/books/:id', authMiddleware, async (req, res) => {
     const updates = {};
     for (const [key, val] of Object.entries(req.body)) {
       if (key === '_id' || key === 'id') continue;
-      if (!isBlankOrError(val)) updates[key] = val;
+      updates[key] = val;
     }
     if (Object.keys(updates).length === 0) return res.json({ success: true, message: 'Nothing to update' });
-    await db.collection('books_backups').insertOne({ ...existing, importId: 'direct-edit', backedUpAt: new Date() });
+    const { _id: bId, ...bookData } = existing;
+    await db.collection('books_backups').insertOne({ ...bookData, _originalId: bId, importId: 'direct-edit', backedUpAt: new Date() });
     await db.collection('books').updateOne({ id: req.params.id }, { $set: { ...updates, updatedAt: new Date() } });
     res.json({ success: true });
   } catch (err) {
