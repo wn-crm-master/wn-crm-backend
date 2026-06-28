@@ -160,9 +160,16 @@
     .save-indicator { position: fixed; bottom: 20px; right: 20px; background: #1a7f52; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 0.88rem; display: none; z-index: 9998; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
     .save-indicator.error { background: #e74c3c; }
 
-    /* Field mapping modal */
-    #mapping-modal { display: none; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); }
-    #mapping-modal.open { display: flex; }
+    /* Modals */
+    #mapping-modal, #mass-update-modal { display: none; position: fixed; inset: 0; z-index: 10000; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); }
+    #mapping-modal.open, #mass-update-modal.open { display: flex; }
+    .btn-mass-update { background: #2a7ab5; color: #fff; }
+    .btn-mass-update:hover { background: #1f6598; }
+    .mu-field-group { margin-bottom: 16px; }
+    .mu-field-group label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 6px; font-weight: 500; }
+    .mu-field-group select, .mu-field-group input { width: 100%; padding: 9px 12px; border: 1px solid #dde2f0; border-radius: 6px; font-size: 0.9rem; outline: none; }
+    .mu-field-group select:focus, .mu-field-group input:focus { border-color: #3b6cf7; }
+    .mu-preview { font-size: 0.82rem; color: #888; margin-top: 6px; }
     .modal-box { background: #fff; border-radius: 12px; width: min(780px, 95vw); max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
     .modal-header { padding: 20px 24px 14px; border-bottom: 1px solid #eee; flex-shrink: 0; }
     .modal-header h2 { font-size: 1.1rem; color: #1a2340; margin-bottom: 4px; }
@@ -238,6 +245,34 @@
   </div>
 </div>
 
+<!-- Mass update modal -->
+<div id="mass-update-modal">
+  <div class="modal-box" style="width:min(480px,95vw)">
+    <div class="modal-header">
+      <h2>Mass Update — <span id="mu-entity-label"></span></h2>
+      <p>Update a single field on all <strong><span id="mu-count">0</span></strong> selected records.</p>
+    </div>
+    <div class="modal-body" style="padding:20px 24px">
+      <div class="mu-field-group">
+        <label>Field to update</label>
+        <select id="mu-field-select" onchange="onMassUpdateFieldChange()"></select>
+      </div>
+      <div class="mu-field-group">
+        <label>New value</label>
+        <div id="mu-value-container"><input type="text" id="mu-value-input" placeholder="Enter new value"></div>
+      </div>
+      <div class="mu-preview" id="mu-preview"></div>
+    </div>
+    <div class="modal-footer">
+      <div class="modal-note"><strong>⚠</strong> This will overwrite the field on all selected records.</div>
+      <div class="modal-actions">
+        <button class="btn" style="background:#f0f2f5;color:#555" onclick="closeMassUpdate()">Cancel</button>
+        <button class="btn btn-primary" id="mu-apply-btn" onclick="applyMassUpdate()">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Login -->
 <div id="login-screen">
   <div class="login-card">
@@ -283,6 +318,7 @@
         <div class="import-btns">
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
+          <button class="btn btn-mass-update" id="authors-mass-update" style="display:none" onclick="openMassUpdate('authors')">Mass Update</button>
           <button class="btn btn-danger btn-del-selected" id="authors-del-selected" style="display:none" onclick="deleteSelected('authors')">Delete Selected</button>
           <button class="btn btn-danger" onclick="deleteAllEntity('authors')">Delete Data</button>
         </div>
@@ -297,6 +333,7 @@
         <div class="import-btns">
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
+          <button class="btn btn-mass-update" id="books-mass-update" style="display:none" onclick="openMassUpdate('books')">Mass Update</button>
           <button class="btn btn-danger btn-del-selected" id="books-del-selected" style="display:none" onclick="deleteSelected('books')">Delete Selected</button>
           <button class="btn btn-danger" onclick="deleteAllEntity('books')">Delete Data</button>
         </div>
@@ -479,7 +516,7 @@ async function loadStats() { const res=await api('/api/stats'); if(res.totalAuth
 
 // ── Table rendering ────────────────────────────────────────────────
 function getStickyOffsets(cols, pinned) {
-  const o={}; let left=0;
+  const o={}; let left=36; // 36px reserved for the selection checkbox column
   for (const col of cols) { if (pinned.has(col.field)) { o[col.field]=left; left+=col.width; } }
   return o;
 }
@@ -867,8 +904,10 @@ function toggleSelectAll(entity, masterCb) {
 
 function updateSelectionUI(entity) {
   const count = state[entity].selected.size;
-  const btn = document.getElementById(`${entity}-del-selected`);
-  if (btn) { btn.style.display = count > 0 ? '' : 'none'; btn.textContent = `Delete Selected (${count})`; }
+  const delBtn = document.getElementById(`${entity}-del-selected`);
+  if (delBtn) { delBtn.style.display = count > 0 ? '' : 'none'; delBtn.textContent = `Delete Selected (${count})`; }
+  const muBtn = document.getElementById(`${entity}-mass-update`);
+  if (muBtn) { muBtn.style.display = count > 0 ? '' : 'none'; muBtn.textContent = `Mass Update (${count})`; }
   // Sync master checkbox state
   const rows = [...document.querySelectorAll(`#${entity}-body tbody tr`)].filter(tr=>tr.style.display!=='none');
   const master = document.querySelector(`#${entity}-body thead .row-cb`);
@@ -901,6 +940,99 @@ async function deleteSelected(entity) {
   updateSelectionUI(entity);
   loadStats();
   if (done < ids.length) showSave(false, `${ids.length - done} record(s) failed to delete`);
+}
+
+// ── Mass Update ────────────────────────────────────────────────────
+let massUpdateCtx = null;
+
+function openMassUpdate(entity) {
+  const count = state[entity].selected.size;
+  if (!count) return;
+  massUpdateCtx = { entity };
+  document.getElementById('mu-entity-label').textContent = entity==='authors'?'Authors':'Books';
+  document.getElementById('mu-count').textContent = count;
+  document.getElementById('mu-preview').textContent = '';
+
+  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const idField = entity==='authors'?'uid':'id';
+  // Exclude id, rollup fields from the dropdown
+  const editable = cols.filter(c => c.field!==idField && c.type!=='rollup');
+  const sel = document.getElementById('mu-field-select');
+  sel.innerHTML = '<option value="">— Select field —</option>' +
+    editable.map(c => `<option value="${c.field}" data-type="${c.type||'text'}">${c.header}</option>`).join('');
+
+  onMassUpdateFieldChange();
+  document.getElementById('mass-update-modal').classList.add('open');
+}
+
+function closeMassUpdate() {
+  document.getElementById('mass-update-modal').classList.remove('open');
+  massUpdateCtx = null;
+}
+
+function onMassUpdateFieldChange() {
+  const sel = document.getElementById('mu-field-select');
+  const container = document.getElementById('mu-value-container');
+  const field = sel.value;
+  if (!field) { container.innerHTML = '<input type="text" id="mu-value-input" placeholder="Select a field first" disabled>'; return; }
+
+  const entity = massUpdateCtx?.entity;
+  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const col = cols.find(c => c.field===field);
+  const ctype = col?.type||'text';
+
+  if (ctype === 'dropdown' && col.options) {
+    container.innerHTML = '<select id="mu-value-input">' + col.options.map(o =>
+      `<option value="${o}">${o||'(blank)'}</option>`).join('') + '</select>';
+  } else if (ctype === 'checkbox') {
+    container.innerHTML = '<select id="mu-value-input"><option value="true">✓ Yes</option><option value="false">✗ No</option></select>';
+  } else if (ctype === 'date') {
+    container.innerHTML = '<input type="date" id="mu-value-input">';
+  } else if (ctype === 'number' || ctype === 'decimal' || ctype === 'percent') {
+    container.innerHTML = '<input type="number" id="mu-value-input" step="any" placeholder="Enter number">';
+  } else {
+    container.innerHTML = '<input type="text" id="mu-value-input" placeholder="Enter new value">';
+  }
+}
+
+async function applyMassUpdate() {
+  if (!massUpdateCtx) return;
+  const { entity } = massUpdateCtx;
+  const field = document.getElementById('mu-field-select').value;
+  if (!field) { alert('Please select a field.'); return; }
+  let val = document.getElementById('mu-value-input').value;
+
+  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const col = cols.find(c => c.field===field);
+  const ctype = col?.type||'text';
+
+  if (ctype === 'checkbox') val = val === 'true';
+  else if ((ctype === 'number' || ctype === 'decimal' || ctype === 'percent') && val !== '') val = Number(val);
+
+  const idField = entity==='authors'?'uid':'id';
+  const ids = [...state[entity].selected];
+  const btn = document.getElementById('mu-apply-btn');
+  btn.disabled = true; btn.textContent = `Updating 0/${ids.length}…`;
+
+  let done = 0, failed = 0;
+  for (const rowId of ids) {
+    const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, {
+      method: 'PUT', body: JSON.stringify({ [field]: val })
+    });
+    if (res.success) {
+      [state[entity].data, state[entity].sortedData].forEach(arr => {
+        const r = arr.find(x => String(x[idField])===String(rowId));
+        if (r) r[field] = val;
+      });
+      done++;
+    } else { failed++; }
+    btn.textContent = `Updating ${done+failed}/${ids.length}…`;
+  }
+
+  btn.disabled = false; btn.textContent = 'Apply';
+  closeMassUpdate();
+  renderTable(entity);
+  showSave(failed === 0, failed ? `${failed} record(s) failed to update` : undefined);
 }
 
 async function toggleCheckbox(entity, rowId, field, currentChecked, cell) {
