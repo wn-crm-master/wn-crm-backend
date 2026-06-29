@@ -486,8 +486,8 @@ function getBookNextStep(row) {
   if (!isChp1Published(row)) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
   if (!isTruthy(row.words10kCompleted)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
   const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
-  if (modStatus === 'passed') return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
-  if (modStatus === 'failed') return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent' };
+  if (modStatus === 'passed' || modStatus === 'moderation passed') return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
+  if (modStatus === 'failed' || modStatus === 'moderation failed') return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent' };
   return { label: 'Awaiting Moderation', css: 'step-awaiting', alarm: 'pending' };
 }
 
