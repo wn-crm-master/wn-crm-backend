@@ -98,10 +98,14 @@
     .step-done { background: #e8f5e9; color: #2e7d32; }
     .step-failed { background: #fdecea; color: #c62828; }
 
-    /* Alarm icon beside row checkbox */
-    .alarm-icon { display: inline-block; font-size: 0.85rem; margin-left: 2px; cursor: default; vertical-align: middle; }
+    /* Alarm column (books only) */
+    td.alarm-cell, th.alarm-cell { text-align: center; width: 44px; min-width: 44px; position: sticky; left: 36px; z-index: 3; background: #fff; }
+    th.alarm-cell { background: #f8f9fc; z-index: 4; }
+    .alarm-icon { font-size: 0.95rem; cursor: default; }
     .alarm-urgent { color: #e74c3c; }
     .alarm-pending { color: #f39c12; }
+    .alarm-none { color: #d5d5d5; }
+    tr.row-selected td.alarm-cell { background: #eef3ff !important; }
 
     .th-inner { display: flex; flex-direction: column; }
     .th-top { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; }
@@ -545,8 +549,10 @@ function showTab(name) {
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
 // ── Table rendering ────────────────────────────────────────────────
-function getStickyOffsets(cols, pinned) {
-  const o={}; let left=36; // 36px reserved for the selection checkbox column
+function getStickyOffsets(cols, pinned, entity) {
+  let left = 36; // 36px for selection checkbox
+  if (entity==='books') left += 44; // 44px for alarm column
+  const o={};
   for (const col of cols) { if (pinned.has(col.field)) { o[col.field]=left; left+=col.width; } }
   return o;
 }
@@ -565,7 +571,7 @@ function renderTable(entity) {
   }
   s.sortedData = sorted;
 
-  const offsets = getStickyOffsets(cols, s.pinned);
+  const offsets = getStickyOffsets(cols, s.pinned, entity);
   const container = document.getElementById(entity+'-body');
 
   if (!sorted.length) { container.innerHTML='<div class="empty">No data yet. Use Import above.</div>'; return; }
@@ -573,6 +579,22 @@ function renderTable(entity) {
   let html = '<table class="wide"><thead><tr>';
   // Select-all checkbox column
   html += `<th class="sel-cell"><input type="checkbox" class="row-cb" title="Select all" onchange="toggleSelectAll('${entity}',this)"></th>`;
+  if (entity==='books') {
+    const alarmFilter = s.filter['_alarm'] || new Set();
+    const alarmHasFilter = alarmFilter.size > 0;
+    const alarmLabel = alarmHasFilter ? alarmFilter.size+' selected' : 'All';
+    html += `<th class="alarm-cell">
+      <div class="th-inner">
+        <div class="th-top"><span class="th-label">🔔</span></div>
+        <div class="th-filter">
+          <button class="filter-btn ${alarmHasFilter?'has-filter':''}" id="fbtn-${entity}-_alarm" onclick="openFD(event,'${entity}','_alarm',this)">
+            <span class="filter-btn-text">${alarmLabel}</span>
+            <span class="filter-btn-arrow">▾</span>
+          </button>
+        </div>
+      </div>
+    </th>`;
+  }
   for (const col of cols) {
     const isSticky = s.pinned.has(col.field);
     const isPinned = isSticky && col.field!==idField;
@@ -609,9 +631,13 @@ function renderTable(entity) {
     const rowId = String(row[idField]||'');
     const isSelected = s.selected.has(rowId);
     const step = entity==='books' ? getBookNextStep(row) : null;
-    const alarmHtml = step && step.alarm ? `<span class="alarm-icon alarm-${step.alarm}" title="${step.label}">🔔</span>` : '';
     html += `<tr data-idx="${idx}" data-id="${escAttr(rowId)}" class="${isSelected?'row-selected':''}">`;
-    html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)">${alarmHtml}</td>`;
+    html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)"></td>`;
+    if (entity==='books') {
+      const alarmVal = step.alarm || 'none';
+      const icon = step.alarm==='urgent' ? '🔴' : step.alarm==='pending' ? '🟠' : '—';
+      html += `<td class="alarm-cell" data-alarm="${alarmVal}" title="${step.label}"><span class="alarm-icon alarm-${alarmVal}">${icon}</span></td>`;
+    }
     for (const col of cols) {
       const isSticky = s.pinned.has(col.field);
       const isPinned = isSticky && col.field!==idField;
@@ -673,6 +699,7 @@ function renderTable(entity) {
   // Totals footer
   html += '<tfoot><tr>';
   html += '<td class="sel-cell" id="'+entity+'-totals-count" style="font-size:0.75rem;text-align:center"></td>';
+  if (entity==='books') html += '<td class="alarm-cell"></td>';
   for (const col of cols) {
     const isSticky = s.pinned.has(col.field);
     const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
@@ -698,6 +725,11 @@ function renderTable(entity) {
   applyRowFilters(entity);
 }
 
+function getRowFilterVal(row, field) {
+  if (field === '_alarm') return getBookNextStep(row).alarm || 'none';
+  return String(row[field]??'');
+}
+
 function applyRowFilters(entity) {
   const s = state[entity];
   const idField = entity==='authors'?'uid':'id';
@@ -708,7 +740,7 @@ function applyRowFilters(entity) {
     const idx = parseInt(tr.dataset.idx);
     const row = s.sortedData[idx];
     if (!row) return;
-    const visible = activeFilters.every(([f, vals]) => vals.has(String(row[f]??'')));
+    const visible = activeFilters.every(([f, vals]) => vals.has(getRowFilterVal(row, f)));
     tr.classList.toggle('row-hidden', !visible);
     if (visible) visibleRows.push(row);
   });
@@ -774,9 +806,14 @@ function openFD(event, entity, field, btn) {
   // Collect unique values for this column (including blanks)
   const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
   const colDef = cols.find(c=>c.field===field);
-  const dataVals = new Set(s.data.map(r => String(r[field]??'')));
-  // Merge in predefined dropdown options so they always appear
-  if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
+  let dataVals;
+  if (field === '_alarm') {
+    dataVals = new Set(s.data.map(r => getBookNextStep(r).alarm || 'none'));
+    ['urgent','pending','none'].forEach(v => dataVals.add(v));
+  } else {
+    dataVals = new Set(s.data.map(r => String(r[field]??'')));
+    if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
+  }
   const nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b)=>{
     const n=Number(a),m=Number(b); return (!isNaN(n)&&!isNaN(m))?n-m:a.localeCompare(b,undefined,{numeric:true});
   });
@@ -802,13 +839,22 @@ function closeFD() {
   fdCtx = null;
 }
 
+const ALARM_LABELS = { urgent: '🔴 Urgent (Failed)', pending: '🟠 Action Needed', none: '— No Alert' };
+
 function renderFDOptions(vals, selected, search) {
   const container = document.getElementById('fd-options');
-  const filtered = search ? vals.filter(v => v==='' ? '(blank)'.includes(search.toLowerCase()) : v.toLowerCase().includes(search.toLowerCase())) : vals;
+  const isAlarmFilter = fdCtx && fdCtx.field === '_alarm';
+  const filtered = search ? vals.filter(v => {
+    const display = v==='' ? '(blank)' : (isAlarmFilter ? (ALARM_LABELS[v]||v) : v);
+    return display.toLowerCase().includes(search.toLowerCase());
+  }) : vals;
   if (!filtered.length) { container.innerHTML = '<div class="fd-empty">No values found</div>'; return; }
   container.innerHTML = filtered.map(v => {
     const checked = selected.has(v) ? 'checked' : '';
-    const label = v==='' ? '<em style="color:#aaa">(blank)</em>' : escHtml(v);
+    let label;
+    if (v === '') label = '<em style="color:#aaa">(blank)</em>';
+    else if (isAlarmFilter) label = ALARM_LABELS[v] || escHtml(v);
+    else label = escHtml(v);
     return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle('${escAttr(v)}',this.checked)"><span class="fd-option-label" title="${v===''?'(blank)':escAttr(v)}">${label}</span></label>`;
   }).join('');
 }
