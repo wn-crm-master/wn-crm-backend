@@ -468,12 +468,21 @@ function isTruthy(val) {
   return ['true','yes','y','1','x','✓'].includes(String(val).trim().toLowerCase());
 }
 
+function isChp1Published(row) {
+  return isTruthy(row.chp1Published) || (row.chp1PublishedDate && !isBlankish(row.chp1PublishedDate));
+}
+function isBlankish(val) {
+  if (val === null || val === undefined) return true;
+  const s = String(val).trim();
+  return s === '' || s === 'null' || s === 'undefined';
+}
+
 function getBookNextStep(row) {
-  const modStatus = String(row.moderationStatus||'').toLowerCase();
+  const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
+  if (modStatus === 'passed') return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
   if (modStatus === 'failed') return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent' };
-  if (modStatus.includes('pass')) return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
   if (isTruthy(row.words10kCompleted)) return { label: 'Awaiting Moderation', css: 'step-awaiting', alarm: 'pending' };
-  if (isTruthy(row.chp1Published)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
+  if (isChp1Published(row)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
   if (row.createDate || row.id) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
   return { label: '—', css: '', alarm: null };
 }
