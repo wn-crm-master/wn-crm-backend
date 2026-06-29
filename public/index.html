@@ -63,10 +63,12 @@
     .file-label-json:hover { background: #2a56d6; }
     .file-label-csv { background: #1a7f52; color: #fff; }
     .file-label-csv:hover { background: #156640; }
-    .inline-msg { margin-bottom: 10px; padding: 10px 14px; border-radius: 6px; font-size: 0.88rem; display: none; }
+    .inline-msg { margin-bottom: 10px; padding: 10px 14px; border-radius: 6px; font-size: 0.88rem; display: none; position: relative; }
     .inline-msg.success { background: #e6f9f0; color: #1a7f52; display: block; }
     .inline-msg.error { background: #fdecea; color: #c0392b; display: block; }
     .inline-msg.info { background: #eef2ff; color: #3b6cf7; display: block; }
+    .msg-close { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.1rem; cursor: pointer; color: inherit; opacity: 0.6; padding: 2px 6px; line-height: 1; }
+    .msg-close:hover { opacity: 1; }
 
     /* Table */
     .table-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
@@ -83,6 +85,9 @@
     }
     th.is-sticky { position: sticky; z-index: 22; background: #eef1fb; box-shadow: 2px 0 5px rgba(0,0,0,0.08); }
     th.is-pinned { background: #e6eaff; }
+    th.has-active-filter { background: #e8edff; }
+    th.has-active-filter.is-sticky { background: #dce3ff; }
+    th.has-active-filter .th-label { color: #3b6cf7; }
     th.sel-cell { z-index: 22; }
     tfoot { position: sticky; bottom: 0; z-index: 20; }
     tfoot td { background: #f0f2f5; font-weight: 600; font-size: 0.82rem; color: #1a2340; border-top: 2px solid #d0d4e0; border-bottom: none; }
@@ -613,7 +618,7 @@ function renderTable(entity) {
     const hasFilter = filterSet.size > 0;
     const filterLabel = hasFilter ? filterSet.size+' selected' : 'All';
 
-    html += `<th class="${isSticky?'is-sticky':''} ${isPinned?'is-pinned':''}" style="width:${col.width}px;min-width:${col.width}px;${stStyle}">
+    html += `<th class="${isSticky?'is-sticky':''} ${isPinned?'is-pinned':''} ${hasFilter?'has-active-filter':''}" style="width:${col.width}px;min-width:${col.width}px;${stStyle}">
       <div class="th-inner">
         <div class="th-top">
           <span class="th-label">${col.header}</span>
@@ -918,6 +923,8 @@ function updateFilterBtn(entity, field) {
   const hasFilter = set.size > 0;
   btn.className = 'filter-btn' + (hasFilter ? ' has-filter' : '');
   btn.querySelector('.filter-btn-text').textContent = hasFilter ? set.size+' selected' : 'All';
+  const th = btn.closest('th');
+  if (th) th.classList.toggle('has-active-filter', hasFilter);
 }
 
 // Close dropdown on outside click
@@ -1417,7 +1424,10 @@ async function confirmMapping() {
   } else { setMsg(msgEl,'error',res.error||'Import failed.'); }
 }
 
-function setMsg(el,type,text){el.className='inline-msg '+type;el.textContent=text;}
+function setMsg(el,type,text){
+  el.className='inline-msg '+type;
+  el.innerHTML=escHtml(text)+'<button class="msg-close" onclick="this.parentElement.className=\'inline-msg\'" title="Dismiss">✕</button>';
+}
 
 // ── Backups ────────────────────────────────────────────────────────
 async function loadBackups() {
