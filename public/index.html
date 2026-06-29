@@ -89,6 +89,20 @@
     tfoot td.is-sticky { z-index: 22; background: #e4e7f2; }
     tfoot td.sel-cell { background: #e4e7f2; }
 
+    /* Next Step column (books only) */
+    td.next-step-cell, th.next-step-cell { position: sticky; right: 0; z-index: 5; background: #fff; box-shadow: -2px 0 5px rgba(0,0,0,0.06); min-width: 180px; width: 180px; }
+    th.next-step-cell { z-index: 22; background: #f0f1fa; }
+    tfoot td.next-step-cell { background: #e4e7f2; }
+    .next-step-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+    .step-awaiting { background: #fff3e0; color: #e65100; }
+    .step-done { background: #e8f5e9; color: #2e7d32; }
+    .step-failed { background: #fdecea; color: #c62828; }
+
+    /* Alarm icon beside row checkbox */
+    .alarm-icon { display: inline-block; font-size: 0.85rem; margin-left: 2px; cursor: default; vertical-align: middle; }
+    .alarm-urgent { color: #e74c3c; }
+    .alarm-pending { color: #f39c12; }
+
     .th-inner { display: flex; flex-direction: column; }
     .th-top { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; }
     .th-label { flex: 1; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: #444; cursor: default; }
@@ -450,6 +464,16 @@ function isTruthy(val) {
   return ['true','yes','y','1','x','✓'].includes(String(val).trim().toLowerCase());
 }
 
+function getBookNextStep(row) {
+  const modStatus = String(row.moderationStatus||'').toLowerCase();
+  if (modStatus === 'failed') return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent' };
+  if (modStatus.includes('pass')) return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
+  if (isTruthy(row.words10kCompleted)) return { label: 'Awaiting Moderation', css: 'step-awaiting', alarm: 'pending' };
+  if (isTruthy(row.chp1Published)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
+  if (row.createDate || row.id) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
+  return { label: '—', css: '', alarm: null };
+}
+
 function formatNumber(val) {
   if (val===''||val===null||val===undefined) return '';
   const n = Number(String(val).replace(/,/g,''));
@@ -578,13 +602,16 @@ function renderTable(entity) {
     </th>`;
   }
   html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
+  if (entity==='books') html += '<th class="next-step-cell"><div class="th-inner"><div class="th-top"><span class="th-label">Next Step</span></div></div></th>';
   html += '</tr></thead><tbody>';
 
   sorted.forEach((row, idx) => {
     const rowId = String(row[idField]||'');
     const isSelected = s.selected.has(rowId);
+    const step = entity==='books' ? getBookNextStep(row) : null;
+    const alarmHtml = step && step.alarm ? `<span class="alarm-icon alarm-${step.alarm}" title="${step.label}">🔔</span>` : '';
     html += `<tr data-idx="${idx}" data-id="${escAttr(rowId)}" class="${isSelected?'row-selected':''}">`;
-    html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)"></td>`;
+    html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)">${alarmHtml}</td>`;
     for (const col of cols) {
       const isSticky = s.pinned.has(col.field);
       const isPinned = isSticky && col.field!==idField;
@@ -637,6 +664,7 @@ function renderTable(entity) {
       html += `<td ${tdClick} class="${tdClass.trim()}" style="${stStyle}" title="${escAttr(String(rawVal))}">${tdContent}</td>`;
     }
     html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(rowId)}',this)">✕</button></td>`;
+    if (entity==='books') html += `<td class="next-step-cell"><span class="next-step-tag ${step.css}">${step.label}</span></td>`;
     html += '</tr>';
   });
 
@@ -662,6 +690,7 @@ function renderTable(entity) {
     }
   }
   html += '<td class="del-cell"></td>';
+  if (entity==='books') html += '<td class="next-step-cell"></td>';
   html += '</tr></tfoot>';
 
   html += '</table>';
