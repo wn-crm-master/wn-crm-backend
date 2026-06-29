@@ -241,6 +241,12 @@ app.post('/api/import/books', authMiddleware, async (req, res) => {
       }
     }
 
+    // Auto-derive checkbox from date: if date is present, mark as true
+    for (const b of books) {
+      if (b.chp1PublishedDate && !isBlankOrError(b.chp1PublishedDate) && !b.chp1Published) b.chp1Published = true;
+      if (b.words10kDate && !isBlankOrError(b.words10kDate) && !b.words10kCompleted) b.words10kCompleted = true;
+      if (b.words50kDate && !isBlankOrError(b.words50kDate) && !b.words50kCompleted) b.words50kCompleted = true;
+    }
     const result = await importRecords('books', 'books_backups', books, 'id', SPECIAL_FIELDS_BOOKS);
     res.json({ success: true, ...result, stubAuthorsCreated: stubsCreated });
   } catch (err) {

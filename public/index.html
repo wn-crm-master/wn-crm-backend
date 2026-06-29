@@ -642,6 +642,12 @@ function renderTable(entity) {
   html += '</tr></thead><tbody>';
 
   sorted.forEach((row, idx) => {
+    // Auto-derive checkbox fields from their date fields
+    if (entity==='books') {
+      if (!isBlankish(row.chp1PublishedDate) && !isTruthy(row.chp1Published)) row.chp1Published = true;
+      if (!isBlankish(row.words10kDate) && !isTruthy(row.words10kCompleted)) row.words10kCompleted = true;
+      if (!isBlankish(row.words50kDate) && !isTruthy(row.words50kCompleted)) row.words50kCompleted = true;
+    }
     const rowId = String(row[idField]||'');
     const isSelected = s.selected.has(rowId);
     const step = entity==='books' ? getBookNextStep(row) : null;
