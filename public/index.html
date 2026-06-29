@@ -647,6 +647,9 @@ function renderTable(entity) {
       if (!isBlankish(row.chp1PublishedDate) && !isTruthy(row.chp1Published)) row.chp1Published = true;
       if (!isBlankish(row.words10kDate) && !isTruthy(row.words10kCompleted)) row.words10kCompleted = true;
       if (!isBlankish(row.words50kDate) && !isTruthy(row.words50kCompleted)) row.words50kCompleted = true;
+      const wc = typeof row.pubWC === 'number' ? row.pubWC : parseInt(String(row.pubWC || '').replace(/,/g, ''), 10);
+      if (!isNaN(wc) && wc >= 10000 && !isTruthy(row.words10kCompleted)) row.words10kCompleted = true;
+      if (!isNaN(wc) && wc >= 50000 && !isTruthy(row.words50kCompleted)) row.words50kCompleted = true;
     }
     const rowId = String(row[idField]||'');
     const isSelected = s.selected.has(rowId);
