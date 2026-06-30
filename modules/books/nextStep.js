@@ -96,6 +96,7 @@ function getBookNextStep(row) {
     if (edScore === 10 && !isNaN(wc) && wc > 10000) {
       const preContract = String(row.authorPreContract || '').trim().toLowerCase();
       if (preContract && preContract !== '' && preContract !== 'no' && preContract !== 'false') {
+        if (!isNaN(wc) && wc >= 38000) return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
         const form2 = getForm2Step(row);
         if (form2) return form2;
       }
