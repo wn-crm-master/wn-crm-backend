@@ -112,7 +112,7 @@
     .step-done { background: #e8f5e9; color: #2e7d32; }
     .step-failed { background: #fdecea; color: #c62828; }
     .step-action { background: #e3f2fd; color: #1565c0; }
-    .btn-send-form2 { background: #c0272d; color: #fff; border: none; border-radius: 10px; padding: 3px 10px; font-size: 0.72rem; font-weight: 600; cursor: pointer; margin-left: 6px; transition: background 0.15s; white-space: nowrap; }
+    .btn-send-form2 { background: #c0272d; color: #fff; border: none; border-radius: 14px; padding: 5px 16px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
     .btn-send-form2:hover { background: #a32126; }
     .step-dead { background: #f5f5f5; color: #9e9e9e; }
 
@@ -757,8 +757,11 @@ function renderTable(entity) {
     }
     html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(rowId)}',this)">✕</button></td>`;
     if (entity==='books') {
-      const form2Btn = step.label==='Send Form 2' ? ` <button class="btn-send-form2" onclick="sendForm2('${escAttr(rowId)}')">Send</button>` : '';
-      html += `<td class="next-step-cell"><span class="next-step-tag ${step.css}">${step.label}</span>${form2Btn}</td>`;
+      if (step.label==='Send Form 2') {
+        html += `<td class="next-step-cell"><button class="btn-send-form2" onclick="sendForm2('${escAttr(rowId)}')">Send Form 2</button></td>`;
+      } else {
+        html += `<td class="next-step-cell"><span class="next-step-tag ${step.css}">${step.label}</span></td>`;
+      }
     }
     html += '</tr>';
   });
