@@ -447,6 +447,7 @@ const BOOK_COLS = [
   { field:'moderationPassedDate', header:'Mod Passed Date',      width:150, type:'date' },
   { field:'editorScore',          header:'Book Editor Score',    width:130, type:'number' },
   { field:'llmScore1hr',          header:'1hr LLM Score',        width:120, type:'decimal' },
+  { field:'addnDetReqd',          header:'Addn. Det. Reqd.',     width:140, type:'text', readOnly:true },
   { field:'form2SentDate',        header:'Form 2 Sent Date',     width:150, type:'date' },
   { field:'form2FollowUp1Date',   header:'Form 2 Follow Up 1 Date', width:190, type:'date' },
   { field:'form2FollowUp2Date',   header:'Form 2 Follow Up 2 Date', width:190, type:'date' },
@@ -454,7 +455,6 @@ const BOOK_COLS = [
   { field:'words50kCompleted',    header:'50k Words Completed',  width:150, type:'checkbox' },
   { field:'words50kDate',         header:'50k Words Date',       width:140, type:'date' },
   { field:'llmScore5hr',          header:'5hr LLM Score',        width:120, type:'decimal' },
-  { field:'addnDetReqd',           header:'Addn. Det. Reqd.',     width:140, type:'text' },
   { field:'contractType',          header:'Contract Type',        width:150, type:'dropdown', options:[''] },
   { field:'contractingStatus',    header:'Contracting Status',   width:170, type:'dropdown', options:[''] },
   { field:'incentiveFlag',        header:'Book Incentive Flag',  width:160, type:'dropdown', options:['','Off','On'] },
@@ -732,6 +732,16 @@ function renderTable(entity) {
       const wc = typeof row.pubWC === 'number' ? row.pubWC : parseInt(String(row.pubWC || '').replace(/,/g, ''), 10);
       if (!isNaN(wc) && wc >= 10000 && !isTruthy(row.words10kCompleted)) row.words10kCompleted = true;
       if (!isNaN(wc) && wc >= 50000 && !isTruthy(row.words50kCompleted)) row.words50kCompleted = true;
+      // Auto-derive Addn. Det. Reqd.
+      const modS = String(row.moderationStatus||'').trim().toLowerCase();
+      const modPassed = ['passed','moderation passed','moderation_passed'].includes(modS);
+      const pc = String(row.authorPreContract||'').trim().toLowerCase();
+      const isPreContracted = pc && pc!=='no' && pc!=='false';
+      if (modPassed && isTruthy(row.words10kCompleted) && isPreContracted) {
+        row.addnDetReqd = (!isNaN(wc) && wc >= 38000) ? 'No' : 'Yes';
+      } else {
+        row.addnDetReqd = '';
+      }
     }
     const rowId = String(row[idField]||'');
     const isSelected = s.selected.has(rowId);
