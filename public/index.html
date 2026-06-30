@@ -498,6 +498,10 @@ function getBookNextStep(row) {
   if (showStatus && showStatus !== 'active') {
     return { label: 'Dead — Show ' + (row.showStatus||''), css: 'step-dead', alarm: 'dead' };
   }
+  const ppv = String(row.ppvTag||'').trim().toLowerCase();
+  if (ppv === 'bad' || ppv === 'average') {
+    return { label: 'Dead — PPV ' + (row.ppvTag||''), css: 'step-dead', alarm: 'dead' };
+  }
   if (!isChp1Published(row)) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
   if (!isTruthy(row.words10kCompleted)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
   const modStatus = String(row.moderationStatus||'').trim().toLowerCase();

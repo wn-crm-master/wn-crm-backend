@@ -3,6 +3,7 @@
 // Rules (checked in order):
 // 0a. If book status is NOT "approved" or "published" → dead book (reason: book status)
 // 0b. If show status is NOT "active" → dead show (reason: show status)
+// 0c. If PPV Tag is "bad" or "average" → dead book (reason: PPV)
 // 1.  Book creation is step 1 — every book in the list has been created.
 // 2.  If chp1Published is not true AND chp1PublishedDate is blank → "Awaiting Chp 1"
 // 3.  If pubWC < 10,000 (words10kCompleted not true) → "Awaiting 10k Words"
@@ -36,6 +37,11 @@ function getBookNextStep(row) {
   const showStatus = String(row.showStatus || '').trim().toLowerCase();
   if (showStatus && showStatus !== 'active') {
     return { label: 'Dead — Show ' + (row.showStatus || ''), css: 'step-dead', alarm: 'dead' };
+  }
+
+  const ppv = String(row.ppvTag || '').trim().toLowerCase();
+  if (ppv === 'bad' || ppv === 'average') {
+    return { label: 'Dead — PPV ' + (row.ppvTag || ''), css: 'step-dead', alarm: 'dead' };
   }
 
   if (!isChp1Published(row)) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
