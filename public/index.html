@@ -37,7 +37,8 @@
     .nav-link.active { background: rgba(255,255,255,0.2); color: #fff; font-weight: 600; }
     .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
     .nav-right span { font-size: 0.85rem; color: rgba(255,255,255,0.7); }
-    .nav-settings { background: none; border: none; color: rgba(255,255,255,0.75); font-size: 1.2rem; cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: all 0.15s; line-height: 1; }
+    .nav-settings { background: none; border: none; color: rgba(255,255,255,0.75); font-size: 1.5rem; cursor: pointer; padding: 6px 10px; border-radius: 6px; transition: all 0.15s; line-height: 1; }
+    .nav-date { font-size: 0.82rem; color: rgba(255,255,255,0.8); font-weight: 500; }
     .nav-settings:hover { background: rgba(255,255,255,0.15); color: #fff; }
     .nav-settings.active { background: rgba(255,255,255,0.2); color: #fff; }
     .btn-logout { background: transparent; border: 1px solid rgba(255,255,255,0.4); color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
@@ -337,6 +338,7 @@
       <div class="nav-link" onclick="showTab('books')">Books</div>
     </div>
     <div class="nav-right">
+      <span class="nav-date" id="nav-date"></span>
       <button class="nav-settings" onclick="showTab('settings')" title="Settings">&#9881;</button>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
@@ -578,7 +580,13 @@ async function submitAuth() {
   } catch(e) { msg.style.color='#e74c3c'; msg.textContent='Could not reach server. Please try again.'; }
 }
 function logout() { token=''; localStorage.removeItem('crm_token'); localStorage.removeItem('crm_email'); document.getElementById('app').style.display='none'; document.getElementById('login-screen').style.display='flex'; }
-function showApp() { document.getElementById('login-screen').style.display='none'; document.getElementById('app').style.display='block'; showTab('dashboard'); loadStats(); }
+function showApp() {
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  const ist = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
+  document.getElementById('nav-date').textContent = ist.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  showTab('dashboard'); loadStats();
+}
 
 const NAV_TAB_ORDER = ['dashboard','authors','books'];
 function showTab(name) {
