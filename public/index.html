@@ -337,6 +337,7 @@
       <div class="nav-link active" onclick="showTab('dashboard')">Dashboard</div>
       <div class="nav-link" onclick="showTab('authors')">Authors</div>
       <div class="nav-link" onclick="showTab('books')">Books</div>
+      <div class="nav-link" onclick="showTab('review')">Review</div>
     </div>
     <div class="nav-right">
       <span class="nav-date" id="nav-date"></span>
@@ -383,6 +384,13 @@
       </div>
       <div id="books-import-msg" class="inline-msg"></div>
       <div class="table-card"><div class="table-scroll"><div id="books-body"><div class="loading">Loading…</div></div></div></div>
+    </div>
+
+    <div id="tab-review" class="tab">
+      <div class="tab-toolbar">
+        <div class="title-row"><div class="page-title">Review</div></div>
+      </div>
+      <div class="table-card"><div class="table-scroll"><div id="review-body"><div class="loading">Loading…</div></div></div></div>
     </div>
 
     <div id="tab-settings" class="tab">
@@ -620,7 +628,7 @@ function showApp() {
   showTab('dashboard'); loadStats();
 }
 
-const NAV_TAB_ORDER = ['dashboard','authors','books'];
+const NAV_TAB_ORDER = ['dashboard','authors','books','review'];
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
@@ -633,9 +641,48 @@ function showTab(name) {
   if (name==='authors') loadAuthors();
   if (name==='books') loadBooks();
   if (name==='dashboard') loadStats();
+  if (name==='review') loadReview();
   if (name==='settings') loadBackups();
 }
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
+
+async function loadReview() {
+  const container = document.getElementById('review-body');
+  const res = await api('/api/books?limit=5000');
+  if (!res.data) { container.innerHTML='<div class="empty">No data</div>'; return; }
+  const books = res.data.filter(row => {
+    const step = getBookNextStep(row);
+    return step.label === 'Send for Review';
+  });
+  if (!books.length) { container.innerHTML='<div class="empty">No books ready for review</div>'; return; }
+  let html = '<table class="wide"><thead><tr>';
+  const cols = [
+    {field:'id', header:'Book ID', width:160},
+    {field:'authorId', header:'Author ID', width:160},
+    {field:'showId', header:'Show ID', width:160},
+    {field:'addnDetReqd', header:'Addn. Det. Reqd.', width:140},
+    {field:'pubWC', header:'Pub WC', width:120},
+  ];
+  cols.forEach(c => { html += `<th style="width:${c.width}px;min-width:${c.width}px;padding:8px 10px;">${c.header}</th>`; });
+  html += '</tr></thead><tbody>';
+  books.forEach(row => {
+    const wc = typeof row.pubWC==='number'?row.pubWC:parseInt(String(row.pubWC||'').replace(/,/g,''),10);
+    const modS = String(row.moderationStatus||'').trim().toLowerCase();
+    const modPassed = ['passed','moderation passed','moderation_passed'].includes(modS);
+    const pc = String(row.authorPreContract||'').trim().toLowerCase();
+    const isPreContracted = pc && pc!=='no' && pc!=='false';
+    const addn = (modPassed && isTruthy(row.words10kCompleted) && isPreContracted) ? (!isNaN(wc)&&wc>=38000?'No':'Yes') : '';
+    html += '<tr>';
+    html += `<td style="padding:8px 10px;">${row.id||''}</td>`;
+    html += `<td style="padding:8px 10px;">${row.authorId||''}</td>`;
+    html += `<td style="padding:8px 10px;">${row.showId||''}</td>`;
+    html += `<td style="padding:8px 10px;">${addn}</td>`;
+    html += `<td style="padding:8px 10px;text-align:right;">${formatNumber(row.pubWC)}</td>`;
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
 
 // ── Table rendering ────────────────────────────────────────────────
 function getStickyOffsets(cols, pinned, entity) {
