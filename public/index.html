@@ -435,10 +435,10 @@ const AUTHOR_COLS = [
   { field:'booksOFW',               header:'Books OFW',                width:110, type:'rollup' },
 ];
 const BOOK_COLS = [
+  { field:'title',                header:'Book Title',           width:200 },
   { field:'id',                   header:'Book ID',              width:140 },
   { field:'authorId',             header:'Author ID',            width:160 },
   { field:'authorPreContract',   header:'Author Pre-Contract',   width:180, type:'text', readOnly:true },
-  { field:'title',                header:'Book Title',           width:200 },
   { field:'showId',               header:'Show ID',              width:120 },
   { field:'showTitle',            header:'Show Title',           width:180 },
   { field:'createDate',           header:'Book Create Date',     width:140, type:'date' },
@@ -490,7 +490,7 @@ let token = localStorage.getItem('crm_token') || '';
 
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
-  books:   { data: [], sortedData: [], pinned: new Set(['id']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() }
+  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() }
 };
 
 // Active filter dropdown context
@@ -697,6 +697,7 @@ function renderTable(entity) {
   const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
   const s = state[entity];
   const idField = entity==='authors'?'uid':'id';
+  const fixedField = entity==='authors'?'uid':'title';
   const special = entity==='authors'?SPECIAL_AUTHORS:SPECIAL_BOOKS;
 
   // Sort
@@ -733,7 +734,7 @@ function renderTable(entity) {
   }
   for (const col of cols) {
     const isSticky = s.pinned.has(col.field);
-    const isPinned = isSticky && col.field!==idField;
+    const isPinned = isSticky && col.field!==fixedField;
     const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
     const sortDir = s.sort.field===col.field ? s.sort.dir : null;
     const filterSet = s.filter[col.field] || new Set();
@@ -747,7 +748,7 @@ function renderTable(entity) {
           <span class="th-icons">
             <button class="sort-btn ${sortDir==='asc'?'active':''}" title="Sort A→Z" onclick="setSort('${entity}','${col.field}','asc')">▲</button>
             <button class="sort-btn ${sortDir==='desc'?'active':''}" title="Sort Z→A" onclick="setSort('${entity}','${col.field}','desc')">▼</button>
-            ${col.field!==idField?`<button class="pin-btn ${isSticky?'pinned':''}" title="${isSticky?'Unpin':'Pin column'}" onclick="togglePin('${entity}','${col.field}')">📌</button>`:''}
+            ${col.field!==fixedField?`<button class="pin-btn ${isSticky?'pinned':''}" title="${isSticky?'Unpin':'Pin column'}" onclick="togglePin('${entity}','${col.field}')">📌</button>`:''}
           </span>
         </div>
         <div class="th-filter">
@@ -806,7 +807,7 @@ function renderTable(entity) {
     }
     for (const col of cols) {
       const isSticky = s.pinned.has(col.field);
-      const isPinned = isSticky && col.field!==idField;
+      const isPinned = isSticky && col.field!==fixedField;
       const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
       const rawVal = row[col.field]!==undefined && row[col.field]!==null ? row[col.field] : '';
       const isId = col.field===idField;
@@ -876,9 +877,9 @@ function renderTable(entity) {
     const isSticky = s.pinned.has(col.field);
     const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
     const ctype = col.type||'text';
-    const isId = col.field===idField;
+    const isFixed = col.field===fixedField;
     let cls = isSticky?'is-sticky':'';
-    if (isId) {
+    if (isFixed) {
       html += `<td class="${cls}" style="${stStyle}" id="${entity}-totals-label">Total</td>`;
     } else if (['number','decimal','rollup'].includes(ctype)) {
       html += `<td class="${cls} number-cell" style="${stStyle}" id="tot-${entity}-${col.field}"></td>`;
