@@ -415,6 +415,7 @@ const AUTHOR_COLS = [
 const BOOK_COLS = [
   { field:'id',                   header:'Book ID',              width:140 },
   { field:'authorId',             header:'Author ID',            width:160 },
+  { field:'authorPreContract',   header:'Author Pre-Contract',   width:180, type:'text', readOnly:true },
   { field:'title',                header:'Book Title',           width:200 },
   { field:'showId',               header:'Show ID',              width:120 },
   { field:'showTitle',            header:'Show Title',           width:180 },
@@ -673,7 +674,7 @@ function renderTable(entity) {
       let tdClick = '';
       let tdContent = '';
 
-      if (isId) {
+      if (isId || col.readOnly) {
         tdContent = escHtml(String(rawVal));
       } else if (ctype === 'rollup') {
         tdClass += 'rollup-cell';
@@ -1129,7 +1130,7 @@ function openMassUpdate(entity) {
   const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
   const idField = entity==='authors'?'uid':'id';
   // Exclude id, rollup fields from the dropdown
-  const editable = cols.filter(c => c.field!==idField && c.type!=='rollup');
+  const editable = cols.filter(c => c.field!==idField && c.type!=='rollup' && !c.readOnly);
   const sel = document.getElementById('mu-field-select');
   sel.innerHTML = '<option value="">— Select field —</option>' +
     editable.map(c => `<option value="${c.field}" data-type="${c.type||'text'}">${c.header}</option>`).join('');

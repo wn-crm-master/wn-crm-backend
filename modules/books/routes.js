@@ -12,7 +12,15 @@ function register(app, getDb, authMiddleware) {
       if (authorId) query.authorId = authorId;
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const total = await db.collection('books').countDocuments(query);
-      const data = await db.collection('books').find(query).skip(skip).limit(parseInt(limit)).toArray();
+      const pipeline = [
+        ...(Object.keys(query).length ? [{ $match: query }] : []),
+        { $lookup: { from: 'authors', localField: 'authorId', foreignField: 'uid', as: '_author' } },
+        { $addFields: { authorPreContract: { $ifNull: [{ $arrayElemAt: ['$_author.preContractedTag', 0] }, ''] } } },
+        { $project: { _author: 0 } },
+        { $skip: skip },
+        { $limit: parseInt(limit) }
+      ];
+      const data = await db.collection('books').aggregate(pipeline).toArray();
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
     } catch (err) {
       res.status(500).json({ error: err.message });
