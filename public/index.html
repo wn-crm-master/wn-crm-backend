@@ -72,7 +72,7 @@
 
     /* Table */
     .table-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-    .table-scroll { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; max-height: calc(100vh - 220px); border-radius: 10px; }
+    .table-scroll { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; max-height: calc(100vh - 160px); border-radius: 10px; }
     table { border-collapse: collapse; table-layout: fixed; }
     table.wide { min-width: max-content; }
 
@@ -88,8 +88,8 @@
     th.has-active-filter { background: #e8edff; }
     th.has-active-filter.is-sticky { background: #dce3ff; }
     th.has-active-filter .th-label { color: #3b6cf7; }
-    th.sel-cell { z-index: 22; }
-    tfoot { position: sticky; bottom: 0; z-index: 20; }
+    th.sel-cell { z-index: 22; vertical-align: middle; }
+    tfoot { position: sticky; bottom: 0; z-index: 20; box-shadow: 0 -1px 3px rgba(0,0,0,0.08); }
     tfoot td { background: #f0f2f5; font-weight: 600; font-size: 0.82rem; color: #1a2340; border-top: 2px solid #d0d4e0; border-bottom: none; }
     tfoot td.is-sticky { z-index: 22; background: #e4e7f2; }
     tfoot td.sel-cell { background: #e4e7f2; }
@@ -226,8 +226,8 @@
     td.del-cell, th.del-cell { text-align: center; width: 36px; min-width: 36px; }
     .row-del-btn { background: none; border: none; cursor: pointer; color: #ddd; font-size: 0.9rem; padding: 2px 4px; border-radius: 4px; line-height: 1; }
     .row-del-btn:hover { color: #e74c3c; background: #fdecea; }
-    td.sel-cell, th.sel-cell { text-align: center; width: 36px; min-width: 36px; position: sticky; left: 0; z-index: 3; background: #fff; }
-    th.sel-cell { background: #f8f9fc; z-index: 4; }
+    td.sel-cell, th.sel-cell { text-align: center; width: 36px; min-width: 36px; position: sticky; left: 0; z-index: 3; background: #fff; padding: 6px 0; }
+    th.sel-cell { background: #f8f9fc; z-index: 4; padding: 8px 0; }
     tr.row-selected td { background: #eef3ff !important; }
     tr.row-selected td.sel-cell { background: #eef3ff !important; }
     .row-cb { width: 15px; height: 15px; cursor: pointer; accent-color: #3b6cf7; }
