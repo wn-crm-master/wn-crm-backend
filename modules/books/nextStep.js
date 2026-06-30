@@ -7,9 +7,12 @@
 // 1.  Book creation is step 1 — every book in the list has been created.
 // 2.  If chp1Published is not true AND chp1PublishedDate is blank → "Awaiting Chp 1"
 // 3.  If pubWC < 10,000 (words10kCompleted not true) → "Awaiting 10k Words"
-// 4.  If 10k done and moderationStatus = "Passed"/"Moderation Passed" → "Mod Passed ✓"
-// 5.  If 10k done and moderationStatus = "Failed"/"Moderation Failed" → "Mod Failed"
-// 6.  If 10k done but moderation not yet decided → "Awaiting Moderation"
+// 4.  If 10k done and moderationStatus passed AND editorScore=10 AND pubWC>10k:
+//     4a. If author is pre-contracted → "Send Form 2"
+//     4b. If not pre-contracted → "Awaiting 50k Words"
+// 5.  If 10k done and moderationStatus = "Passed" (but editor/WC not met) → "Mod Passed ✓"
+// 6.  If 10k done and moderationStatus = "Failed"/"Moderation Failed" → "Mod Failed"
+// 7.  If 10k done but moderation not yet decided → "Awaiting Moderation"
 
 const ALIVE_BOOK_STATUSES = new Set(['approved', 'published']);
 
@@ -48,7 +51,18 @@ function getBookNextStep(row) {
   if (!isTruthy(row.words10kCompleted)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
 
   const modStatus = String(row.moderationStatus || '').trim().toLowerCase();
-  if (['passed','moderation passed','moderation_passed'].includes(modStatus)) return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
+  if (['passed','moderation passed','moderation_passed'].includes(modStatus)) {
+    const edScore = Number(row.editorScore);
+    const wc = typeof row.pubWC === 'number' ? row.pubWC : parseInt(String(row.pubWC || '').replace(/,/g, ''), 10);
+    if (edScore === 10 && !isNaN(wc) && wc > 10000) {
+      const preContract = String(row.authorPreContract || '').trim().toLowerCase();
+      if (preContract && preContract !== '' && preContract !== 'no' && preContract !== 'false') {
+        return { label: 'Send Form 2', css: 'step-action', alarm: 'pending' };
+      }
+      return { label: 'Awaiting 50k Words', css: 'step-awaiting', alarm: 'pending' };
+    }
+    return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
+  }
   if (['failed','moderation failed','moderation_failed'].includes(modStatus)) return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent' };
   return { label: 'Awaiting Moderation', css: 'step-awaiting', alarm: 'pending' };
 }

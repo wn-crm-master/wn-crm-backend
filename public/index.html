@@ -113,6 +113,7 @@
     .step-awaiting { background: #fff3e0; color: #e65100; }
     .step-done { background: #e8f5e9; color: #2e7d32; }
     .step-failed { background: #fdecea; color: #c62828; }
+    .step-action { background: #e3f2fd; color: #1565c0; }
     .step-dead { background: #f5f5f5; color: #9e9e9e; }
 
     /* Alarm column (books only) */
@@ -515,7 +516,16 @@ function getBookNextStep(row) {
   if (!isChp1Published(row)) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
   if (!isTruthy(row.words10kCompleted)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
   const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
-  if (['passed','moderation passed','moderation_passed'].includes(modStatus)) return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
+  if (['passed','moderation passed','moderation_passed'].includes(modStatus)) {
+    const edScore = Number(row.editorScore);
+    const wc = typeof row.pubWC==='number'?row.pubWC:parseInt(String(row.pubWC||'').replace(/,/g,''),10);
+    if (edScore===10 && !isNaN(wc) && wc>10000) {
+      const pc = String(row.authorPreContract||'').trim().toLowerCase();
+      if (pc && pc!=='no' && pc!=='false') return { label: 'Send Form 2', css: 'step-action', alarm: 'pending' };
+      return { label: 'Awaiting 50k Words', css: 'step-awaiting', alarm: 'pending' };
+    }
+    return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
+  }
   if (['failed','moderation failed','moderation_failed'].includes(modStatus)) return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent' };
   return { label: 'Awaiting Moderation', css: 'step-awaiting', alarm: 'pending' };
 }
