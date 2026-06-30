@@ -102,6 +102,7 @@
     .step-awaiting { background: #fff3e0; color: #e65100; }
     .step-done { background: #e8f5e9; color: #2e7d32; }
     .step-failed { background: #fdecea; color: #c62828; }
+    .step-dead { background: #f5f5f5; color: #9e9e9e; }
 
     /* Alarm column (books only) */
     td.alarm-cell, th.alarm-cell { text-align: center; width: 44px; min-width: 44px; position: sticky; left: 36px; z-index: 3; background: #fff; }
@@ -486,6 +487,14 @@ function isBlankish(val) {
 }
 
 function getBookNextStep(row) {
+  const bookStatus = String(row.status||'').trim().toLowerCase();
+  if (bookStatus && bookStatus !== 'approved' && bookStatus !== 'published') {
+    return { label: 'Dead — Book ' + (row.status||''), css: 'step-dead', alarm: 'dead' };
+  }
+  const showStatus = String(row.showStatus||'').trim().toLowerCase();
+  if (showStatus && showStatus !== 'active') {
+    return { label: 'Dead — Show ' + (row.showStatus||''), css: 'step-dead', alarm: 'dead' };
+  }
   if (!isChp1Published(row)) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
   if (!isTruthy(row.words10kCompleted)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
   const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
@@ -640,7 +649,12 @@ function renderTable(entity) {
     </th>`;
   }
   html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
-  if (entity==='books') html += '<th class="next-step-cell"><div class="th-inner"><div class="th-top"><span class="th-label">Next Step</span></div></div></th>';
+  if (entity==='books') {
+    const nsFilter = s.filter['_nextStep'] || new Set();
+    const nsHasFilter = nsFilter.size > 0;
+    const nsLabel = nsHasFilter ? nsFilter.size+' selected' : 'All';
+    html += `<th class="next-step-cell ${nsHasFilter?'has-active-filter':''}"><div class="th-inner"><div class="th-top"><span class="th-label">Next Step</span></div><div class="th-filter"><button class="filter-btn ${nsHasFilter?'has-filter':''}" id="fbtn-${entity}-_nextStep" onclick="openFD(event,'${entity}','_nextStep',this)"><span class="filter-btn-text">${nsLabel}</span><span class="filter-btn-arrow">▾</span></button></div></div></th>`;
+  }
   html += '</tr></thead><tbody>';
 
   sorted.forEach((row, idx) => {
@@ -660,7 +674,7 @@ function renderTable(entity) {
     html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)"></td>`;
     if (entity==='books') {
       const alarmVal = step.alarm || 'none';
-      const icon = step.alarm==='urgent' ? '🔴' : step.alarm==='pending' ? '🟠' : '—';
+      const icon = step.alarm==='dead' ? '⚫' : step.alarm==='urgent' ? '🔴' : step.alarm==='pending' ? '🟠' : '—';
       html += `<td class="alarm-cell" data-alarm="${alarmVal}" title="${step.label}"><span class="alarm-icon alarm-${alarmVal}">${icon}</span></td>`;
     }
     for (const col of cols) {
@@ -752,6 +766,7 @@ function renderTable(entity) {
 
 function getRowFilterVal(row, field) {
   if (field === '_alarm') return getBookNextStep(row).alarm || 'none';
+  if (field === '_nextStep') return getBookNextStep(row).label;
   return String(row[field]??'');
 }
 
@@ -834,7 +849,9 @@ function openFD(event, entity, field, btn) {
   let dataVals;
   if (field === '_alarm') {
     dataVals = new Set(s.data.map(r => getBookNextStep(r).alarm || 'none'));
-    ['urgent','pending','none'].forEach(v => dataVals.add(v));
+    ['dead','urgent','pending','none'].forEach(v => dataVals.add(v));
+  } else if (field === '_nextStep') {
+    dataVals = new Set(s.data.map(r => getBookNextStep(r).label));
   } else {
     dataVals = new Set(s.data.map(r => String(r[field]??'')));
     if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
@@ -864,7 +881,7 @@ function closeFD() {
   fdCtx = null;
 }
 
-const ALARM_LABELS = { urgent: '🔴 Urgent (Failed)', pending: '🟠 Action Needed', none: '— No Alert' };
+const ALARM_LABELS = { dead: '⚫ Dead', urgent: '🔴 Urgent (Failed)', pending: '🟠 Action Needed', none: '— No Alert' };
 
 function renderFDOptions(vals, selected, search) {
   const container = document.getElementById('fd-options');
