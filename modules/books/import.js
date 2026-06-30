@@ -35,6 +35,11 @@ function register(app, getDb, authMiddleware) {
         if (!isNaN(wc) && wc >= 50000 && !b.words50kCompleted) b.words50kCompleted = true;
       }
 
+      for (const b of books) {
+        if (b.incentiveFlag === '0' || b.incentiveFlag === 0) b.incentiveFlag = 'Off';
+        if (b.incentiveFlag === '1' || b.incentiveFlag === 1) b.incentiveFlag = 'On';
+      }
+
       const result = await importRecords(db, 'books', 'books_backups', books, 'id', SPECIAL_FIELDS);
       res.json({ success: true, ...result, stubAuthorsCreated: stubsCreated });
     } catch (err) {

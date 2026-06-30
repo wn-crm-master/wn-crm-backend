@@ -22,6 +22,11 @@ function register(app, getDb, authMiddleware) {
         return r;
       });
 
+      cleaned.forEach(a => {
+        if (a.incentiveFlag === '0' || a.incentiveFlag === 0) a.incentiveFlag = 'Off';
+        if (a.incentiveFlag === '1' || a.incentiveFlag === 1) a.incentiveFlag = 'On';
+      });
+
       const result = await importRecords(db, 'authors', 'authors_backups', cleaned, 'uid', SPECIAL_FIELDS);
       res.json({ success: true, ...result });
     } catch (err) {
