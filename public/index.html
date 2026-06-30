@@ -513,7 +513,7 @@ function daysAgo(dateVal) {
 }
 
 function getForm2Step(row) {
-  if (!isBlankish(row.form2RecdDate)) return null;
+  if (!isBlankish(row.form2RecdDate)) return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
   const fu2Days = daysAgo(row.form2FollowUp2Date);
   if (fu2Days >= 0) {
     if (fu2Days >= 4) return { label: 'Awaiting Form 2 Response or 50k Words', css: 'step-awaiting', alarm: 'pending' };
@@ -796,7 +796,7 @@ function renderTable(entity) {
     }
     html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(rowId)}',this)">✕</button></td>`;
     if (entity==='books') {
-      if (step.label==='Send Form 2' || step.label==='Send Form 2 Follow Up 1' || step.label==='Send Form 2 Follow Up 2') {
+      if (step.label.startsWith('Send ')) {
         html += `<td class="next-step-cell"><button class="btn-send-form2" onclick="sendForm2('${escAttr(rowId)}','${escAttr(step.label)}')">${step.label}</button></td>`;
       } else {
         html += `<td class="next-step-cell"><span class="next-step-tag ${step.css}">${step.label}</span></td>`;

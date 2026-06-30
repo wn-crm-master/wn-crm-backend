@@ -47,7 +47,7 @@ function daysAgo(dateVal) {
 }
 
 function getForm2Step(row) {
-  if (!isBlankish(row.form2RecdDate)) return null;
+  if (!isBlankish(row.form2RecdDate)) return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
 
   const fu2Days = daysAgo(row.form2FollowUp2Date);
   if (fu2Days >= 0) {
