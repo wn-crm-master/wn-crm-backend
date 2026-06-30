@@ -4,7 +4,7 @@ const { MongoClient } = require('mongodb');
 const cors = require('cors');
 const path = require('path');
 
-const { createAuthMiddleware, register: registerAuth } = require('./modules/auth');
+const { createAuthMiddleware, seedUsers, register: registerAuth } = require('./modules/auth');
 const { register: registerAuthorRoutes } = require('./modules/authors/routes');
 const { register: registerAuthorImport } = require('./modules/authors/import');
 const { register: registerBookRoutes } = require('./modules/books/routes');
@@ -34,6 +34,7 @@ MongoClient.connect(MONGO_URI)
     db.collection('users').createIndex({ email: 1 }, { unique: true }).catch(() => {});
     db.collection('authors_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
     db.collection('books_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
+    seedUsers(db).catch(err => console.error('User seed error:', err));
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);

@@ -1,6 +1,10 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
+const SEED_USERS = [
+  { email: 'pal.mohit@pocketfm.com', password: 'Pocketfm@2026', name: 'Mohit Pal' },
+];
+
 function createAuthMiddleware(JWT_SECRET) {
   return (req, res, next) => {
     const token = req.headers.authorization?.split(' ')[1];
@@ -14,23 +18,18 @@ function createAuthMiddleware(JWT_SECRET) {
   };
 }
 
-function register(app, getDb, JWT_SECRET) {
-  app.post('/api/auth/register', async (req, res) => {
-    try {
-      const db = getDb();
-      const { email, password, name } = req.body;
-      if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
-      const existing = await db.collection('users').findOne({ email });
-      if (existing) return res.status(400).json({ error: 'User already exists' });
-      const hash = await bcrypt.hash(password, 10);
-      const result = await db.collection('users').insertOne({ email, password: hash, name, createdAt: new Date() });
-      const token = jwt.sign({ userId: result.insertedId, email }, JWT_SECRET, { expiresIn: '30d' });
-      res.json({ token, user: { id: result.insertedId, email, name } });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
+async function seedUsers(db) {
+  for (const u of SEED_USERS) {
+    const existing = await db.collection('users').findOne({ email: u.email });
+    if (!existing) {
+      const hash = await bcrypt.hash(u.password, 10);
+      await db.collection('users').insertOne({ email: u.email, password: hash, name: u.name, createdAt: new Date() });
+      console.log('Seeded user:', u.email);
     }
-  });
+  }
+}
 
+function register(app, getDb, JWT_SECRET) {
   app.post('/api/auth/login', async (req, res) => {
     try {
       const db = getDb();
@@ -47,4 +46,4 @@ function register(app, getDb, JWT_SECRET) {
   });
 }
 
-module.exports = { createAuthMiddleware, register };
+module.exports = { createAuthMiddleware, seedUsers, register };

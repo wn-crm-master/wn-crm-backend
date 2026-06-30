@@ -25,8 +25,6 @@
     .btn-danger:hover { background: #333; }
     .btn-restore { background: #c0272d; color: #fff; padding: 6px 14px; font-size: 0.82rem; border: none; border-radius: 6px; cursor: pointer; }
     .btn-restore:hover { background: #a32126; }
-    .login-toggle { text-align: center; margin-top: 16px; font-size: 0.85rem; color: #888; }
-    .login-toggle a { color: #c0272d; cursor: pointer; text-decoration: underline; }
     #login-msg { margin-top: 12px; text-align: center; font-size: 0.85rem; }
 
     /* App */
@@ -324,7 +322,6 @@
     <div class="form-group"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••" /></div>
     <button class="btn btn-primary btn-login" onclick="submitAuth()">Sign In</button>
     <div id="login-msg"></div>
-    <div class="login-toggle"><span id="toggle-text">Don't have an account?</span> <a onclick="toggleMode()">Register</a></div>
   </div>
 </div>
 
@@ -477,7 +474,6 @@ const SPECIAL_BOOKS   = new Set(['authorId','title','showId','showTitle','create
 // ── State ──────────────────────────────────────────────────────────
 const BASE = '';
 let token = localStorage.getItem('crm_token') || '';
-let isRegister = false;
 
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -567,13 +563,6 @@ function api(path, opts={}) {
 }
 
 // ── Auth ────────────────────────────────────────────────────────────
-function toggleMode() {
-  isRegister = !isRegister;
-  document.getElementById('login-subtitle').textContent = isRegister ? 'Create a new account' : 'Sign in to your account';
-  document.getElementById('toggle-text').textContent = isRegister ? 'Already have an account?' : "Don't have an account?";
-  document.querySelector('.btn-login').textContent = isRegister ? 'Register' : 'Sign In';
-  document.getElementById('login-msg').textContent = '';
-}
 async function submitAuth() {
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
@@ -581,9 +570,9 @@ async function submitAuth() {
   if (!email||!password) { msg.style.color='#e74c3c'; msg.textContent='Please enter email and password.'; return; }
   msg.style.color='#888'; msg.textContent='Signing in…';
   try {
-    const res = await api(isRegister?'/api/auth/register':'/api/auth/login', { method:'POST', body:JSON.stringify({ email, password }) });
+    const res = await api('/api/auth/login', { method:'POST', body:JSON.stringify({ email, password }) });
     if (res.token) { token=res.token; localStorage.setItem('crm_token',token); localStorage.setItem('crm_email',(res.user&&res.user.email)||email); showApp(); }
-    else { msg.style.color='#e74c3c'; msg.textContent=res.error||'Authentication failed.'; }
+    else { msg.style.color='#e74c3c'; msg.textContent=res.error||'Invalid credentials.'; }
   } catch(e) { msg.style.color='#e74c3c'; msg.textContent='Could not reach server. Please try again.'; }
 }
 function logout() { token=''; localStorage.removeItem('crm_token'); localStorage.removeItem('crm_email'); document.getElementById('app').style.display='none'; document.getElementById('login-screen').style.display='flex'; }
