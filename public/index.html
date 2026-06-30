@@ -655,7 +655,7 @@ function renderTable(entity) {
   let sorted = [...s.data];
   if (s.sort.field) {
     const sf=s.sort.field, dir=s.sort.dir;
-    sorted.sort((a,b)=>{ const av=a[sf]??'',bv=b[sf]??''; const n=Number(av),m=Number(bv); const cmp=(!isNaN(n)&&!isNaN(m))?n-m:String(av).localeCompare(String(bv),undefined,{numeric:true}); return dir==='asc'?cmp:-cmp; });
+    sorted.sort((a,b)=>{ const av=a[sf]??'',bv=b[sf]??''; const ns=String(av).replace(/,/g,''),ms=String(bv).replace(/,/g,''); const n=Number(ns),m=Number(ms); const cmp=(ns!==''&&ms!==''&&!isNaN(n)&&!isNaN(m))?n-m:String(av).localeCompare(String(bv),undefined,{numeric:true}); return dir==='asc'?cmp:-cmp; });
   }
   s.sortedData = sorted;
 
