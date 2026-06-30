@@ -732,20 +732,23 @@ function renderTable(entity) {
       const wc = typeof row.pubWC === 'number' ? row.pubWC : parseInt(String(row.pubWC || '').replace(/,/g, ''), 10);
       if (!isNaN(wc) && wc >= 10000 && !isTruthy(row.words10kCompleted)) row.words10kCompleted = true;
       if (!isNaN(wc) && wc >= 50000 && !isTruthy(row.words50kCompleted)) row.words50kCompleted = true;
-      // Auto-derive Addn. Det. Reqd.
-      const modS = String(row.moderationStatus||'').trim().toLowerCase();
-      const modPassed = ['passed','moderation passed','moderation_passed'].includes(modS);
-      const pc = String(row.authorPreContract||'').trim().toLowerCase();
-      const isPreContracted = pc && pc!=='no' && pc!=='false';
-      if (modPassed && isTruthy(row.words10kCompleted) && isPreContracted) {
-        row.addnDetReqd = (!isNaN(wc) && wc >= 38000) ? 'No' : 'Yes';
-      } else {
-        row.addnDetReqd = '';
-      }
     }
     const rowId = String(row[idField]||'');
     const isSelected = s.selected.has(rowId);
     const step = entity==='books' ? getBookNextStep(row) : null;
+    if (entity==='books') {
+      const isDead = step && step.alarm === 'dead';
+      const modS = String(row.moderationStatus||'').trim().toLowerCase();
+      const modPassed = ['passed','moderation passed','moderation_passed'].includes(modS);
+      const pc = String(row.authorPreContract||'').trim().toLowerCase();
+      const isPreContracted = pc && pc!=='no' && pc!=='false';
+      const wc2 = typeof row.pubWC === 'number' ? row.pubWC : parseInt(String(row.pubWC || '').replace(/,/g, ''), 10);
+      if (!isDead && modPassed && isTruthy(row.words10kCompleted) && isPreContracted) {
+        row.addnDetReqd = (!isNaN(wc2) && wc2 >= 38000) ? 'No' : 'Yes';
+      } else {
+        row.addnDetReqd = '';
+      }
+    }
     html += `<tr data-idx="${idx}" data-id="${escAttr(rowId)}" class="${isSelected?'row-selected':''}">`;
     html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)"></td>`;
     if (entity==='books') {
