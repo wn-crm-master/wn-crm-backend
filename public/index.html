@@ -504,7 +504,7 @@ function isBlankish(val) {
 
 function getBookNextStep(row) {
   const bookStatus = String(row.status||'').trim().toLowerCase();
-  if (bookStatus && bookStatus !== 'approved' && bookStatus !== 'published') {
+  if (bookStatus && bookStatus !== 'approved' && bookStatus !== 'published' && bookStatus !== 'draft') {
     return { label: 'Dead — Book ' + (row.status||''), css: 'step-dead', alarm: 'dead' };
   }
   const showStatus = String(row.showStatus||'').trim().toLowerCase();

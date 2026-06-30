@@ -14,7 +14,7 @@
 // 6.  If 10k done and moderationStatus = "Failed"/"Moderation Failed" → "Mod Failed"
 // 7.  If 10k done but moderation not yet decided → "Awaiting Moderation"
 
-const ALIVE_BOOK_STATUSES = new Set(['approved', 'published']);
+const ALIVE_BOOK_STATUSES = new Set(['approved', 'published', 'draft']);
 
 function isBlankish(val) {
   if (val === null || val === undefined) return true;
