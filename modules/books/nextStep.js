@@ -1,18 +1,25 @@
-// Book Journey: Book Status → Show Status → Chp1 Published → 10k Words → Moderation
+// Book Journey: Dead checks → Chp1 → 10k Words → Moderation → Form 2 cycle → 50k Words
 //
 // Rules (checked in order):
-// 0a. If book status is NOT "approved" or "published" → dead book (reason: book status)
-// 0b. If show status is NOT "active" → dead show (reason: show status)
-// 0c. If PPV Tag is "bad" or "average" → dead book (reason: PPV)
-// 1.  Book creation is step 1 — every book in the list has been created.
-// 2.  If chp1Published is not true AND chp1PublishedDate is blank → "Awaiting Chp 1"
-// 3.  If pubWC < 10,000 (words10kCompleted not true) → "Awaiting 10k Words"
-// 4.  If 10k done and moderationStatus passed AND editorScore=10 AND pubWC>10k:
-//     4a. If author is pre-contracted → "Send Form 2"
-//     4b. If not pre-contracted → "Awaiting 50k Words"
-// 5.  If 10k done and moderationStatus = "Passed" (but editor/WC not met) → "Mod Passed ✓"
-// 6.  If 10k done and moderationStatus = "Failed"/"Moderation Failed" → "Mod Failed"
-// 7.  If 10k done but moderation not yet decided → "Awaiting Moderation"
+// 0a. If book status is NOT approved/published/draft → dead (reason: book status)
+// 0b. If show status is NOT active → dead (reason: show status)
+// 0c. If PPV Tag is bad/average → dead (reason: PPV)
+// 1.  If chp1 not published → "Awaiting Chp 1"
+// 2.  If pubWC < 10k → "Awaiting 10k Words"
+// 3.  Moderation check:
+//     - Failed → "Mod Failed"
+//     - Not decided → "Awaiting Moderation"
+//     - Passed + editorScore=10 + pubWC>10k + pre-contracted → Form 2 cycle
+//     - Passed otherwise → "Mod Passed ✓" or "Awaiting 50k Words"
+// 4.  Form 2 cycle (pre-contracted path):
+//     - Form 2 Recd → done (fall through to 50k check or complete)
+//     - FU2 sent, >=4 days ago → "Awaiting Form 2 Response or 50k Words"
+//     - FU2 sent, <4 days → "Awaiting Form 2 Response"
+//     - FU1 sent, >=3 days ago → "Send Form 2 Follow Up 2" (alarm)
+//     - FU1 sent, <3 days → "Awaiting Form 2 Response"
+//     - Form 2 sent, >=2 days ago → "Send Form 2 Follow Up 1" (alarm)
+//     - Form 2 sent, <2 days → "Awaiting Form 2 Response"
+//     - Form 2 not sent → "Send Form 2"
 
 const ALIVE_BOOK_STATUSES = new Set(['approved', 'published', 'draft']);
 
@@ -29,6 +36,38 @@ function isTruthy(val) {
 
 function isChp1Published(row) {
   return isTruthy(row.chp1Published) || (row.chp1PublishedDate && !isBlankish(row.chp1PublishedDate));
+}
+
+function daysAgo(dateVal) {
+  if (isBlankish(dateVal)) return -1;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return -1;
+  const now = new Date();
+  return Math.floor((now - d) / (1000 * 60 * 60 * 24));
+}
+
+function getForm2Step(row) {
+  if (!isBlankish(row.form2RecdDate)) return null;
+
+  const fu2Days = daysAgo(row.form2FollowUp2Date);
+  if (fu2Days >= 0) {
+    if (fu2Days >= 4) return { label: 'Awaiting Form 2 Response or 50k Words', css: 'step-awaiting', alarm: 'pending' };
+    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
+  }
+
+  const fu1Days = daysAgo(row.form2FollowUp1Date);
+  if (fu1Days >= 0) {
+    if (fu1Days >= 3) return { label: 'Send Form 2 Follow Up 2', css: 'step-action', alarm: 'urgent' };
+    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
+  }
+
+  const sentDays = daysAgo(row.form2SentDate);
+  if (sentDays >= 0) {
+    if (sentDays >= 2) return { label: 'Send Form 2 Follow Up 1', css: 'step-action', alarm: 'urgent' };
+    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
+  }
+
+  return { label: 'Send Form 2', css: 'step-action', alarm: 'pending' };
 }
 
 function getBookNextStep(row) {
@@ -57,7 +96,8 @@ function getBookNextStep(row) {
     if (edScore === 10 && !isNaN(wc) && wc > 10000) {
       const preContract = String(row.authorPreContract || '').trim().toLowerCase();
       if (preContract && preContract !== '' && preContract !== 'no' && preContract !== 'false') {
-        return { label: 'Send Form 2', css: 'step-action', alarm: 'pending' };
+        const form2 = getForm2Step(row);
+        if (form2) return form2;
       }
       return { label: 'Awaiting 50k Words', css: 'step-awaiting', alarm: 'pending' };
     }
