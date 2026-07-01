@@ -814,11 +814,16 @@ function renderTable(entity) {
       const ctype = col.type || 'text';
       const rowIdEsc = escAttr(rowId);
 
+      const form2Fields = new Set(['form2SentDate','form2FollowUp1Date','form2FollowUp2Date','form2RecdDate']);
+      const isForm2NA = entity==='books' && form2Fields.has(col.field) && row.addnDetReqd === 'No';
+
       let tdClass = (isSticky?'is-sticky ':'')+( isPinned?'is-pinned ':'');
       let tdClick = '';
       let tdContent = '';
 
-      if (isId || col.readOnly) {
+      if (isForm2NA) {
+        tdContent = 'NA';
+      } else if (isId || col.readOnly) {
         tdContent = escHtml(String(rawVal));
       } else if (ctype === 'rollup') {
         tdClass += 'rollup-cell';
