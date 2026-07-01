@@ -396,6 +396,12 @@
     <div id="tab-settings" class="tab">
       <div class="page-title">Settings</div>
       <div class="settings-section">
+        <h3>Google Sheet Sync</h3>
+        <p>Sync Form 2 received dates from the Google Form responses sheet. Runs automatically daily at 9 AM IST.</p>
+        <button class="import-btn" onclick="syncForm2Sheet()" id="btn-sync-form2">Sync Now</button>
+        <span id="sync-form2-status" style="margin-left:12px;font-size:0.85rem;"></span>
+      </div>
+      <div class="settings-section">
         <h3>Data Backups &amp; Rollback</h3>
         <p>Backups are created automatically before any import or edit overwrites existing data. Kept for 24 hours.</p>
         <div id="backups-body"><div class="loading">Loading…</div></div>
@@ -1634,6 +1640,24 @@ async function confirmMapping() {
 function setMsg(el,type,text){
   el.className='inline-msg '+type;
   el.innerHTML=escHtml(text)+'<button class="msg-close" onclick="this.parentElement.className=\'inline-msg\'" title="Dismiss">✕</button>';
+}
+
+// ── Sheet Sync ────────────────────────────────────────────────────
+async function syncForm2Sheet() {
+  const btn = document.getElementById('btn-sync-form2');
+  const status = document.getElementById('sync-form2-status');
+  btn.disabled = true; btn.textContent = 'Syncing...';
+  status.textContent = '';
+  try {
+    const res = await api('/api/sync/form2', 'POST');
+    if (res.error) { status.textContent = 'Error: ' + res.error; status.style.color = '#c0272d'; }
+    else {
+      status.style.color = '#2e7d32';
+      status.textContent = `Done — ${res.matched} matched, ${res.updated} updated, ${res.unmatched} unmatched`;
+      if (res.updated > 0) loadData('books');
+    }
+  } catch (e) { status.textContent = 'Error: ' + e.message; status.style.color = '#c0272d'; }
+  btn.disabled = false; btn.textContent = 'Sync Now';
 }
 
 // ── Backups ────────────────────────────────────────────────────────
