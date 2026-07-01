@@ -3,6 +3,10 @@ const bcrypt = require('bcryptjs');
 
 const SEED_USERS = [
   { email: 'pal.mohit@pocketfm.com', password: 'Pocketfm@2026', name: 'Mohit Pal' },
+  { email: 'vatsal.rustagi@pocketfm.com', password: 'Pocketfm@2026', name: 'Vatsal Rustagi' },
+  { email: 'lalit@pocketfm.com', password: 'Pocketfm@2026', name: 'Lalit' },
+  { email: 'prateek@pocketfm.com', password: 'Pocketfm@2026', name: 'Prateek' },
+  { email: 'rohan@pocketfm.com', password: 'Pocketfm@2026', name: 'Rohan' },
 ];
 
 function createAuthMiddleware(JWT_SECRET) {
