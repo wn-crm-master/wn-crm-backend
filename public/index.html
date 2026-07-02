@@ -79,6 +79,11 @@
     .inline-msg.error { background: #fdecea; color: #c0392b; display: block; }
     .inline-msg.info { background: #fce8e8; color: #c0272d; display: block; }
     .msg-close { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 1.1rem; cursor: pointer; color: inherit; opacity: 0.6; padding: 2px 6px; line-height: 1; }
+    .import-progress { margin-bottom: 10px; display: none; }
+    .import-progress.active { display: block; }
+    .import-progress-bar { height: 6px; background: #f0e0e0; border-radius: 3px; overflow: hidden; }
+    .import-progress-fill { height: 100%; width: 0%; background: #c0272d; border-radius: 3px; transition: width 0.3s ease; }
+    .import-progress-text { font-size: 0.78rem; color: #888; margin-top: 4px; }
     .msg-close:hover { opacity: 1; }
 
     /* Table */
@@ -391,6 +396,7 @@
         </div>
       </div>
       <div id="authors-import-msg" class="inline-msg"></div>
+      <div id="authors-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
       <div class="table-card"><div class="table-scroll"><div id="authors-body"><div class="loading">Loading…</div></div></div></div>
     </div>
 
@@ -406,6 +412,7 @@
         </div>
       </div>
       <div id="books-import-msg" class="inline-msg"></div>
+      <div id="books-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
       <div class="table-card"><div class="table-scroll"><div id="books-body"><div class="loading">Loading…</div></div></div></div>
     </div>
 
@@ -458,6 +465,7 @@
           </div>
         </div>
         <div id="aes-import-msg" class="inline-msg"></div>
+        <div id="aes-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
         <div class="table-card"><div class="table-scroll"><div id="ae-list-body"><div class="empty">No data yet. Use Import above.</div></div></div></div>
       </div>
       <div id="ae-sub-ae-authors" class="ae-sub-content"><div class="empty">Coming soon</div></div>
@@ -1771,17 +1779,37 @@ async function confirmMapping() {
   document.getElementById('mapping-modal').classList.remove('open');
   mappingCtx=null;
 
-  setMsg(msgEl,'info',`Importing ${records.length} ${entity}…`);
   const bodyKey=entity==='authors'?'authors':entity==='aes'?'aes':'books';
-  const body={[bodyKey]:records};
-  const res=await api('/api/import/'+entity,{method:'POST',body:JSON.stringify(body)});
-  if(res.success){
-    let msg=`Done! ${res.inserted} added, ${res.updated} updated.`;
-    if(res.skipped>0) msg+=` ${res.skipped} skipped.`;
-    if(res.stubAuthorsCreated>0) msg+=` ${res.stubAuthorsCreated} stub author(s) created.`;
+  const progressEl=document.getElementById(entity+'-import-progress');
+  const fillEl=progressEl.querySelector('.import-progress-fill');
+  const textEl=progressEl.querySelector('.import-progress-text');
+  progressEl.classList.add('active');
+  fillEl.style.width='0%';
+  textEl.textContent=`Importing 0 / ${records.length}…`;
+  setMsg(msgEl,'info',`Importing ${records.length} ${entity}…`);
+
+  const BATCH=100;
+  let totalInserted=0, totalUpdated=0, totalSkipped=0, totalStubs=0, failed=false;
+  for(let i=0;i<records.length;i+=BATCH){
+    const batch=records.slice(i,i+BATCH);
+    const res=await api('/api/import/'+entity,{method:'POST',body:JSON.stringify({[bodyKey]:batch})});
+    if(!res.success){ setMsg(msgEl,'error',res.error||'Import failed.'); failed=true; break; }
+    totalInserted+=res.inserted||0; totalUpdated+=res.updated||0; totalSkipped+=res.skipped||0; totalStubs+=res.stubAuthorsCreated||0;
+    const done=Math.min(i+BATCH,records.length);
+    const pct=Math.round((done/records.length)*100);
+    fillEl.style.width=pct+'%';
+    textEl.textContent=`Importing ${done} / ${records.length}…`;
+  }
+  if(!failed){
+    fillEl.style.width='100%';
+    textEl.textContent='Complete';
+    let msg=`Done! ${totalInserted} added, ${totalUpdated} updated.`;
+    if(totalSkipped>0) msg+=` ${totalSkipped} skipped.`;
+    if(totalStubs>0) msg+=` ${totalStubs} stub author(s) created.`;
     setMsg(msgEl,'success',msg);
     if(entity==='authors') loadAuthors(); else if(entity==='aes') loadAeList(); else loadBooks(); loadStats();
-  } else { setMsg(msgEl,'error',res.error||'Import failed.'); }
+  }
+  setTimeout(()=>progressEl.classList.remove('active'),3000);
 }
 
 function setMsg(el,type,text){
