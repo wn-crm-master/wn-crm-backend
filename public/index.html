@@ -755,16 +755,17 @@ function showAeSubTab(name) {
 
 // ── AE List ───────────────────────────────────────────────────────
 const AE_COLS = [
-  { field:'dateAdded',           header:'Date Added',                      width:120 },
-  { field:'email',               header:'AE Email ID',                     width:220 },
-  { field:'name',                header:'AE Name',                         width:160 },
-  { field:'authorsReg',          header:'No. of Authors Reg.',             width:160 },
-  { field:'booksCreated',        header:'No. of Books Created',            width:170 },
-  { field:'stage1Qualified',     header:'Authors Qual. Stage 1',           width:180 },
-  { field:'stage2Qualified',     header:'Authors Qual. Stage 2',           width:180 },
-  { field:'stage3Qualified',     header:'Authors Qual. Stage 3',           width:180 },
-  { field:'latestAuthorRegDate', header:'Reg. Date of Latest Author',     width:200 },
-  { field:'latestRewardDate',    header:'Date of Latest Reward',           width:180 },
+  { field:'dateAdded',              header:'Date Added',                                  width:120 },
+  { field:'email',                  header:'AE Email ID',                                 width:220 },
+  { field:'name',                   header:'AE Name',                                     width:160 },
+  { field:'authorsReg',             header:'No. of Authors Reg.',                         width:170 },
+  { field:'preContractAuthorsReg',  header:'No. of Pre-Contract Validated Authors Reg.',  width:300 },
+  { field:'booksCreated',           header:'No. of Books Created',                        width:170 },
+  { field:'stage1Cleared',          header:'Stage 1 Cleared',                             width:140 },
+  { field:'stage2Cleared',          header:'Stage 2 Cleared',                             width:140 },
+  { field:'stage3Cleared',          header:'Stage 3 Cleared',                             width:140 },
+  { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200 },
+  { field:'latestRewardDate',       header:'Date of Latest Reward',                       width:180 },
 ];
 
 let aeData = [];
@@ -1682,10 +1683,11 @@ const AE_ALIASES = {
   'ae email id':'email','ae email':'email','email id':'email','email':'email',
   'ae name':'name','name':'name',
   'no. of authors reg.':'authorsReg','no. of authors reg':'authorsReg','authors reg':'authorsReg','authors registered':'authorsReg',
+  'no. of pre-contract validated authors reg.':'preContractAuthorsReg','no. of pre-contract validated authors reg':'preContractAuthorsReg','pre-contract validated authors':'preContractAuthorsReg','precontractauthorsreg':'preContractAuthorsReg',
   'no. of books created':'booksCreated','books created':'booksCreated',
-  'authors qual. stage 1':'stage1Qualified','stage 1':'stage1Qualified','no. of authors qualified for stage 1':'stage1Qualified',
-  'authors qual. stage 2':'stage2Qualified','stage 2':'stage2Qualified','no. of authors qualified for stage 2':'stage2Qualified',
-  'authors qual. stage 3':'stage3Qualified','stage 3':'stage3Qualified','no. of authors qualified for stage 3':'stage3Qualified',
+  'stage 1 cleared':'stage1Cleared','stage1cleared':'stage1Cleared','stage 1':'stage1Cleared',
+  'stage 2 cleared':'stage2Cleared','stage2cleared':'stage2Cleared','stage 2':'stage2Cleared',
+  'stage 3 cleared':'stage3Cleared','stage3cleared':'stage3Cleared','stage 3':'stage3Cleared',
   'reg. date of latest author':'latestAuthorRegDate','latest author reg date':'latestAuthorRegDate',
   'date of latest reward':'latestRewardDate','latest reward date':'latestRewardDate',
 };
