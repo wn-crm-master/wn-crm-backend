@@ -74,6 +74,8 @@
     .file-label-json:hover { background: #a32126; }
     .file-label-csv { background: #8b1a1f; color: #fff; }
     .file-label-csv:hover { background: #6d1418; }
+    .btn-download { background: #fff; color: #c0272d; border: 1.5px solid #c0272d; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    .btn-download:hover { background: #fdf2f2; }
     .inline-msg { margin-bottom: 10px; padding: 10px 14px; border-radius: 6px; font-size: 0.88rem; display: none; position: relative; }
     .inline-msg.success { background: #e6f9f0; color: #1a7f52; display: block; }
     .inline-msg.error { background: #fdecea; color: #c0392b; display: block; }
@@ -388,6 +390,7 @@
       <div class="tab-toolbar">
         <div class="title-row"><div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="authors-active-filters"></div></div>
         <div class="import-btns">
+          <button class="btn btn-download" onclick="downloadCSV('authors')">⬇ Download CSV</button>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
           <button class="btn btn-mass-update" id="authors-mass-update" style="display:none" onclick="openMassUpdate('authors')">Mass Update</button>
@@ -404,6 +407,7 @@
       <div class="tab-toolbar">
         <div class="title-row"><div class="page-title">Books</div><div class="active-filters" id="books-active-filters"></div></div>
         <div class="import-btns">
+          <button class="btn btn-download" onclick="downloadCSV('books')">⬇ Download CSV</button>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
           <button class="btn btn-mass-update" id="books-mass-update" style="display:none" onclick="openMassUpdate('books')">Mass Update</button>
@@ -461,6 +465,7 @@
         <div class="tab-toolbar">
           <div class="title-row"><div class="page-title">AE List <span id="ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
           <div class="import-btns">
+            <button class="btn btn-download" onclick="downloadCSV('aes')">⬇ Download CSV</button>
             <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','aes')" /></label>
           </div>
         </div>
@@ -1810,6 +1815,23 @@ async function confirmMapping() {
     if(entity==='authors') loadAuthors(); else if(entity==='aes') loadAeList(); else loadBooks(); loadStats();
   }
   setTimeout(()=>progressEl.classList.remove('active'),3000);
+}
+
+function downloadCSV(entity) {
+  const cols = entity==='authors' ? AUTHOR_COLS : entity==='aes' ? AE_COLS : BOOK_COLS;
+  const data = entity==='aes' ? aeData : (state[entity]?.sortedData || state[entity]?.data || []);
+  if (!data.length) { alert('No data to download.'); return; }
+  const esc = v => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const header = cols.map(c => esc(c.header)).join(',');
+  const rows = data.map(row => cols.map(c => esc(row[c.field] ?? '')).join(','));
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = entity + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function setMsg(el,type,text){
