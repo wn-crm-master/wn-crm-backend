@@ -13,7 +13,7 @@ function register(app, getDb, authMiddleware) {
       if (!Array.isArray(records) || records.length === 0)
         return res.status(400).json({ error: 'records array is required' });
 
-      if (!['authors', 'books', 'aes'].includes(entity))
+      if (!['authors', 'books', 'aes', 'ae_authors', 'ae_books', 'ae_payments'].includes(entity))
         return res.status(400).json({ error: 'Invalid entity' });
 
       const job = createJob(records.length);
@@ -51,6 +51,12 @@ async function processJob(db, entity, records, job) {
     await processBooks(db, records, job);
   } else if (entity === 'aes') {
     await processAes(db, records, job);
+  } else if (entity === 'ae_authors') {
+    await processSimple(db, 'ae_authors', records, job);
+  } else if (entity === 'ae_books') {
+    await processSimple(db, 'ae_books', records, job);
+  } else if (entity === 'ae_payments') {
+    await processSimple(db, 'ae_payments', records, job);
   }
   if (job.status === 'running') job.status = 'done';
 }
@@ -152,6 +158,19 @@ async function processAes(db, records, job) {
         }
         job.updated++;
       }
+    } catch {
+      job.skipped++;
+    }
+    job.processed++;
+  }
+}
+
+async function processSimple(db, collection, records, job) {
+  for (const record of records) {
+    try {
+      record.createdAt = new Date();
+      await db.collection(collection).insertOne(record);
+      job.inserted++;
     } catch {
       job.skipped++;
     }

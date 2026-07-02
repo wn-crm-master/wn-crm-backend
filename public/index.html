@@ -778,7 +778,21 @@ function showAeSubTab(name) {
   document.querySelectorAll('.ae-sub-content').forEach(c => c.classList.remove('active'));
   document.querySelector(`.ae-sub-tab[onclick*="${name}"]`).classList.add('active');
   document.getElementById('ae-sub-' + name).classList.add('active');
-  if (AE_SUB_CONFIG[name]) renderAeSubTable(name);
+  if (AE_SUB_CONFIG[name]) loadAeSubTab(name);
+}
+
+async function loadAeSubTab(subTab) {
+  const cfg = AE_SUB_CONFIG[subTab];
+  if (!cfg) return;
+  const container = document.getElementById(cfg.containerId);
+  container.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const res = await api(cfg.apiPath);
+    window[cfg.dataKey] = res.data || [];
+  } catch (e) {
+    window[cfg.dataKey] = [];
+  }
+  renderAeSubTable(subTab);
 }
 
 // ── AE List ───────────────────────────────────────────────────────
@@ -912,9 +926,9 @@ const AE_PAYMENTS_COLS = [
 ];
 
 const AE_SUB_CONFIG = {
-  'ae-authors':  { cols: AE_AUTHORS_COLS,  dataKey: 'aeAuthorsData',  containerId: 'ae-authors-body' },
-  'ae-books':    { cols: AE_BOOKS_COLS,    dataKey: 'aeBooksData',    containerId: 'ae-books-body' },
-  'ae-payments': { cols: AE_PAYMENTS_COLS, dataKey: 'aePaymentsData', containerId: 'ae-payments-body' },
+  'ae-authors':  { cols: AE_AUTHORS_COLS,  dataKey: 'aeAuthorsData',  containerId: 'ae-authors-body',  apiPath: '/api/ae-authors',  entity: 'ae_authors' },
+  'ae-books':    { cols: AE_BOOKS_COLS,    dataKey: 'aeBooksData',    containerId: 'ae-books-body',    apiPath: '/api/ae-books',    entity: 'ae_books' },
+  'ae-payments': { cols: AE_PAYMENTS_COLS, dataKey: 'aePaymentsData', containerId: 'ae-payments-body', apiPath: '/api/ae-payments', entity: 'ae_payments' },
 };
 
 const AE_AUTHORS_ALIASES = {
@@ -1998,8 +2012,37 @@ async function confirmMapping() {
 
   if (AE_SUB_CONFIG[entity]) {
     const cfg = AE_SUB_CONFIG[entity];
-    window[cfg.dataKey] = records;
-    renderAeSubTable(entity);
+    const subEntity = cfg.entity;
+    const progressEl = document.createElement('div');
+    progressEl.className = 'import-progress active';
+    progressEl.innerHTML = '<div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div>';
+    const container = document.getElementById(cfg.containerId);
+    container.parentNode.insertBefore(progressEl, container);
+    const fillEl = progressEl.querySelector('.import-progress-fill');
+    const textEl = progressEl.querySelector('.import-progress-text');
+    fillEl.style.width = '0%';
+    textEl.textContent = `Uploading ${records.length} records…`;
+
+    const startRes = await api('/api/import-job/' + subEntity, { method: 'POST', body: JSON.stringify({ records }) });
+    if (!startRes.jobId) {
+      textEl.textContent = startRes.error || 'Failed to start import.';
+      setTimeout(() => progressEl.remove(), 3000);
+      return;
+    }
+    textEl.textContent = `Importing ${records.length} records…`;
+    const poll = setInterval(async () => {
+      const s = await api('/api/import-job/' + startRes.jobId);
+      const pct = s.total ? Math.round((s.processed / s.total) * 100) : 0;
+      fillEl.style.width = pct + '%';
+      textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
+      if (s.status === 'done' || s.status === 'error') {
+        clearInterval(poll);
+        fillEl.style.width = '100%';
+        textEl.textContent = s.status === 'error' ? ('Error: ' + s.error) : `Done! ${s.inserted} added, ${s.skipped} skipped.`;
+        setTimeout(() => progressEl.remove(), 3000);
+        loadAeSubTab(entity);
+      }
+    }, 1000);
     return;
   }
 
