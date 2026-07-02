@@ -410,7 +410,16 @@
         <div class="ae-sub-tab" onclick="showAeSubTab('ae-payments')">Payments Data</div>
         <div class="ae-sub-tab" onclick="showAeSubTab('ae-report')">Report</div>
       </div>
-      <div id="ae-sub-ae-list" class="ae-sub-content active"><div class="empty">Coming soon</div></div>
+      <div id="ae-sub-ae-list" class="ae-sub-content active">
+        <div class="tab-toolbar">
+          <div class="title-row"><div class="page-title">AE List <span id="ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
+          <div class="import-btns">
+            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeImport(event)" /></label>
+          </div>
+        </div>
+        <div id="ae-import-msg" class="inline-msg"></div>
+        <div class="table-card"><div class="table-scroll"><div id="ae-list-body"><div class="empty">No data yet. Use Import above.</div></div></div></div>
+      </div>
       <div id="ae-sub-ae-authors" class="ae-sub-content"><div class="empty">Coming soon</div></div>
       <div id="ae-sub-ae-books" class="ae-sub-content"><div class="empty">Coming soon</div></div>
       <div id="ae-sub-ae-payments" class="ae-sub-content"><div class="empty">Coming soon</div></div>
@@ -673,6 +682,7 @@ function showTab(name) {
   if (name==='dashboard') loadStats();
   if (name==='review') loadReview();
   if (name==='settings') loadBackups();
+  if (name==='ae') loadAeList();
 }
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
@@ -686,6 +696,113 @@ function showAeSubTab(name) {
   document.querySelectorAll('.ae-sub-content').forEach(c => c.classList.remove('active'));
   document.querySelector(`.ae-sub-tab[onclick*="${name}"]`).classList.add('active');
   document.getElementById('ae-sub-' + name).classList.add('active');
+}
+
+// ── AE List ───────────────────────────────────────────────────────
+const AE_COLS = [
+  { field:'dateAdded',           header:'Date Added',                      width:120 },
+  { field:'email',               header:'AE Email ID',                     width:220 },
+  { field:'name',                header:'AE Name',                         width:160 },
+  { field:'authorsReg',          header:'No. of Authors Reg.',             width:160 },
+  { field:'booksCreated',        header:'No. of Books Created',            width:170 },
+  { field:'stage1Qualified',     header:'Authors Qual. Stage 1',           width:180 },
+  { field:'stage2Qualified',     header:'Authors Qual. Stage 2',           width:180 },
+  { field:'stage3Qualified',     header:'Authors Qual. Stage 3',           width:180 },
+  { field:'latestAuthorRegDate', header:'Reg. Date of Latest Author',     width:200 },
+  { field:'latestRewardDate',    header:'Date of Latest Reward',           width:180 },
+];
+
+const AE_CSV_MAP = {
+  'date added':'dateAdded',
+  'ae email id':'email', 'ae email':'email', 'email id':'email', 'email':'email',
+  'ae name':'name', 'name':'name',
+  'no. of authors reg.':'authorsReg', 'no. of authors reg':'authorsReg', 'authors reg':'authorsReg', 'authors registered':'authorsReg',
+  'no. of books created':'booksCreated', 'books created':'booksCreated',
+  'authors qual. stage 1':'stage1Qualified', 'stage 1':'stage1Qualified', 'no. of authors qualified for stage 1':'stage1Qualified',
+  'authors qual. stage 2':'stage2Qualified', 'stage 2':'stage2Qualified', 'no. of authors qualified for stage 2':'stage2Qualified',
+  'authors qual. stage 3':'stage3Qualified', 'stage 3':'stage3Qualified', 'no. of authors qualified for stage 3':'stage3Qualified',
+  'reg. date of latest author':'latestAuthorRegDate', 'latest author reg date':'latestAuthorRegDate',
+  'date of latest reward':'latestRewardDate', 'latest reward date':'latestRewardDate',
+};
+
+let aeData = [];
+
+async function loadAeList() {
+  const container = document.getElementById('ae-list-body');
+  container.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const res = await api('/api/aes');
+    aeData = res.data || [];
+    renderAeList();
+  } catch (e) {
+    container.innerHTML = '<div class="empty">Error loading data</div>';
+  }
+}
+
+function renderAeList() {
+  const container = document.getElementById('ae-list-body');
+  const countEl = document.getElementById('ae-count');
+  if (countEl) countEl.textContent = aeData.length ? `(${aeData.length})` : '';
+  if (!aeData.length) { container.innerHTML = '<div class="empty">No data yet. Use Import above.</div>'; return; }
+
+  let html = '<table class="wide"><thead><tr>';
+  for (const col of AE_COLS) {
+    html += `<th style="width:${col.width}px;min-width:${col.width}px;padding:8px 10px;">${col.header}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+  for (const row of aeData) {
+    html += '<tr>';
+    for (const col of AE_COLS) {
+      const val = row[col.field] !== undefined && row[col.field] !== null ? row[col.field] : '';
+      html += `<td style="padding:8px 10px;">${escHtml(String(val))}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function parseAeCsv(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const mapping = {};
+  headers.forEach((h, i) => {
+    const key = h.toLowerCase().trim();
+    if (AE_CSV_MAP[key]) mapping[i] = AE_CSV_MAP[key];
+    else {
+      const col = AE_COLS.find(c => c.header.toLowerCase() === key || c.field.toLowerCase() === key);
+      if (col) mapping[i] = col.field;
+    }
+  });
+  const records = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].match(/(".*?"|[^,]*)/g) || [];
+    const rec = {};
+    vals.forEach((v, idx) => {
+      if (mapping[idx]) rec[mapping[idx]] = v.replace(/^"|"$/g, '').trim();
+    });
+    if (rec.email) records.push(rec);
+  }
+  return records;
+}
+
+async function handleAeImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  const msgEl = document.getElementById('ae-import-msg');
+  msgEl.textContent = 'Importing…'; msgEl.style.color = '#888';
+  try {
+    const text = await file.text();
+    const records = parseAeCsv(text);
+    if (!records.length) { msgEl.style.color = '#e74c3c'; msgEl.textContent = 'No valid records found in CSV.'; return; }
+    const res = await api('/api/import/aes', { method: 'POST', body: JSON.stringify({ aes: records }) });
+    if (res.error) { msgEl.style.color = '#e74c3c'; msgEl.textContent = 'Error: ' + res.error; return; }
+    msgEl.style.color = '#2e7d32';
+    msgEl.textContent = `Imported: ${res.inserted} new, ${res.updated} updated, ${res.skipped} skipped`;
+    loadAeList();
+  } catch (e) { msgEl.style.color = '#e74c3c'; msgEl.textContent = 'Import failed: ' + e.message; }
 }
 
 // ── Table rendering ────────────────────────────────────────────────
@@ -1680,7 +1797,7 @@ async function syncForm2Sheet() {
   btn.disabled = true; btn.textContent = 'Syncing...';
   status.textContent = '';
   try {
-    const res = await api('/api/sync/form2', 'POST');
+    const res = await api('/api/sync/form2', { method: 'POST' });
     if (res.error) { status.textContent = 'Error: ' + res.error; status.style.color = '#c0272d'; }
     else {
       status.style.color = '#2e7d32';

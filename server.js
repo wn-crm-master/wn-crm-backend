@@ -12,6 +12,8 @@ const { register: registerBookImport } = require('./modules/books/import');
 const { register: registerBackups } = require('./modules/backups');
 const { register: registerStats } = require('./modules/stats');
 const { register: registerSheetSync, startScheduledSync } = require('./modules/sheetSync');
+const { register: registerAeRoutes } = require('./modules/aes/routes');
+const { register: registerAeImport } = require('./modules/aes/import');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -35,6 +37,7 @@ MongoClient.connect(MONGO_URI)
     db.collection('users').createIndex({ email: 1 }, { unique: true }).catch(() => {});
     db.collection('authors_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
     db.collection('books_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
+    db.collection('aes').createIndex({ email: 1 }, { unique: true }).catch(() => {});
     seedUsers(db).catch(err => console.error('User seed error:', err));
     startScheduledSync(getDb);
   })
@@ -59,6 +62,8 @@ registerBookRoutes(app, getDb, authMiddleware);
 registerBackups(app, getDb, authMiddleware);
 registerStats(app, getDb, authMiddleware);
 registerSheetSync(app, getDb, authMiddleware);
+registerAeImport(app, getDb, authMiddleware);
+registerAeRoutes(app, getDb, authMiddleware);
 
 // Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));
