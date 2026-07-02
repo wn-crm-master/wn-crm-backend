@@ -199,6 +199,20 @@
     .ae-sub-content { display: none; }
     .ae-sub-content.active { display: block; }
 
+    /* Stages modal */
+    .btn-stages { margin-left: auto; padding: 6px 14px; font-size: 0.82rem; font-weight: 600; color: #c0272d; background: #fff; border: 1.5px solid #c0272d; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.15s; }
+    .btn-stages:hover { background: #fdf2f2; }
+    .stages-overlay { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.45); align-items: center; justify-content: center; }
+    .stages-overlay.open { display: flex; }
+    .stages-box { background: #fff; border-radius: 12px; padding: 28px 32px; max-width: 480px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.18); position: relative; }
+    .stages-box h3 { font-size: 1rem; color: #4a1a1a; margin: 0 0 14px; }
+    .stages-box .stages-period { font-size: 0.88rem; font-weight: 700; color: #c0272d; margin: 18px 0 8px; }
+    .stages-box .stages-period:first-of-type { margin-top: 0; }
+    .stages-box table { width: 100%; border-collapse: collapse; font-size: 0.84rem; margin-bottom: 6px; }
+    .stages-box th { text-align: left; padding: 6px 10px; background: #fdf2f2; color: #4a1a1a; font-weight: 600; border-bottom: 1.5px solid #e8d0d0; }
+    .stages-box td { padding: 6px 10px; border-bottom: 1px solid #f0e0e0; }
+    .stages-box .close-btn { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #888; }
+
     /* Settings */
     .settings-section { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 20px; }
     .settings-section h3 { font-size: 1rem; color: #4a1a1a; margin-bottom: 4px; }
@@ -409,6 +423,32 @@
         <div class="ae-sub-tab" onclick="showAeSubTab('ae-books')">Books Data</div>
         <div class="ae-sub-tab" onclick="showAeSubTab('ae-payments')">Payments Data</div>
         <div class="ae-sub-tab" onclick="showAeSubTab('ae-report')">Report</div>
+        <button class="btn-stages" onclick="document.getElementById('stages-modal').classList.add('open')">&#9432; Stages</button>
+      </div>
+
+      <div id="stages-modal" class="stages-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="stages-box">
+          <button class="close-btn" onclick="document.getElementById('stages-modal').classList.remove('open')">&times;</button>
+          <h3>AE Reward Stages</h3>
+          <div class="stages-period">Before 1 Jul' 26</div>
+          <table>
+            <thead><tr><th>Stage</th><th>Criteria</th><th>Reward</th></tr></thead>
+            <tbody>
+              <tr><td>Stage 1</td><td>Contracted</td><td>$50</td></tr>
+              <tr><td>Stage 2</td><td>&gt;30 hrs</td><td>$200</td></tr>
+              <tr><td>Stage 3</td><td>&gt;10 Authors Contracted</td><td>$100</td></tr>
+            </tbody>
+          </table>
+          <div class="stages-period">After 1 Jul' 26</div>
+          <table>
+            <thead><tr><th>Stage</th><th>Criteria</th><th>Reward</th></tr></thead>
+            <tbody>
+              <tr><td>Stage 1</td><td>Contracted</td><td>$50</td></tr>
+              <tr><td>Stage 2</td><td>&gt;400k words</td><td>$150</td></tr>
+              <tr><td>Stage 3</td><td>&gt;700k words</td><td>$300</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
       <div id="ae-sub-ae-list" class="ae-sub-content active">
         <div class="tab-toolbar">
