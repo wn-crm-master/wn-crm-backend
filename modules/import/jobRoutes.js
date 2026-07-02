@@ -53,8 +53,10 @@ async function processJob(db, entity, records, job) {
     await processAes(db, records, job);
   } else if (entity === 'ae_authors') {
     await processSimple(db, 'ae_authors', records, job);
+    await syncNewAeEmails(db, records);
   } else if (entity === 'ae_books') {
     await processSimple(db, 'ae_books', records, job);
+    await syncNewAeEmails(db, records);
   } else if (entity === 'ae_payments') {
     await processSimple(db, 'ae_payments', records, job);
   }
@@ -175,6 +177,24 @@ async function processSimple(db, collection, records, job) {
       job.skipped++;
     }
     job.processed++;
+  }
+}
+
+async function syncNewAeEmails(db, records) {
+  const today = new Date().toISOString().slice(0, 10);
+  const emails = [...new Set(
+    records.map(r => (r.aeEmail || '').trim().toLowerCase()).filter(e => e && !isBlankOrError(e))
+  )];
+  for (const email of emails) {
+    const exists = await db.collection('aes').findOne({ email });
+    if (!exists) {
+      await db.collection('aes').insertOne({
+        email,
+        dateAdded: today,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
   }
 }
 
