@@ -1401,17 +1401,21 @@ function toggleRowSelect(entity, rowId, cb) {
 function toggleSelectAll(entity, masterCb) {
   const sel = state[entity].selected;
   const idField = entity==='authors'?'uid':'id';
+  const s = state[entity];
+  const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
+  const visibleIds = new Set(
+    s.sortedData.filter(r => activeFilters.every(([f, vals]) => vals.has(String(r[f]??'')))).map(r => String(r[idField]))
+  );
+
+  sel.clear();
+  if (masterCb.checked) visibleIds.forEach(id => sel.add(id));
+
   const rows = document.querySelectorAll(`#${entity}-body tbody tr`);
-  if (masterCb.checked) sel.clear();
   rows.forEach(tr => {
-    const rowId = tr.dataset.id;
     const cb = tr.querySelector('.row-cb');
-    if (tr.style.display === 'none') {
-      sel.delete(rowId); tr.classList.remove('row-selected'); if(cb) cb.checked=false;
-      return;
-    }
-    if (masterCb.checked) { sel.add(rowId); tr.classList.add('row-selected'); if(cb) cb.checked=true; }
-    else { sel.delete(rowId); tr.classList.remove('row-selected'); if(cb) cb.checked=false; }
+    const checked = sel.has(tr.dataset.id);
+    if (checked) { tr.classList.add('row-selected'); if(cb) cb.checked=true; }
+    else { tr.classList.remove('row-selected'); if(cb) cb.checked=false; }
   });
   updateSelectionUI(entity);
 }
