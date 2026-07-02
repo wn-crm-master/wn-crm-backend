@@ -192,7 +192,7 @@
     .cell-special { border-color: #e67e22; background: #fff8f0; }
 
     /* AE Sub-tabs */
-    .ae-sub-tabs { display: flex; gap: 0; border-bottom: 2px solid #e8e0e0; margin-bottom: 20px; }
+    .ae-sub-tabs { display: flex; align-items: center; gap: 0; border-bottom: 2px solid #e8e0e0; margin-bottom: 20px; }
     .ae-sub-tab { padding: 10px 20px; font-size: 0.88rem; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
     .ae-sub-tab:hover { color: #c0272d; }
     .ae-sub-tab.active { color: #c0272d; border-bottom-color: #c0272d; }
@@ -200,8 +200,8 @@
     .ae-sub-content.active { display: block; }
 
     /* Stages modal */
-    .btn-stages { margin-left: auto; padding: 6px 14px; font-size: 0.82rem; font-weight: 600; color: #c0272d; background: #fff; border: 1.5px solid #c0272d; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: background 0.15s; }
-    .btn-stages:hover { background: #fdf2f2; }
+    .btn-stages { margin-left: auto; margin-bottom: -2px; padding: 4px 12px; font-size: 0.78rem; font-weight: 500; color: #888; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: color 0.15s; }
+    .btn-stages:hover { color: #c0272d; }
     .stages-overlay { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,0.45); align-items: center; justify-content: center; }
     .stages-overlay.open { display: flex; }
     .stages-box { background: #fff; border-radius: 12px; padding: 28px 32px; max-width: 480px; width: 90%; box-shadow: 0 8px 30px rgba(0,0,0,0.18); position: relative; }
