@@ -870,6 +870,33 @@ const AE_SUB_CONFIG = {
   'ae-payments': { cols: AE_PAYMENTS_COLS, dataKey: 'aePaymentsData', containerId: 'ae-payments-body' },
 };
 
+const AE_AUTHORS_ALIASES = {
+  'ae mail id':'aeEmail','ae email':'aeEmail','ae email id':'aeEmail','aeemail':'aeEmail',
+  'registration date':'regnDate','reg date':'regnDate','regndate':'regnDate','reg. date':'regnDate',
+  'uid':'uid','author uid':'uid','author id':'uid',
+  'author name':'name','name':'name',
+  'author email':'email','email':'email','author email id':'email',
+  'pre-contract validation':'preContractedTag','pre contract validation':'preContractedTag','precontract validation':'preContractedTag','precontractedtag':'preContractedTag',
+};
+const AE_BOOKS_ALIASES = {
+  'ae mail id':'aeEmail','ae email':'aeEmail','ae email id':'aeEmail','aeemail':'aeEmail',
+  'author uid':'authorId','author id':'authorId','authorid':'authorId',
+  'author name':'authorName','authorname':'authorName',
+  'book id':'bookId','bookid':'bookId',
+  'book title':'bookTitle','title':'bookTitle','booktitle':'bookTitle',
+  'book create date':'createDate','create date':'createDate','createdate':'createDate',
+  'genre':'genre','book genre':'genre',
+};
+const AE_PAYMENTS_ALIASES = {
+  'ae mail id':'aeEmail','ae email':'aeEmail','ae email id':'aeEmail','aeemail':'aeEmail',
+  'ae name':'aeName','aename':'aeName',
+  'stage':'stage',
+  'reward amount':'rewardAmount','rewardamount':'rewardAmount',
+  'reward date':'rewardDate','rewarddate':'rewardDate',
+  'author uid':'authorUid','author id':'authorUid','authoruid':'authorUid',
+  'author name':'authorName','authorname':'authorName',
+};
+
 function renderAeSubTable(subTab) {
   const cfg = AE_SUB_CONFIG[subTab];
   if (!cfg) return;
@@ -912,51 +939,16 @@ function downloadAeSubCSV(subTab) {
 }
 
 function handleAeSubImport(event, subTab) {
-  const cfg = AE_SUB_CONFIG[subTab];
-  if (!cfg) return;
   const file = event.target.files[0];
   if (!file) return;
   event.target.value = '';
   const reader = new FileReader();
   reader.onload = function(e) {
-    const text = e.target.result;
-    const lines = text.split('\n').filter(l => l.trim());
-    if (lines.length < 2) return;
-    const headers = parseCSVLine(lines[0]);
-    const rows = [];
-    for (let i = 1; i < lines.length; i++) {
-      const vals = parseCSVLine(lines[i]);
-      const obj = {};
-      headers.forEach((h, idx) => { if (vals[idx] !== undefined) obj[h.trim()] = vals[idx]; });
-      rows.push(obj);
-    }
-    const mapped = rows.map(row => {
-      const out = {};
-      for (const col of cfg.cols) {
-        for (const [key, val] of Object.entries(row)) {
-          if (key.trim().toLowerCase() === col.header.toLowerCase() || key.trim().toLowerCase() === col.field.toLowerCase()) {
-            out[col.field] = val;
-            break;
-          }
-        }
-      }
-      return out;
-    });
-    window[cfg.dataKey] = mapped;
-    renderAeSubTable(subTab);
+    const parsed = parseCSVRaw(e.target.result);
+    if (!parsed.records.length) return;
+    openMappingModal(subTab, parsed.records, parsed.headers, null);
   };
   reader.readAsText(file);
-}
-
-function parseCSVLine(line) {
-  const vals = []; let cur = '', inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQ) { if (ch === '"' && line[i+1] === '"') { cur += '"'; i++; } else if (ch === '"') inQ = false; else cur += ch; }
-    else { if (ch === '"') inQ = true; else if (ch === ',') { vals.push(cur); cur = ''; } else cur += ch; }
-  }
-  vals.push(cur);
-  return vals;
 }
 
 // ── Table rendering ────────────────────────────────────────────────
@@ -1893,10 +1885,33 @@ function handleImport(event, fileType, entity) {
   reader.readAsText(file);
 }
 
+function getAliasesForEntity(entity) {
+  if (entity==='authors') return AUTHOR_ALIASES;
+  if (entity==='aes') return AE_ALIASES;
+  if (entity==='ae-authors') return AE_AUTHORS_ALIASES;
+  if (entity==='ae-books') return AE_BOOKS_ALIASES;
+  if (entity==='ae-payments') return AE_PAYMENTS_ALIASES;
+  return BOOK_ALIASES;
+}
+function getColsForEntity(entity) {
+  if (entity==='authors') return AUTHOR_COLS;
+  if (entity==='aes') return AE_COLS;
+  if (AE_SUB_CONFIG[entity]) return AE_SUB_CONFIG[entity].cols;
+  return BOOK_COLS;
+}
+function getEntityLabel(entity) {
+  if (entity==='authors') return 'Authors';
+  if (entity==='aes') return 'AEs';
+  if (entity==='ae-authors') return 'AE Authors';
+  if (entity==='ae-books') return 'AE Books';
+  if (entity==='ae-payments') return 'AE Payments';
+  return 'Books';
+}
+
 function openMappingModal(entity, rawRecords, headers, msgEl) {
   mappingCtx={entity,rawRecords,msgEl};
-  const aliases=entity==='authors'?AUTHOR_ALIASES:entity==='aes'?AE_ALIASES:BOOK_ALIASES;
-  const cols=entity==='authors'?AUTHOR_COLS:entity==='aes'?AE_COLS:BOOK_COLS;
+  const aliases=getAliasesForEntity(entity);
+  const cols=getColsForEntity(entity);
   const sample=rawRecords[0]||{};
 
   const rows=headers.map(col=>{
@@ -1911,7 +1926,7 @@ function openMappingModal(entity, rawRecords, headers, msgEl) {
   }).join('');
 
   document.getElementById('mapping-rows').innerHTML=rows;
-  document.getElementById('mapping-entity-label').textContent=entity==='authors'?'Authors':entity==='aes'?'AEs':'Books';
+  document.getElementById('mapping-entity-label').textContent=getEntityLabel(entity);
   document.getElementById('mapping-modal').classList.add('open');
 }
 
@@ -1923,17 +1938,19 @@ function cancelMapping() {
 async function confirmMapping() {
   if(!mappingCtx) return;
   const {entity,rawRecords,msgEl}=mappingCtx;
-  const idField=entity==='authors'?'uid':entity==='aes'?'email':'id';
-  const idLabels={authors:'Author ID (uid)',books:'Book ID (id)',aes:'AE Email ID (email)'};
 
   const mapping={};
   document.querySelectorAll('#mapping-rows .map-select').forEach(sel=>{
     if(sel.value) mapping[sel.dataset.col]=sel.value;
   });
 
-  if(!Object.values(mapping).includes(idField)){
-    alert(`Please map a column to "${idLabels[entity]}". This is required as the unique identifier.`);
-    return;
+  if (!AE_SUB_CONFIG[entity]) {
+    const idField=entity==='authors'?'uid':entity==='aes'?'email':'id';
+    const idLabels={authors:'Author ID (uid)',books:'Book ID (id)',aes:'AE Email ID (email)'};
+    if(!Object.values(mapping).includes(idField)){
+      alert(`Please map a column to "${idLabels[entity]}". This is required as the unique identifier.`);
+      return;
+    }
   }
 
   const records=rawRecords.map(raw=>{
@@ -1946,6 +1963,13 @@ async function confirmMapping() {
 
   document.getElementById('mapping-modal').classList.remove('open');
   mappingCtx=null;
+
+  if (AE_SUB_CONFIG[entity]) {
+    const cfg = AE_SUB_CONFIG[entity];
+    window[cfg.dataKey] = records;
+    renderAeSubTable(entity);
+    return;
+  }
 
   const progressEl=document.getElementById(entity+'-import-progress');
   const fillEl=progressEl.querySelector('.import-progress-fill');
