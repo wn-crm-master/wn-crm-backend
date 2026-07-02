@@ -454,10 +454,10 @@
         <div class="tab-toolbar">
           <div class="title-row"><div class="page-title">AE List <span id="ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
           <div class="import-btns">
-            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeImport(event)" /></label>
+            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','aes')" /></label>
           </div>
         </div>
-        <div id="ae-import-msg" class="inline-msg"></div>
+        <div id="aes-import-msg" class="inline-msg"></div>
         <div class="table-card"><div class="table-scroll"><div id="ae-list-body"><div class="empty">No data yet. Use Import above.</div></div></div></div>
       </div>
       <div id="ae-sub-ae-authors" class="ae-sub-content"><div class="empty">Coming soon</div></div>
@@ -752,19 +752,6 @@ const AE_COLS = [
   { field:'latestRewardDate',    header:'Date of Latest Reward',           width:180 },
 ];
 
-const AE_CSV_MAP = {
-  'date added':'dateAdded',
-  'ae email id':'email', 'ae email':'email', 'email id':'email', 'email':'email',
-  'ae name':'name', 'name':'name',
-  'no. of authors reg.':'authorsReg', 'no. of authors reg':'authorsReg', 'authors reg':'authorsReg', 'authors registered':'authorsReg',
-  'no. of books created':'booksCreated', 'books created':'booksCreated',
-  'authors qual. stage 1':'stage1Qualified', 'stage 1':'stage1Qualified', 'no. of authors qualified for stage 1':'stage1Qualified',
-  'authors qual. stage 2':'stage2Qualified', 'stage 2':'stage2Qualified', 'no. of authors qualified for stage 2':'stage2Qualified',
-  'authors qual. stage 3':'stage3Qualified', 'stage 3':'stage3Qualified', 'no. of authors qualified for stage 3':'stage3Qualified',
-  'reg. date of latest author':'latestAuthorRegDate', 'latest author reg date':'latestAuthorRegDate',
-  'date of latest reward':'latestRewardDate', 'latest reward date':'latestRewardDate',
-};
-
 let aeData = [];
 
 async function loadAeList() {
@@ -800,49 +787,6 @@ function renderAeList() {
   }
   html += '</tbody></table>';
   container.innerHTML = html;
-}
-
-function parseAeCsv(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  const mapping = {};
-  headers.forEach((h, i) => {
-    const key = h.toLowerCase().trim();
-    if (AE_CSV_MAP[key]) mapping[i] = AE_CSV_MAP[key];
-    else {
-      const col = AE_COLS.find(c => c.header.toLowerCase() === key || c.field.toLowerCase() === key);
-      if (col) mapping[i] = col.field;
-    }
-  });
-  const records = [];
-  for (let i = 1; i < lines.length; i++) {
-    const vals = lines[i].match(/(".*?"|[^,]*)/g) || [];
-    const rec = {};
-    vals.forEach((v, idx) => {
-      if (mapping[idx]) rec[mapping[idx]] = v.replace(/^"|"$/g, '').trim();
-    });
-    if (rec.email) records.push(rec);
-  }
-  return records;
-}
-
-async function handleAeImport(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  event.target.value = '';
-  const msgEl = document.getElementById('ae-import-msg');
-  msgEl.textContent = 'Importing…'; msgEl.style.color = '#888';
-  try {
-    const text = await file.text();
-    const records = parseAeCsv(text);
-    if (!records.length) { msgEl.style.color = '#e74c3c'; msgEl.textContent = 'No valid records found in CSV.'; return; }
-    const res = await api('/api/import/aes', { method: 'POST', body: JSON.stringify({ aes: records }) });
-    if (res.error) { msgEl.style.color = '#e74c3c'; msgEl.textContent = 'Error: ' + res.error; return; }
-    msgEl.style.color = '#2e7d32';
-    msgEl.textContent = `Imported: ${res.inserted} new, ${res.updated} updated, ${res.skipped} skipped`;
-    loadAeList();
-  } catch (e) { msgEl.style.color = '#e74c3c'; msgEl.textContent = 'Import failed: ' + e.message; }
 }
 
 // ── Table rendering ────────────────────────────────────────────────
@@ -1713,6 +1657,19 @@ const BOOK_ALIASES = {
   'h15 eligible ldau':'h15EligibleLdau','h15 ret%':'h15Ret',
 };
 
+const AE_ALIASES = {
+  'date added':'dateAdded',
+  'ae email id':'email','ae email':'email','email id':'email','email':'email',
+  'ae name':'name','name':'name',
+  'no. of authors reg.':'authorsReg','no. of authors reg':'authorsReg','authors reg':'authorsReg','authors registered':'authorsReg',
+  'no. of books created':'booksCreated','books created':'booksCreated',
+  'authors qual. stage 1':'stage1Qualified','stage 1':'stage1Qualified','no. of authors qualified for stage 1':'stage1Qualified',
+  'authors qual. stage 2':'stage2Qualified','stage 2':'stage2Qualified','no. of authors qualified for stage 2':'stage2Qualified',
+  'authors qual. stage 3':'stage3Qualified','stage 3':'stage3Qualified','no. of authors qualified for stage 3':'stage3Qualified',
+  'reg. date of latest author':'latestAuthorRegDate','latest author reg date':'latestAuthorRegDate',
+  'date of latest reward':'latestRewardDate','latest reward date':'latestRewardDate',
+};
+
 // ── CSV raw parser (keeps original column names) ───────────────────
 function parseCSVRow(headers, line) {
   const vals=[]; let cur='', inQuote=false;
@@ -1743,7 +1700,7 @@ function handleImport(event, fileType, entity) {
     try {
       if(fileType==='json') {
         const p=JSON.parse(text);
-        const arr=entity==='authors'?(p.authors||(Array.isArray(p)?p:[])):(p.books||(Array.isArray(p)?p:[]));
+        const arr=entity==='authors'?(p.authors||(Array.isArray(p)?p:[])):entity==='aes'?(p.aes||(Array.isArray(p)?p:[])):(p.books||(Array.isArray(p)?p:[]));
         if(!arr.length){setMsg(msgEl,'error','No data found in file.');return;}
         headers=Object.keys(arr[0]);
         rawRecords=arr;
@@ -1762,8 +1719,8 @@ function handleImport(event, fileType, entity) {
 
 function openMappingModal(entity, rawRecords, headers, msgEl) {
   mappingCtx={entity,rawRecords,msgEl};
-  const aliases=entity==='authors'?AUTHOR_ALIASES:BOOK_ALIASES;
-  const cols=entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const aliases=entity==='authors'?AUTHOR_ALIASES:entity==='aes'?AE_ALIASES:BOOK_ALIASES;
+  const cols=entity==='authors'?AUTHOR_COLS:entity==='aes'?AE_COLS:BOOK_COLS;
   const sample=rawRecords[0]||{};
 
   const rows=headers.map(col=>{
@@ -1778,7 +1735,7 @@ function openMappingModal(entity, rawRecords, headers, msgEl) {
   }).join('');
 
   document.getElementById('mapping-rows').innerHTML=rows;
-  document.getElementById('mapping-entity-label').textContent=entity==='authors'?'Authors':'Books';
+  document.getElementById('mapping-entity-label').textContent=entity==='authors'?'Authors':entity==='aes'?'AEs':'Books';
   document.getElementById('mapping-modal').classList.add('open');
 }
 
@@ -1790,7 +1747,8 @@ function cancelMapping() {
 async function confirmMapping() {
   if(!mappingCtx) return;
   const {entity,rawRecords,msgEl}=mappingCtx;
-  const idField=entity==='authors'?'uid':'id';
+  const idField=entity==='authors'?'uid':entity==='aes'?'email':'id';
+  const idLabels={authors:'Author ID (uid)',books:'Book ID (id)',aes:'AE Email ID (email)'};
 
   const mapping={};
   document.querySelectorAll('#mapping-rows .map-select').forEach(sel=>{
@@ -1798,7 +1756,7 @@ async function confirmMapping() {
   });
 
   if(!Object.values(mapping).includes(idField)){
-    alert(`Please map a column to "${entity==='authors'?'Author ID (uid)':'Book ID (id)'}". This is required as the unique identifier.`);
+    alert(`Please map a column to "${idLabels[entity]}". This is required as the unique identifier.`);
     return;
   }
 
@@ -1814,14 +1772,15 @@ async function confirmMapping() {
   mappingCtx=null;
 
   setMsg(msgEl,'info',`Importing ${records.length} ${entity}…`);
-  const body=entity==='authors'?{authors:records}:{books:records};
+  const bodyKey=entity==='authors'?'authors':entity==='aes'?'aes':'books';
+  const body={[bodyKey]:records};
   const res=await api('/api/import/'+entity,{method:'POST',body:JSON.stringify(body)});
   if(res.success){
     let msg=`Done! ${res.inserted} added, ${res.updated} updated.`;
     if(res.skipped>0) msg+=` ${res.skipped} skipped.`;
     if(res.stubAuthorsCreated>0) msg+=` ${res.stubAuthorsCreated} stub author(s) created.`;
     setMsg(msgEl,'success',msg);
-    if(entity==='authors') loadAuthors(); else loadBooks(); loadStats();
+    if(entity==='authors') loadAuthors(); else if(entity==='aes') loadAeList(); else loadBooks(); loadStats();
   } else { setMsg(msgEl,'error',res.error||'Import failed.'); }
 }
 
