@@ -191,6 +191,14 @@
     .cell-input { width: 100%; padding: 6px 8px; border: 2px solid #c0272d; border-radius: 4px; font-size: 0.85rem; outline: none; font-family: inherit; min-width: 120px; }
     .cell-special { border-color: #e67e22; background: #fff8f0; }
 
+    /* AE Sub-tabs */
+    .ae-sub-tabs { display: flex; gap: 0; border-bottom: 2px solid #e8e0e0; margin-bottom: 20px; }
+    .ae-sub-tab { padding: 10px 20px; font-size: 0.88rem; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
+    .ae-sub-tab:hover { color: #c0272d; }
+    .ae-sub-tab.active { color: #c0272d; border-bottom-color: #c0272d; }
+    .ae-sub-content { display: none; }
+    .ae-sub-content.active { display: block; }
+
     /* Settings */
     .settings-section { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 20px; }
     .settings-section h3 { font-size: 1rem; color: #4a1a1a; margin-bottom: 4px; }
@@ -338,6 +346,7 @@
       <div class="nav-link" onclick="showTab('authors')">Authors</div>
       <div class="nav-link" onclick="showTab('books')">Books</div>
       <div class="nav-link" onclick="showTab('review')">Review</div>
+      <div class="nav-link" onclick="showTab('ae')">AEs</div>
     </div>
     <div class="nav-right">
       <span class="nav-date" id="nav-date"></span>
@@ -391,6 +400,21 @@
         <div class="title-row"><div class="page-title">Review</div></div>
       </div>
       <div class="table-card"><div class="table-scroll"><div id="review-body"><div class="loading">Loading…</div></div></div></div>
+    </div>
+
+    <div id="tab-ae" class="tab">
+      <div class="ae-sub-tabs">
+        <div class="ae-sub-tab active" onclick="showAeSubTab('ae-list')">AE List</div>
+        <div class="ae-sub-tab" onclick="showAeSubTab('ae-authors')">Authors List</div>
+        <div class="ae-sub-tab" onclick="showAeSubTab('ae-books')">Books Data</div>
+        <div class="ae-sub-tab" onclick="showAeSubTab('ae-payments')">Payments Data</div>
+        <div class="ae-sub-tab" onclick="showAeSubTab('ae-report')">Report</div>
+      </div>
+      <div id="ae-sub-ae-list" class="ae-sub-content active"><div class="empty">Coming soon</div></div>
+      <div id="ae-sub-ae-authors" class="ae-sub-content"><div class="empty">Coming soon</div></div>
+      <div id="ae-sub-ae-books" class="ae-sub-content"><div class="empty">Coming soon</div></div>
+      <div id="ae-sub-ae-payments" class="ae-sub-content"><div class="empty">Coming soon</div></div>
+      <div id="ae-sub-ae-report" class="ae-sub-content"><div class="empty">Coming soon</div></div>
     </div>
 
     <div id="tab-settings" class="tab">
@@ -634,7 +658,7 @@ function showApp() {
   showTab('dashboard'); loadStats();
 }
 
-const NAV_TAB_ORDER = ['dashboard','authors','books','review'];
+const NAV_TAB_ORDER = ['dashboard','authors','books','review','ae'];
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
@@ -655,6 +679,13 @@ async function loadStats() { const res=await api('/api/stats'); if(res.totalAuth
 async function loadReview() {
   const container = document.getElementById('review-body');
   container.innerHTML = '<div class="empty">Coming soon</div>';
+}
+
+function showAeSubTab(name) {
+  document.querySelectorAll('.ae-sub-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.ae-sub-content').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.ae-sub-tab[onclick*="${name}"]`).classList.add('active');
+  document.getElementById('ae-sub-' + name).classList.add('active');
 }
 
 // ── Table rendering ────────────────────────────────────────────────
