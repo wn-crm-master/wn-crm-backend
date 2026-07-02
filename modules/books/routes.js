@@ -38,6 +38,22 @@ function register(app, getDb, authMiddleware) {
     }
   });
 
+  app.put('/api/books/bulk-update', authMiddleware, async (req, res) => {
+    try {
+      const db = getDb();
+      const { ids = [], field, value } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0 || !field) return res.status(400).json({ error: 'ids array and field are required' });
+      if (field === '_id' || field === 'id') return res.status(400).json({ error: 'Cannot update id fields' });
+      const result = await db.collection('books').updateMany(
+        { id: { $in: ids } },
+        { $set: { [field]: value, updatedAt: new Date() } }
+      );
+      res.json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.put('/api/books/:id', authMiddleware, async (req, res) => {
     try {
       const db = getDb();

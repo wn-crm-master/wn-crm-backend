@@ -1532,27 +1532,22 @@ async function applyMassUpdate() {
   const idField = entity==='authors'?'uid':'id';
   const ids = [...state[entity].selected];
   const btn = document.getElementById('mu-apply-btn');
-  btn.disabled = true; btn.textContent = `Updating 0/${ids.length}…`;
+  btn.disabled = true; btn.textContent = `Updating ${ids.length} records…`;
 
-  let done = 0, failed = 0;
-  for (const rowId of ids) {
-    const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, {
-      method: 'PUT', body: JSON.stringify({ [field]: val })
+  const res = await api(`/api/${entity}/bulk-update`, {
+    method: 'PUT', body: JSON.stringify({ ids, field, value: val })
+  });
+
+  if (res.success) {
+    [state[entity].data, state[entity].sortedData].forEach(arr => {
+      arr.forEach(r => { if (ids.includes(String(r[idField]))) r[field] = val; });
     });
-    if (res.success) {
-      [state[entity].data, state[entity].sortedData].forEach(arr => {
-        const r = arr.find(x => String(x[idField])===String(rowId));
-        if (r) r[field] = val;
-      });
-      done++;
-    } else { failed++; }
-    btn.textContent = `Updating ${done+failed}/${ids.length}…`;
   }
 
   btn.disabled = false; btn.textContent = 'Apply';
   closeMassUpdate();
   renderTable(entity);
-  showSave(failed === 0, failed ? `${failed} record(s) failed to update` : undefined);
+  showSave(res.success, res.success ? undefined : (res.error || 'Bulk update failed'));
 }
 
 async function toggleCheckbox(entity, rowId, field, currentChecked, cell) {
