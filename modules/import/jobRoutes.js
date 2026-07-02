@@ -52,8 +52,9 @@ async function processJob(db, entity, records, job) {
   } else if (entity === 'aes') {
     await processAes(db, records, job);
   } else if (entity === 'ae_authors') {
-    await processSimple(db, 'ae_authors', records, job);
-    await syncNewAeEmails(db, records);
+    const mappings = records.map(r => ({ aeEmail: (r.aeEmail || '').trim().toLowerCase(), uid: r.uid })).filter(r => r.aeEmail && r.uid);
+    await processAeAuthorMappings(db, mappings, job);
+    await syncNewAeEmails(db, mappings.map(m => ({ aeEmail: m.aeEmail })));
   } else if (entity === 'ae_books') {
     await processSimple(db, 'ae_books', records, job);
     await syncNewAeEmails(db, records);
@@ -159,6 +160,24 @@ async function processAes(db, records, job) {
           await db.collection('aes').updateOne({ email }, { $set: updateFields });
         }
         job.updated++;
+      }
+    } catch {
+      job.skipped++;
+    }
+    job.processed++;
+  }
+}
+
+async function processAeAuthorMappings(db, records, job) {
+  for (const record of records) {
+    try {
+      const existing = await db.collection('ae_authors').findOne({ aeEmail: record.aeEmail, uid: record.uid });
+      if (existing) {
+        job.skipped++;
+      } else {
+        record.createdAt = new Date();
+        await db.collection('ae_authors').insertOne(record);
+        job.inserted++;
       }
     } catch {
       job.skipped++;

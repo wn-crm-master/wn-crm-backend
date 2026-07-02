@@ -486,10 +486,9 @@
       </div>
       <div id="ae-sub-ae-books" class="ae-sub-content">
         <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Books Data</div></div>
+          <div class="title-row"><div class="page-title">Books Data</div><span style="font-size:0.8rem;color:#888;margin-left:8px;">(derived from Authors List mappings)</span></div>
           <div class="import-btns">
             <button class="btn btn-download" onclick="downloadAeSubCSV('ae-books')">⬇ Download CSV</button>
-            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-books')" /></label>
           </div>
         </div>
         <div class="table-card"><div class="table-scroll"><div id="ae-books-body"></div></div></div>
@@ -769,7 +768,7 @@ function showTab(name) {
   if (name==='dashboard') loadStats();
   if (name==='review') loadReview();
   if (name==='settings') loadBackups();
-  if (name==='ae') loadAeList();
+  if (name==='ae') { ensureAuthorsAndBooksLoaded(); loadAeList(); }
 }
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
@@ -786,11 +785,58 @@ function showAeSubTab(name) {
   if (AE_SUB_CONFIG[name]) loadAeSubTab(name);
 }
 
+async function ensureAuthorsAndBooksLoaded() {
+  const promises = [];
+  if (!state.authors.data.length) promises.push(api('/api/authors?limit=50000').then(r => { state.authors.data = r.data||(Array.isArray(r)?r:[]); }));
+  if (!state.books.data.length) promises.push(api('/api/books?limit=50000').then(r => { state.books.data = r.data||(Array.isArray(r)?r:[]); }));
+  if (promises.length) await Promise.all(promises);
+}
+
 async function loadAeSubTab(subTab) {
   const cfg = AE_SUB_CONFIG[subTab];
   if (!cfg) return;
   const container = document.getElementById(cfg.containerId);
   container.innerHTML = '<div class="loading">Loading…</div>';
+
+  if (subTab === 'ae-authors') {
+    try {
+      const res = await api(cfg.apiPath);
+      const mappings = res.data || [];
+      await ensureAuthorsAndBooksLoaded();
+      const authorMap = {};
+      for (const a of state.authors.data) authorMap[a.uid] = a;
+      state.ae_authors.data = mappings.map(m => {
+        const a = authorMap[m.uid] || {};
+        return { aeEmail: m.aeEmail, uid: m.uid, regnDate: a.regnDate || '', name: a.name || '', email: a.email || '', preContractedTag: a.preContractedTag || '' };
+      });
+    } catch (e) {
+      state.ae_authors.data = [];
+    }
+    renderAeSubTable(subTab);
+    return;
+  }
+
+  if (subTab === 'ae-books') {
+    try {
+      const aeAuthRes = await api('/api/ae-authors');
+      const mappings = aeAuthRes.data || [];
+      await ensureAuthorsAndBooksLoaded();
+      const rows = [];
+      for (const m of mappings) {
+        const books = state.books.data.filter(b => b.authorId === m.uid);
+        const author = state.authors.data.find(a => a.uid === m.uid);
+        for (const b of books) {
+          rows.push({ aeEmail: m.aeEmail, authorId: m.uid, authorName: author?.name || b.authorName || '', bookId: b.id, bookTitle: b.title || '', createDate: b.createDate || '', genre: b.genre || '' });
+        }
+      }
+      state.ae_books.data = rows;
+    } catch (e) {
+      state.ae_books.data = [];
+    }
+    renderAeSubTable(subTab);
+    return;
+  }
+
   try {
     const res = await api(cfg.apiPath);
     state[cfg.entity].data = res.data || [];
@@ -873,11 +919,7 @@ const AE_SUB_CONFIG = {
 
 const AE_AUTHORS_ALIASES = {
   'ae mail id':'aeEmail','ae email':'aeEmail','ae email id':'aeEmail','aeemail':'aeEmail',
-  'registration date':'regnDate','reg date':'regnDate','regndate':'regnDate','reg. date':'regnDate',
   'uid':'uid','author uid':'uid','author id':'uid',
-  'author name':'name','name':'name',
-  'author email':'email','email':'email','author email id':'email',
-  'pre-contract validation':'preContractedTag','pre contract validation':'preContractedTag','precontract validation':'preContractedTag','precontractedtag':'preContractedTag',
 };
 const AE_BOOKS_ALIASES = {
   'ae mail id':'aeEmail','ae email':'aeEmail','ae email id':'aeEmail','aeemail':'aeEmail',
@@ -1892,9 +1934,14 @@ function getAliasesForEntity(entity) {
   if (entity==='ae-payments') return AE_PAYMENTS_ALIASES;
   return BOOK_ALIASES;
 }
+const AE_AUTHORS_IMPORT_COLS = [
+  { field:'aeEmail', header:'AE Mail Id', width:220 },
+  { field:'uid',     header:'UID',        width:280 },
+];
 function getColsForEntity(entity) {
   if (entity==='authors') return AUTHOR_COLS;
   if (entity==='aes') return AE_COLS;
+  if (entity==='ae-authors') return AE_AUTHORS_IMPORT_COLS;
   if (AE_SUB_CONFIG[entity]) return AE_SUB_CONFIG[entity].cols;
   return BOOK_COLS;
 }
