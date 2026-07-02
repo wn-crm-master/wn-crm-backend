@@ -12,6 +12,7 @@ const { register: registerBookImport } = require('./modules/books/import');
 const { register: registerBackups } = require('./modules/backups');
 const { register: registerStats } = require('./modules/stats');
 const { register: registerSheetSync, startScheduledSync } = require('./modules/sheetSync');
+const { register: registerImportJobs } = require('./modules/import/jobRoutes');
 const { register: registerAeRoutes } = require('./modules/aes/routes');
 const { register: registerAeImport } = require('./modules/aes/import');
 
@@ -62,6 +63,7 @@ registerBookRoutes(app, getDb, authMiddleware);
 registerBackups(app, getDb, authMiddleware);
 registerStats(app, getDb, authMiddleware);
 registerSheetSync(app, getDb, authMiddleware);
+registerImportJobs(app, getDb, authMiddleware);
 registerAeImport(app, getDb, authMiddleware);
 registerAeRoutes(app, getDb, authMiddleware);
 
