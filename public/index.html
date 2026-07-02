@@ -1402,10 +1402,14 @@ function toggleSelectAll(entity, masterCb) {
   const sel = state[entity].selected;
   const idField = entity==='authors'?'uid':'id';
   const rows = document.querySelectorAll(`#${entity}-body tbody tr`);
+  if (masterCb.checked) sel.clear();
   rows.forEach(tr => {
-    if (tr.style.display === 'none') return; // respect active filters
     const rowId = tr.dataset.id;
     const cb = tr.querySelector('.row-cb');
+    if (tr.style.display === 'none') {
+      sel.delete(rowId); tr.classList.remove('row-selected'); if(cb) cb.checked=false;
+      return;
+    }
     if (masterCb.checked) { sel.add(rowId); tr.classList.add('row-selected'); if(cb) cb.checked=true; }
     else { sel.delete(rowId); tr.classList.remove('row-selected'); if(cb) cb.checked=false; }
   });
