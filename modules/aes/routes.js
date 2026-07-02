@@ -2,7 +2,7 @@ function register(app, getDb, authMiddleware) {
   app.get('/api/aes', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const limit = parseInt(req.query.limit) || 5000;
+      const limit = parseInt(req.query.limit) || 50000;
       const data = await db.collection('aes').find({}).limit(limit).toArray();
       res.json({ data });
     } catch (err) {

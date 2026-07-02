@@ -1576,7 +1576,7 @@ function showSave(ok, err) {
 // ── Load data ──────────────────────────────────────────────────────
 async function loadAuthors() {
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
-  const res = await api('/api/authors?limit=5000');
+  const res = await api('/api/authors?limit=50000');
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
   state.authors.selected.clear();
   const n = state.authors.data.length;
@@ -1586,7 +1586,7 @@ async function loadAuthors() {
 }
 async function loadBooks() {
   document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
-  const res = await api('/api/books?limit=5000');
+  const res = await api('/api/books?limit=50000');
   state.books.data = res.data||(Array.isArray(res)?res:[]);
   state.books.selected.clear();
   renderTable('books');
