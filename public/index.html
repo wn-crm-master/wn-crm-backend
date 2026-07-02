@@ -201,9 +201,6 @@
     /* AE Sub-tabs */
     .ae-sub-tabs { display: flex; align-items: center; gap: 0; border-bottom: 2px solid #e8e0e0; margin-bottom: 0; position: sticky; top: 0; background: #fff; z-index: 20; padding-top: 8px; }
     .ae-sub-content > .tab-toolbar { position: sticky; top: 44px; background: #fff; z-index: 19; padding: 12px 0; margin-bottom: 0; }
-    .ae-sub-content table.wide { border-collapse: separate; border-spacing: 0; }
-    .ae-sub-content table.wide thead th { position: sticky; top: 0; background: #fff; z-index: 5; border-bottom: 2px solid #e8e0e0; }
-    .ae-sub-content table.wide tfoot td { position: sticky; bottom: 0; background: #fff; z-index: 5; border-top: 2px solid #e8e0e0; }
     .ae-sub-tab { padding: 10px 20px; font-size: 0.88rem; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
     .ae-sub-tab:hover { color: #c0272d; }
     .ae-sub-tab.active { color: #c0272d; border-bottom-color: #c0272d; }
@@ -615,7 +612,11 @@ let token = localStorage.getItem('crm_token') || '';
 
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
-  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() }
+  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  aes:          { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  ae_authors:   { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  ae_payments:  { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
 };
 
 // Active filter dropdown context
@@ -792,9 +793,9 @@ async function loadAeSubTab(subTab) {
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
     const res = await api(cfg.apiPath);
-    window[cfg.dataKey] = res.data || [];
+    state[cfg.entity].data = res.data || [];
   } catch (e) {
-    window[cfg.dataKey] = [];
+    state[cfg.entity].data = [];
   }
   renderAeSubTable(subTab);
 }
@@ -814,87 +815,23 @@ const AE_COLS = [
   { field:'latestRewardDate',       header:'Date of Latest Reward',                       width:180 },
 ];
 
-let aeData = [];
 
 async function loadAeList() {
   const container = document.getElementById('ae-list-body');
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
     const res = await api('/api/aes');
-    aeData = res.data || [];
+    state.aes.data = res.data || [];
     renderAeList();
   } catch (e) {
     container.innerHTML = '<div class="empty">Error loading data</div>';
   }
 }
 
-const aeSelections = { 'ae-list': new Set(), 'ae-authors': new Set(), 'ae-books': new Set(), 'ae-payments': new Set() };
-
 function renderAeList() {
-  const container = document.getElementById('ae-list-body');
   const countEl = document.getElementById('ae-count');
-  if (countEl) countEl.textContent = aeData.length ? `(${aeData.length})` : '';
-  aeSelections['ae-list'] = new Set();
-  renderAeTable(container, AE_COLS, aeData, 'ae-list', 'email');
-}
-
-function renderAeTable(container, cols, data, tableId, rowIdField) {
-  const sel = aeSelections[tableId];
-  let html = '<table class="wide"><thead><tr>';
-  html += `<th class="sel-cell" style="width:36px;min-width:36px;padding:4px;text-align:center"><input type="checkbox" class="row-cb" title="Select all" onchange="aeToggleSelectAll('${tableId}',this)"></th>`;
-  for (const col of cols) {
-    html += `<th style="width:${col.width}px;min-width:${col.width}px;padding:8px 10px;">${col.header}</th>`;
-  }
-  html += '</tr></thead><tbody>';
-  if (!data.length) {
-    html += '<tr><td colspan="' + (cols.length + 1) + '" style="text-align:center;padding:40px;color:#999">No data yet.</td></tr>';
-  }
-  data.forEach((row, idx) => {
-    const rid = row[rowIdField] || String(idx);
-    const checked = sel.has(rid);
-    html += `<tr data-id="${escAttr(rid)}" class="${checked?'row-selected':''}" onclick="aeToggleRow('${tableId}',this,'${escAttr(rid)}')">`;
-    html += `<td class="sel-cell" style="text-align:center;padding:4px"><input type="checkbox" class="row-cb" ${checked?'checked':''} onclick="event.stopPropagation();aeToggleRow('${tableId}',this.closest('tr'),'${escAttr(rid)}')"></td>`;
-    for (const col of cols) {
-      const val = row[col.field] !== undefined && row[col.field] !== null ? row[col.field] : '';
-      html += `<td style="padding:8px 10px;">${escHtml(String(val))}</td>`;
-    }
-    html += '</tr>';
-  });
-  html += '</tbody><tfoot><tr>';
-  html += `<td id="${tableId}-sel-count" style="padding:8px 10px;font-weight:600;font-size:0.85rem;color:#888" colspan="${cols.length + 1}">${data.length} rows | Selected (${sel.size})</td>`;
-  html += '</tr></tfoot></table>';
-  container.innerHTML = html;
-}
-
-function aeToggleRow(tableId, tr, rid) {
-  const sel = aeSelections[tableId];
-  if (sel.has(rid)) { sel.delete(rid); tr.classList.remove('row-selected'); }
-  else { sel.add(rid); tr.classList.add('row-selected'); }
-  const cb = tr.querySelector('.row-cb');
-  if (cb) cb.checked = sel.has(rid);
-  aeUpdateFooter(tableId);
-}
-
-function aeToggleSelectAll(tableId, masterCb) {
-  const sel = aeSelections[tableId];
-  const table = masterCb.closest('table');
-  const rows = table.querySelectorAll('tbody tr[data-id]');
-  sel.clear();
-  rows.forEach(tr => {
-    const cb = tr.querySelector('.row-cb');
-    if (masterCb.checked) { sel.add(tr.dataset.id); tr.classList.add('row-selected'); if(cb) cb.checked=true; }
-    else { tr.classList.remove('row-selected'); if(cb) cb.checked=false; }
-  });
-  aeUpdateFooter(tableId);
-}
-
-function aeUpdateFooter(tableId) {
-  const el = document.getElementById(tableId + '-sel-count');
-  if (!el) return;
-  const sel = aeSelections[tableId];
-  const dataMap = { 'ae-list': aeData, 'ae-authors': aeAuthorsData, 'ae-books': aeBooksData, 'ae-payments': aePaymentsData };
-  const total = (dataMap[tableId] || []).length;
-  el.textContent = `${total} rows | Selected (${sel.size})`;
+  if (countEl) countEl.textContent = state.aes.data.length ? `(${state.aes.data.length})` : '';
+  renderTable('aes');
 }
 
 // ── AE Authors List ──────────────────────────────────────────────
@@ -907,7 +844,6 @@ const AE_AUTHORS_COLS = [
   { field:'preContractedTag',     header:'Pre-Contract Validation',   width:190 },
 ];
 
-let aeAuthorsData = [], aeBooksData = [], aePaymentsData = [];
 
 const AE_BOOKS_COLS = [
   { field:'aeEmail',        header:'AE Mail Id',          width:220 },
@@ -965,20 +901,13 @@ const AE_PAYMENTS_ALIASES = {
 function renderAeSubTable(subTab) {
   const cfg = AE_SUB_CONFIG[subTab];
   if (!cfg) return;
-  const data = window[cfg.dataKey] || [];
-  const container = document.getElementById(cfg.containerId);
-  if (!container) return;
-  const rowIdMap = { 'ae-authors': 'uid', 'ae-books': 'bookId', 'ae-payments': 'aeEmail' };
-  aeSelections[subTab] = new Set();
-  renderAeTable(container, cfg.cols, data, subTab, rowIdMap[subTab] || cfg.cols[0].field);
+  renderTable(cfg.entity);
 }
-
-function renderAeAuthors() { renderAeSubTable('ae-authors'); }
 
 function downloadAeSubCSV(subTab) {
   const cfg = AE_SUB_CONFIG[subTab];
   if (!cfg) return;
-  const data = window[cfg.dataKey] || [];
+  const data = state[cfg.entity]?.sortedData || state[cfg.entity]?.data || [];
   const cols = cfg.cols;
   const esc = v => { const s = String(v??''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
   let csv = cols.map(c => esc(c.header)).join(',') + '\n';
@@ -1010,12 +939,23 @@ function getStickyOffsets(cols, pinned, entity) {
   return o;
 }
 
+const ENTITY_META = {
+  authors:     { cols: AUTHOR_COLS,      idField: 'uid',     fixedField: 'uid',   special: SPECIAL_AUTHORS, bodyId: 'authors-body' },
+  books:       { cols: BOOK_COLS,        idField: 'id',      fixedField: 'title', special: SPECIAL_BOOKS,   bodyId: 'books-body' },
+  aes:         { cols: AE_COLS,          idField: 'email',   fixedField: null,    special: new Set(),       bodyId: 'ae-list-body' },
+  ae_authors:  { cols: AE_AUTHORS_COLS,  idField: 'uid',     fixedField: null,    special: new Set(),       bodyId: 'ae-authors-body' },
+  ae_books:    { cols: AE_BOOKS_COLS,    idField: 'bookId',  fixedField: null,    special: new Set(),       bodyId: 'ae-books-body' },
+  ae_payments: { cols: AE_PAYMENTS_COLS, idField: 'aeEmail', fixedField: null,    special: new Set(),       bodyId: 'ae-payments-body' },
+};
+
 function renderTable(entity) {
-  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const meta = ENTITY_META[entity] || ENTITY_META.authors;
+  const cols = meta.cols;
   const s = state[entity];
-  const idField = entity==='authors'?'uid':'id';
-  const fixedField = entity==='authors'?'uid':'title';
-  const special = entity==='authors'?SPECIAL_AUTHORS:SPECIAL_BOOKS;
+  const idField = meta.idField;
+  const fixedField = meta.fixedField;
+  const special = meta.special;
+  const isAeEntity = ['aes','ae_authors','ae_books','ae_payments'].includes(entity);
 
   // Sort
   let sorted = [...s.data];
@@ -1026,7 +966,7 @@ function renderTable(entity) {
   s.sortedData = sorted;
 
   const offsets = getStickyOffsets(cols, s.pinned, entity);
-  const container = document.getElementById(entity+'-body');
+  const container = document.getElementById(meta.bodyId);
 
   if (!sorted.length) { container.innerHTML='<div class="empty">No data yet. Use Import above.</div>'; return; }
 
@@ -1077,7 +1017,7 @@ function renderTable(entity) {
       </div>
     </th>`;
   }
-  html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
+  if (!isAeEntity) html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
   if (entity==='books') {
     const nsFilter = s.filter['_nextStep'] || new Set();
     const nsHasFilter = nsFilter.size > 0;
@@ -1138,7 +1078,9 @@ function renderTable(entity) {
       let tdClick = '';
       let tdContent = '';
 
-      if (isForm2NA) {
+      if (isAeEntity) {
+        tdContent = escHtml(String(rawVal));
+      } else if (isForm2NA) {
         tdContent = 'NA';
       } else if (isId || col.readOnly) {
         tdContent = escHtml(String(rawVal));
@@ -1178,7 +1120,7 @@ function renderTable(entity) {
 
       html += `<td ${tdClick} class="${tdClass.trim()}" style="${stStyle}" title="${escAttr(String(rawVal))}">${tdContent}</td>`;
     }
-    html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(rowId)}',this)">✕</button></td>`;
+    if (!isAeEntity) html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(rowId)}',this)">✕</button></td>`;
     if (entity==='books') {
       if (step.label.startsWith('Send ')) {
         html += `<td class="next-step-cell"><button class="btn-send-form2" onclick="sendForm2('${escAttr(rowId)}','${escAttr(step.label)}')">${step.label}</button></td>`;
@@ -1211,7 +1153,7 @@ function renderTable(entity) {
       html += `<td class="${cls}" style="${stStyle}"></td>`;
     }
   }
-  html += '<td class="del-cell"></td>';
+  if (!isAeEntity) html += '<td class="del-cell"></td>';
   if (entity==='books') html += '<td class="next-step-cell"></td>';
   html += '</tr></tfoot>';
 
@@ -1230,7 +1172,8 @@ function renderFilterTags(entity) {
   const container = document.getElementById(entity+'-active-filters');
   if (!container) return;
   const s = state[entity];
-  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const meta = ENTITY_META[entity];
+  const cols = meta ? meta.cols : AUTHOR_COLS;
   const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
   if (!activeFilters.length) { container.innerHTML=''; return; }
   let html = '';
@@ -1278,9 +1221,11 @@ function applyRowFilters(entity) {
 }
 
 function updateTotals(entity, visibleRows) {
-  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const meta = ENTITY_META[entity];
+  if (!meta) return;
+  const cols = meta.cols;
   const sel = state[entity].selected;
-  const idField = entity==='authors'?'uid':'id';
+  const idField = meta.idField;
   const sourceRows = sel.size > 0 ? visibleRows.filter(r => sel.has(String(r[idField]||''))) : visibleRows;
 
   const countEl = document.getElementById(entity+'-totals-count');
@@ -1596,8 +1541,10 @@ function toggleRowSelect(entity, rowId, cb) {
 }
 
 function toggleSelectAll(entity, masterCb) {
+  const meta = ENTITY_META[entity];
   const sel = state[entity].selected;
-  const idField = entity==='authors'?'uid':'id';
+  const idField = meta ? meta.idField : 'uid';
+  const bodyId = meta ? meta.bodyId : entity+'-body';
   const s = state[entity];
   const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
   const visibleIds = new Set(
@@ -1607,7 +1554,7 @@ function toggleSelectAll(entity, masterCb) {
   sel.clear();
   if (masterCb.checked) visibleIds.forEach(id => sel.add(id));
 
-  const rows = document.querySelectorAll(`#${entity}-body tbody tr`);
+  const rows = document.querySelectorAll(`#${bodyId} tbody tr`);
   rows.forEach(tr => {
     const cb = tr.querySelector('.row-cb');
     const checked = sel.has(tr.dataset.id);
@@ -1618,14 +1565,16 @@ function toggleSelectAll(entity, masterCb) {
 }
 
 function updateSelectionUI(entity) {
+  const meta = ENTITY_META[entity];
+  const bodyId = meta ? meta.bodyId : entity+'-body';
   const count = state[entity].selected.size;
   const delBtn = document.getElementById(`${entity}-del-selected`);
   if (delBtn) { delBtn.style.display = count > 0 ? '' : 'none'; delBtn.textContent = `Delete Selected (${count})`; }
   const muBtn = document.getElementById(`${entity}-mass-update`);
   if (muBtn) { muBtn.style.display = count > 0 ? '' : 'none'; muBtn.textContent = `Mass Update (${count})`; }
   // Sync master checkbox state
-  const rows = [...document.querySelectorAll(`#${entity}-body tbody tr`)].filter(tr=>tr.style.display!=='none');
-  const master = document.querySelector(`#${entity}-body thead .row-cb`);
+  const rows = [...document.querySelectorAll(`#${bodyId} tbody tr`)].filter(tr=>tr.style.display!=='none');
+  const master = document.querySelector(`#${bodyId} thead .row-cb`);
   if (master && rows.length) {
     const allChecked = rows.every(tr=>state[entity].selected.has(tr.dataset.id));
     const noneChecked = rows.every(tr=>!state[entity].selected.has(tr.dataset.id));
@@ -1634,7 +1583,7 @@ function updateSelectionUI(entity) {
   }
   // Recalculate totals based on selection
   const s = state[entity];
-  const idField = entity==='authors'?'uid':'id';
+  const idField = meta ? meta.idField : 'uid';
   const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
   const visibleRows = s.sortedData.filter(r => activeFilters.every(([f, vals]) => vals.has(String(r[f]??''))));
   updateTotals(entity, visibleRows);
@@ -2094,7 +2043,7 @@ async function confirmMapping() {
 
 function downloadCSV(entity) {
   const cols = entity==='authors' ? AUTHOR_COLS : entity==='aes' ? AE_COLS : BOOK_COLS;
-  const data = entity==='aes' ? aeData : (state[entity]?.sortedData || state[entity]?.data || []);
+  const data = state[entity]?.sortedData || state[entity]?.data || [];
   if (!data.length) { alert('No data to download.'); return; }
   const esc = v => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
   const header = cols.map(c => esc(c.header)).join(',');
