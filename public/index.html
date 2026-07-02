@@ -474,11 +474,35 @@
         <div class="table-card"><div class="table-scroll"><div id="ae-list-body"><div class="empty">No data yet. Use Import above.</div></div></div></div>
       </div>
       <div id="ae-sub-ae-authors" class="ae-sub-content">
-        <div class="section-header"><div class="title-row"><div class="page-title">Authors List</div></div></div>
+        <div class="tab-toolbar">
+          <div class="title-row"><div class="page-title">Authors List</div></div>
+          <div class="import-btns">
+            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-authors')">⬇ Download CSV</button>
+            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-authors')" /></label>
+          </div>
+        </div>
         <div class="table-card"><div class="table-scroll"><div id="ae-authors-body"></div></div></div>
       </div>
-      <div id="ae-sub-ae-books" class="ae-sub-content"><div class="empty">Coming soon</div></div>
-      <div id="ae-sub-ae-payments" class="ae-sub-content"><div class="empty">Coming soon</div></div>
+      <div id="ae-sub-ae-books" class="ae-sub-content">
+        <div class="tab-toolbar">
+          <div class="title-row"><div class="page-title">Books Data</div></div>
+          <div class="import-btns">
+            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-books')">⬇ Download CSV</button>
+            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-books')" /></label>
+          </div>
+        </div>
+        <div class="table-card"><div class="table-scroll"><div id="ae-books-body"></div></div></div>
+      </div>
+      <div id="ae-sub-ae-payments" class="ae-sub-content">
+        <div class="tab-toolbar">
+          <div class="title-row"><div class="page-title">Payments Data</div></div>
+          <div class="import-btns">
+            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-payments')">⬇ Download CSV</button>
+            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-payments')" /></label>
+          </div>
+        </div>
+        <div class="table-card"><div class="table-scroll"><div id="ae-payments-body"></div></div></div>
+      </div>
       <div id="ae-sub-ae-report" class="ae-sub-content"><div class="empty">Coming soon</div></div>
     </div>
 
@@ -754,7 +778,7 @@ function showAeSubTab(name) {
   document.querySelectorAll('.ae-sub-content').forEach(c => c.classList.remove('active'));
   document.querySelector(`.ae-sub-tab[onclick*="${name}"]`).classList.add('active');
   document.getElementById('ae-sub-' + name).classList.add('active');
-  if (name === 'ae-authors') renderAeAuthors();
+  if (AE_SUB_CONFIG[name]) renderAeSubTable(name);
 }
 
 // ── AE List ───────────────────────────────────────────────────────
@@ -818,17 +842,121 @@ const AE_AUTHORS_COLS = [
   { field:'preContractedTag',     header:'Pre-Contract Validation',   width:190 },
 ];
 
-function renderAeAuthors() {
-  const container = document.getElementById('ae-authors-body');
+let aeAuthorsData = [], aeBooksData = [], aePaymentsData = [];
+
+const AE_BOOKS_COLS = [
+  { field:'aeEmail',        header:'AE Mail Id',          width:220 },
+  { field:'authorId',       header:'Author UID',          width:280 },
+  { field:'authorName',     header:'Author Name',         width:180 },
+  { field:'bookId',         header:'Book ID',             width:280 },
+  { field:'bookTitle',      header:'Book Title',          width:200 },
+  { field:'createDate',     header:'Book Create Date',    width:150 },
+  { field:'genre',          header:'Genre',               width:120 },
+];
+
+const AE_PAYMENTS_COLS = [
+  { field:'aeEmail',        header:'AE Mail Id',          width:220 },
+  { field:'aeName',         header:'AE Name',             width:160 },
+  { field:'stage',          header:'Stage',               width:120 },
+  { field:'rewardAmount',   header:'Reward Amount',       width:140 },
+  { field:'rewardDate',     header:'Reward Date',         width:140 },
+  { field:'authorUid',      header:'Author UID',          width:280 },
+  { field:'authorName',     header:'Author Name',         width:180 },
+];
+
+const AE_SUB_CONFIG = {
+  'ae-authors':  { cols: AE_AUTHORS_COLS,  dataKey: 'aeAuthorsData',  containerId: 'ae-authors-body' },
+  'ae-books':    { cols: AE_BOOKS_COLS,    dataKey: 'aeBooksData',    containerId: 'ae-books-body' },
+  'ae-payments': { cols: AE_PAYMENTS_COLS, dataKey: 'aePaymentsData', containerId: 'ae-payments-body' },
+};
+
+function renderAeSubTable(subTab) {
+  const cfg = AE_SUB_CONFIG[subTab];
+  if (!cfg) return;
+  const data = window[cfg.dataKey] || [];
+  const container = document.getElementById(cfg.containerId);
   if (!container) return;
   let html = '<table class="wide"><thead><tr>';
-  for (const col of AE_AUTHORS_COLS) {
+  for (const col of cfg.cols) {
     html += `<th style="width:${col.width}px;min-width:${col.width}px;padding:8px 10px;">${col.header}</th>`;
   }
   html += '</tr></thead><tbody>';
-  html += '<tr><td colspan="' + AE_AUTHORS_COLS.length + '" style="text-align:center;padding:40px;color:#999">No data yet.</td></tr>';
+  if (!data.length) {
+    html += '<tr><td colspan="' + cfg.cols.length + '" style="text-align:center;padding:40px;color:#999">No data yet.</td></tr>';
+  }
+  for (const row of data) {
+    html += '<tr>';
+    for (const col of cfg.cols) {
+      const val = row[col.field] !== undefined && row[col.field] !== null ? row[col.field] : '';
+      html += `<td style="padding:8px 10px;">${escHtml(String(val))}</td>`;
+    }
+    html += '</tr>';
+  }
   html += '</tbody></table>';
   container.innerHTML = html;
+}
+
+function renderAeAuthors() { renderAeSubTable('ae-authors'); }
+
+function downloadAeSubCSV(subTab) {
+  const cfg = AE_SUB_CONFIG[subTab];
+  if (!cfg) return;
+  const data = window[cfg.dataKey] || [];
+  const cols = cfg.cols;
+  const esc = v => { const s = String(v??''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  let csv = cols.map(c => esc(c.header)).join(',') + '\n';
+  for (const row of data) csv += cols.map(c => esc(row[c.field])).join(',') + '\n';
+  const blob = new Blob([csv], { type:'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = subTab + '.csv'; a.click();
+}
+
+function handleAeSubImport(event, subTab) {
+  const cfg = AE_SUB_CONFIG[subTab];
+  if (!cfg) return;
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const lines = text.split('\n').filter(l => l.trim());
+    if (lines.length < 2) return;
+    const headers = parseCSVLine(lines[0]);
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const vals = parseCSVLine(lines[i]);
+      const obj = {};
+      headers.forEach((h, idx) => { if (vals[idx] !== undefined) obj[h.trim()] = vals[idx]; });
+      rows.push(obj);
+    }
+    const mapped = rows.map(row => {
+      const out = {};
+      for (const col of cfg.cols) {
+        for (const [key, val] of Object.entries(row)) {
+          if (key.trim().toLowerCase() === col.header.toLowerCase() || key.trim().toLowerCase() === col.field.toLowerCase()) {
+            out[col.field] = val;
+            break;
+          }
+        }
+      }
+      return out;
+    });
+    window[cfg.dataKey] = mapped;
+    renderAeSubTable(subTab);
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+  const vals = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQ) { if (ch === '"' && line[i+1] === '"') { cur += '"'; i++; } else if (ch === '"') inQ = false; else cur += ch; }
+    else { if (ch === '"') inQ = true; else if (ch === ',') { vals.push(cur); cur = ''; } else cur += ch; }
+  }
+  vals.push(cur);
+  return vals;
 }
 
 // ── Table rendering ────────────────────────────────────────────────
