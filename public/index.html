@@ -810,26 +810,73 @@ async function loadAeList() {
   }
 }
 
+const aeSelections = { 'ae-list': new Set(), 'ae-authors': new Set(), 'ae-books': new Set(), 'ae-payments': new Set() };
+
 function renderAeList() {
   const container = document.getElementById('ae-list-body');
   const countEl = document.getElementById('ae-count');
   if (countEl) countEl.textContent = aeData.length ? `(${aeData.length})` : '';
+  aeSelections['ae-list'] = new Set();
+  renderAeTable(container, AE_COLS, aeData, 'ae-list', 'email');
+}
+
+function renderAeTable(container, cols, data, tableId, rowIdField) {
+  const sel = aeSelections[tableId];
   let html = '<table class="wide"><thead><tr>';
-  for (const col of AE_COLS) {
+  html += `<th class="sel-cell" style="width:36px;min-width:36px;padding:4px;text-align:center"><input type="checkbox" class="row-cb" title="Select all" onchange="aeToggleSelectAll('${tableId}',this)"></th>`;
+  for (const col of cols) {
     html += `<th style="width:${col.width}px;min-width:${col.width}px;padding:8px 10px;">${col.header}</th>`;
   }
   html += '</tr></thead><tbody>';
-  if (!aeData.length) { html += '<tr><td colspan="' + AE_COLS.length + '" style="text-align:center;padding:40px;color:#999">No data yet. Use Import above.</td></tr>'; }
-  for (const row of aeData) {
-    html += '<tr>';
-    for (const col of AE_COLS) {
+  if (!data.length) {
+    html += '<tr><td colspan="' + (cols.length + 1) + '" style="text-align:center;padding:40px;color:#999">No data yet.</td></tr>';
+  }
+  data.forEach((row, idx) => {
+    const rid = row[rowIdField] || String(idx);
+    const checked = sel.has(rid);
+    html += `<tr data-id="${escAttr(rid)}" class="${checked?'row-selected':''}" onclick="aeToggleRow('${tableId}',this,'${escAttr(rid)}')">`;
+    html += `<td class="sel-cell" style="text-align:center;padding:4px"><input type="checkbox" class="row-cb" ${checked?'checked':''} onclick="event.stopPropagation();aeToggleRow('${tableId}',this.closest('tr'),'${escAttr(rid)}')"></td>`;
+    for (const col of cols) {
       const val = row[col.field] !== undefined && row[col.field] !== null ? row[col.field] : '';
       html += `<td style="padding:8px 10px;">${escHtml(String(val))}</td>`;
     }
     html += '</tr>';
-  }
-  html += '</tbody></table>';
+  });
+  html += '</tbody><tfoot><tr>';
+  html += `<td id="${tableId}-sel-count" style="padding:8px 10px;font-weight:600;font-size:0.85rem;color:#888" colspan="${cols.length + 1}">${data.length} rows | Selected (${sel.size})</td>`;
+  html += '</tr></tfoot></table>';
   container.innerHTML = html;
+}
+
+function aeToggleRow(tableId, tr, rid) {
+  const sel = aeSelections[tableId];
+  if (sel.has(rid)) { sel.delete(rid); tr.classList.remove('row-selected'); }
+  else { sel.add(rid); tr.classList.add('row-selected'); }
+  const cb = tr.querySelector('.row-cb');
+  if (cb) cb.checked = sel.has(rid);
+  aeUpdateFooter(tableId);
+}
+
+function aeToggleSelectAll(tableId, masterCb) {
+  const sel = aeSelections[tableId];
+  const table = masterCb.closest('table');
+  const rows = table.querySelectorAll('tbody tr[data-id]');
+  sel.clear();
+  rows.forEach(tr => {
+    const cb = tr.querySelector('.row-cb');
+    if (masterCb.checked) { sel.add(tr.dataset.id); tr.classList.add('row-selected'); if(cb) cb.checked=true; }
+    else { tr.classList.remove('row-selected'); if(cb) cb.checked=false; }
+  });
+  aeUpdateFooter(tableId);
+}
+
+function aeUpdateFooter(tableId) {
+  const el = document.getElementById(tableId + '-sel-count');
+  if (!el) return;
+  const sel = aeSelections[tableId];
+  const dataMap = { 'ae-list': aeData, 'ae-authors': aeAuthorsData, 'ae-books': aeBooksData, 'ae-payments': aePaymentsData };
+  const total = (dataMap[tableId] || []).length;
+  el.textContent = `${total} rows | Selected (${sel.size})`;
 }
 
 // ── AE Authors List ──────────────────────────────────────────────
@@ -903,24 +950,9 @@ function renderAeSubTable(subTab) {
   const data = window[cfg.dataKey] || [];
   const container = document.getElementById(cfg.containerId);
   if (!container) return;
-  let html = '<table class="wide"><thead><tr>';
-  for (const col of cfg.cols) {
-    html += `<th style="width:${col.width}px;min-width:${col.width}px;padding:8px 10px;">${col.header}</th>`;
-  }
-  html += '</tr></thead><tbody>';
-  if (!data.length) {
-    html += '<tr><td colspan="' + cfg.cols.length + '" style="text-align:center;padding:40px;color:#999">No data yet.</td></tr>';
-  }
-  for (const row of data) {
-    html += '<tr>';
-    for (const col of cfg.cols) {
-      const val = row[col.field] !== undefined && row[col.field] !== null ? row[col.field] : '';
-      html += `<td style="padding:8px 10px;">${escHtml(String(val))}</td>`;
-    }
-    html += '</tr>';
-  }
-  html += '</tbody></table>';
-  container.innerHTML = html;
+  const rowIdMap = { 'ae-authors': 'uid', 'ae-books': 'bookId', 'ae-payments': 'aeEmail' };
+  aeSelections[subTab] = new Set();
+  renderAeTable(container, cfg.cols, data, subTab, rowIdMap[subTab] || cfg.cols[0].field);
 }
 
 function renderAeAuthors() { renderAeSubTable('ae-authors'); }
