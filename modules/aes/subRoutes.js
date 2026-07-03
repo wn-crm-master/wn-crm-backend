@@ -3,8 +3,17 @@ function register(app, getDb, authMiddleware) {
   app.get('/api/ae-authors', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
+      const col = db.collection('ae_authors');
+      const dupes = await col.aggregate([
+        { $group: { _id: { aeEmail: '$aeEmail', uid: '$uid' }, ids: { $push: '$_id' }, count: { $sum: 1 } } },
+        { $match: { count: { $gt: 1 } } }
+      ]).toArray();
+      for (const d of dupes) {
+        const toDelete = d.ids.slice(1);
+        await col.deleteMany({ _id: { $in: toDelete } });
+      }
       const limit = parseInt(req.query.limit) || 50000;
-      const data = await db.collection('ae_authors').find({}).limit(limit).toArray();
+      const data = await col.find({}).limit(limit).toArray();
       res.json({ data });
     } catch (err) {
       res.status(500).json({ error: err.message });

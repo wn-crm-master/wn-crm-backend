@@ -52,7 +52,14 @@ async function processJob(db, entity, records, job) {
   } else if (entity === 'aes') {
     await processAes(db, records, job);
   } else if (entity === 'ae_authors') {
-    const mappings = records.map(r => ({ aeEmail: (r.aeEmail || '').trim().toLowerCase(), uid: r.uid })).filter(r => r.aeEmail && r.uid);
+    const seen = new Set();
+    const mappings = records.map(r => ({ aeEmail: (r.aeEmail || '').trim().toLowerCase(), uid: (r.uid || '').trim() })).filter(r => {
+      if (!r.aeEmail || !r.uid) return false;
+      const key = r.aeEmail + '|' + r.uid;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     await processAeAuthorMappings(db, mappings, job);
     await syncNewAeEmails(db, mappings.map(m => ({ aeEmail: m.aeEmail })));
   } else if (entity === 'ae_books') {
