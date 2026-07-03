@@ -3,11 +3,12 @@ function register(app, getDb, authMiddleware) {
     try {
       const db = getDb();
       const today = new Date().toISOString().slice(0, 10);
-      const [authEmails, bookEmails] = await Promise.all([
+      const [authEmails, bookEmails, mainAuthorEmails] = await Promise.all([
         db.collection('ae_authors').distinct('aeEmail'),
         db.collection('ae_books').distinct('aeEmail'),
+        db.collection('authors').distinct('aeEmail'),
       ]);
-      const allEmails = [...new Set([...authEmails, ...bookEmails].map(e => (e || '').trim().toLowerCase()).filter(Boolean))];
+      const allEmails = [...new Set([...authEmails, ...bookEmails, ...mainAuthorEmails].map(e => (e || '').trim().toLowerCase()).filter(Boolean))];
       if (allEmails.length) {
         const existing = new Set((await db.collection('aes').find({}, { projection: { email: 1 } }).toArray()).map(d => d.email));
         const missing = allEmails.filter(e => !existing.has(e));

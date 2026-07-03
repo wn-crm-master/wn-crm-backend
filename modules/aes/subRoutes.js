@@ -16,6 +16,31 @@ function register(app, getDb, authMiddleware) {
         }
       }
       if (toDelete.length) await col.deleteMany({ _id: { $in: toDelete } });
+
+      // Auto-sync: create ae_authors mappings from main authors' aeEmail field
+      const authorsWithAe = await db.collection('authors').find(
+        { aeEmail: { $exists: true, $nin: [null, ''] } },
+        { projection: { uid: 1, aeEmail: 1 } }
+      ).toArray();
+      if (authorsWithAe.length) {
+        const existingKeys = new Set(
+          (await col.find({}, { projection: { aeEmail: 1, uid: 1 } }).toArray())
+            .map(d => ((d.aeEmail || '').trim().toLowerCase()) + '|' + ((d.uid || '').trim()))
+        );
+        const toInsert = [];
+        for (const a of authorsWithAe) {
+          const aeEmail = (a.aeEmail || '').trim().toLowerCase();
+          const uid = (a.uid || '').trim();
+          if (!aeEmail || !uid) continue;
+          const key = aeEmail + '|' + uid;
+          if (!existingKeys.has(key)) {
+            existingKeys.add(key);
+            toInsert.push({ aeEmail, uid, createdAt: new Date() });
+          }
+        }
+        if (toInsert.length) await col.insertMany(toInsert);
+      }
+
       const limit = parseInt(req.query.limit) || 50000;
       const data = await col.find({}).limit(limit).toArray();
       res.json({ data });
