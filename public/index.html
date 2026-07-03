@@ -313,7 +313,7 @@
       </table>
     </div>
     <div class="modal-footer">
-      <div class="modal-note"><strong>⚠ Required:</strong> At least one column must map to the unique ID field.</div>
+      <div class="modal-note" id="mapping-note"><strong>⚠ Required:</strong> At least one column must map to the unique ID field.</div>
       <div class="modal-actions">
         <button class="btn" style="background:#f0f2f5;color:#555" onclick="cancelMapping()">Cancel</button>
         <button class="btn btn-primary" onclick="confirmMapping()">Import</button>
@@ -1970,8 +1970,8 @@ function getAliasesForEntity(entity) {
   return BOOK_ALIASES;
 }
 const AE_AUTHORS_IMPORT_COLS = [
+  { field:'uid',     header:'Author ID',  width:280 },
   { field:'aeEmail', header:'AE Mail Id', width:220 },
-  { field:'uid',     header:'UID',        width:280 },
 ];
 const AE_BOOKS_IMPORT_COLS = [
   { field:'aeEmail',   header:'AE Mail Id',  width:220 },
@@ -1989,9 +1989,9 @@ function getColsForEntity(entity) {
 function getEntityLabel(entity) {
   if (entity==='authors') return 'Authors';
   if (entity==='aes') return 'AEs';
-  if (entity==='ae-authors') return 'AE Authors';
-  if (entity==='ae-books') return 'AE Books';
-  if (entity==='ae-payments') return 'AE Payments';
+  if (entity==='ae-authors') return 'Authors List';
+  if (entity==='ae-books') return 'Books Data';
+  if (entity==='ae-payments') return 'Payments Data';
   return 'Books';
 }
 
@@ -2014,6 +2014,11 @@ function openMappingModal(entity, rawRecords, headers, msgEl) {
 
   document.getElementById('mapping-rows').innerHTML=rows;
   document.getElementById('mapping-entity-label').textContent=getEntityLabel(entity);
+  const noteEl = document.getElementById('mapping-note');
+  if (entity==='ae-authors') noteEl.innerHTML = '<strong>⚠ Required:</strong> Map both Author ID and AE Mail Id.';
+  else if (entity==='ae-books') noteEl.innerHTML = '<strong>⚠ Required:</strong> Map Book ID, Author UID, and AE Mail Id.';
+  else if (AE_SUB_CONFIG[entity]) noteEl.innerHTML = '<strong>⚠ Required:</strong> Map all relevant columns.';
+  else noteEl.innerHTML = '<strong>⚠ Required:</strong> At least one column must map to the unique ID field.';
   document.getElementById('mapping-modal').classList.add('open');
 }
 
