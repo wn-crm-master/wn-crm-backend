@@ -40,7 +40,7 @@ MongoClient.connect(MONGO_URI)
     db.collection('authors_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
     db.collection('books_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
     db.collection('aes').createIndex({ email: 1 }, { unique: true }).catch(() => {});
-    db.collection('ae_authors').createIndex({ aeEmail: 1, uid: 1 }).catch(() => {});
+    db.collection('ae_authors').createIndex({ aeEmail: 1, uid: 1 }, { unique: true }).catch(() => {});
     db.collection('ae_books').createIndex({ aeEmail: 1 }).catch(() => {});
     db.collection('ae_payments').createIndex({ aeEmail: 1 }).catch(() => {});
     seedUsers(db).catch(err => console.error('User seed error:', err));
