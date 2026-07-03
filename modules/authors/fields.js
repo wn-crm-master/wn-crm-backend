@@ -20,7 +20,8 @@ const ROLLUP_FIELDS = new Set([
   'booksExpressContracted',
   'booksWBPContracted',
   'booksOFW',
-  'firstContractDate'
+  'firstContractDate',
+  'first300kWordDate'
 ]);
 
 module.exports = { SPECIAL_FIELDS, ROLLUP_FIELDS };

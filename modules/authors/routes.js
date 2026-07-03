@@ -31,6 +31,13 @@ function register(app, getDb, authMiddleware) {
               { $ne: ['$$this.contractSigningDate', ''] }
             ] } } },
             in: '$$this.contractSigningDate'
+          } } },
+          first300kWordDate:      { $min: { $map: {
+            input: { $filter: { input: '$_books', cond: { $and: [
+              { $ne: ['$$this.words300kDate', null] },
+              { $ne: ['$$this.words300kDate', ''] }
+            ] } } },
+            in: '$$this.words300kDate'
           } } }
         }},
         { $project: { _books: 0 } },
