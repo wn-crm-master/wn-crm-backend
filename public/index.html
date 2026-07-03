@@ -486,9 +486,10 @@
       </div>
       <div id="ae-sub-ae-books" class="ae-sub-content">
         <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Books Data</div><span style="font-size:0.8rem;color:#888;margin-left:8px;">(derived from Authors List mappings)</span></div>
+          <div class="title-row"><div class="page-title">Books Data</div></div>
           <div class="import-btns">
             <button class="btn btn-download" onclick="downloadAeSubCSV('ae-books')">⬇ Download CSV</button>
+            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-books')" /></label>
           </div>
         </div>
         <div class="table-card"><div class="table-scroll"><div id="ae-books-body"></div></div></div>
@@ -818,18 +819,18 @@ async function loadAeSubTab(subTab) {
 
   if (subTab === 'ae-books') {
     try {
-      const aeAuthRes = await api('/api/ae-authors');
-      const mappings = aeAuthRes.data || [];
+      const res = await api(cfg.apiPath);
+      const mappings = res.data || [];
       await ensureAuthorsAndBooksLoaded();
-      const rows = [];
-      for (const m of mappings) {
-        const books = state.books.data.filter(b => b.authorId === m.uid);
-        const author = state.authors.data.find(a => a.uid === m.uid);
-        for (const b of books) {
-          rows.push({ aeEmail: m.aeEmail, authorId: m.uid, authorName: author?.name || b.authorName || '', bookId: b.id, bookTitle: b.title || '', createDate: b.createDate || '', genre: b.genre || '' });
-        }
-      }
-      state.ae_books.data = rows;
+      const bookMap = {};
+      for (const b of state.books.data) bookMap[b.id] = b;
+      const authorMap = {};
+      for (const a of state.authors.data) authorMap[a.uid] = a;
+      state.ae_books.data = mappings.map(m => {
+        const b = bookMap[m.bookId] || {};
+        const a = authorMap[m.authorId] || {};
+        return { aeEmail: m.aeEmail, authorId: m.authorId, authorName: a.name || b.authorName || '', bookId: m.bookId, bookTitle: b.title || '', createDate: b.createDate || '', genre: b.genre || '' };
+      });
     } catch (e) {
       state.ae_books.data = [];
     }
@@ -860,14 +861,58 @@ const AE_COLS = [
   { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200 },
   { field:'latestRewardDate',       header:'Date of Latest Reward',                       width:180 },
 ];
+const AE_IMPORT_COLS = [
+  { field:'email', header:'AE Email ID', width:220 },
+  { field:'name',  header:'AE Name',     width:160 },
+];
 
 
 async function loadAeList() {
   const container = document.getElementById('ae-list-body');
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
-    const res = await api('/api/aes');
-    state.aes.data = res.data || [];
+    const [aesRes, aeAuthRes, aeBooksRes, aePayRes] = await Promise.all([
+      api('/api/aes'),
+      api('/api/ae-authors'),
+      api('/api/ae-books'),
+      api('/api/ae-payments'),
+    ]);
+    await ensureAuthorsAndBooksLoaded();
+    const aes = aesRes.data || [];
+    const aeAuthors = aeAuthRes.data || [];
+    const aeBooks = aeBooksRes.data || [];
+    const aePayments = aePayRes.data || [];
+
+    const authorMap = {};
+    for (const a of state.authors.data) authorMap[a.uid] = a;
+
+    for (const ae of aes) {
+      const email = (ae.email || '').toLowerCase();
+      const mappings = aeAuthors.filter(m => (m.aeEmail || '').toLowerCase() === email);
+      const uids = mappings.map(m => m.uid);
+
+      ae.authorsReg = uids.length;
+      ae.preContractAuthorsReg = uids.filter(uid => {
+        const a = authorMap[uid];
+        return a && a.preContractedTag && String(a.preContractedTag).toLowerCase() !== 'no' && String(a.preContractedTag).trim() !== '';
+      }).length;
+
+      ae.booksCreated = aeBooks.filter(b => (b.aeEmail || '').toLowerCase() === email).length;
+
+      const myPayments = aePayments.filter(p => (p.aeEmail || '').toLowerCase() === email);
+      const stageSet = new Set(myPayments.map(p => String(p.stage || '').toLowerCase()));
+      ae.stage1Cleared = stageSet.has('1') || stageSet.has('stage 1') || myPayments.some(p => /stage\s*1/i.test(p.stage)) ? 'Yes' : '';
+      ae.stage2Cleared = stageSet.has('2') || stageSet.has('stage 2') || myPayments.some(p => /stage\s*2/i.test(p.stage)) ? 'Yes' : '';
+      ae.stage3Cleared = stageSet.has('3') || stageSet.has('stage 3') || myPayments.some(p => /stage\s*3/i.test(p.stage)) ? 'Yes' : '';
+
+      const regDates = uids.map(uid => authorMap[uid]?.regnDate).filter(d => d).sort();
+      ae.latestAuthorRegDate = regDates.length ? regDates[regDates.length - 1] : '';
+
+      const rewardDates = myPayments.map(p => p.rewardDate).filter(d => d).sort();
+      ae.latestRewardDate = rewardDates.length ? rewardDates[rewardDates.length - 1] : '';
+    }
+
+    state.aes.data = aes;
     renderAeList();
   } catch (e) {
     container.innerHTML = '<div class="empty">Error loading data</div>';
@@ -924,11 +969,7 @@ const AE_AUTHORS_ALIASES = {
 const AE_BOOKS_ALIASES = {
   'ae mail id':'aeEmail','ae email':'aeEmail','ae email id':'aeEmail','aeemail':'aeEmail',
   'author uid':'authorId','author id':'authorId','authorid':'authorId',
-  'author name':'authorName','authorname':'authorName',
-  'book id':'bookId','bookid':'bookId',
-  'book title':'bookTitle','title':'bookTitle','booktitle':'bookTitle',
-  'book create date':'createDate','create date':'createDate','createdate':'createDate',
-  'genre':'genre','book genre':'genre',
+  'book id':'bookId','bookid':'bookId','id':'bookId',
 };
 const AE_PAYMENTS_ALIASES = {
   'ae mail id':'aeEmail','ae email':'aeEmail','ae email id':'aeEmail','aeemail':'aeEmail',
@@ -1866,17 +1907,8 @@ const BOOK_ALIASES = {
 };
 
 const AE_ALIASES = {
-  'date added':'dateAdded',
   'ae email id':'email','ae email':'email','email id':'email','email':'email',
   'ae name':'name','name':'name',
-  'no. of authors reg.':'authorsReg','no. of authors reg':'authorsReg','authors reg':'authorsReg','authors registered':'authorsReg',
-  'no. of pre-contract validated authors reg.':'preContractAuthorsReg','no. of pre-contract validated authors reg':'preContractAuthorsReg','pre-contract validated authors':'preContractAuthorsReg','precontractauthorsreg':'preContractAuthorsReg',
-  'no. of books created':'booksCreated','books created':'booksCreated',
-  'stage 1 cleared':'stage1Cleared','stage1cleared':'stage1Cleared','stage 1':'stage1Cleared',
-  'stage 2 cleared':'stage2Cleared','stage2cleared':'stage2Cleared','stage 2':'stage2Cleared',
-  'stage 3 cleared':'stage3Cleared','stage3cleared':'stage3Cleared','stage 3':'stage3Cleared',
-  'reg. date of latest author':'latestAuthorRegDate','latest author reg date':'latestAuthorRegDate',
-  'date of latest reward':'latestRewardDate','latest reward date':'latestRewardDate',
 };
 
 // ── CSV raw parser (keeps original column names) ───────────────────
@@ -1938,10 +1970,16 @@ const AE_AUTHORS_IMPORT_COLS = [
   { field:'aeEmail', header:'AE Mail Id', width:220 },
   { field:'uid',     header:'UID',        width:280 },
 ];
+const AE_BOOKS_IMPORT_COLS = [
+  { field:'aeEmail',   header:'AE Mail Id',  width:220 },
+  { field:'authorId',  header:'Author UID',  width:280 },
+  { field:'bookId',    header:'Book ID',     width:280 },
+];
 function getColsForEntity(entity) {
   if (entity==='authors') return AUTHOR_COLS;
-  if (entity==='aes') return AE_COLS;
+  if (entity==='aes') return AE_IMPORT_COLS;
   if (entity==='ae-authors') return AE_AUTHORS_IMPORT_COLS;
+  if (entity==='ae-books') return AE_BOOKS_IMPORT_COLS;
   if (AE_SUB_CONFIG[entity]) return AE_SUB_CONFIG[entity].cols;
   return BOOK_COLS;
 }

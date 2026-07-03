@@ -56,8 +56,9 @@ async function processJob(db, entity, records, job) {
     await processAeAuthorMappings(db, mappings, job);
     await syncNewAeEmails(db, mappings.map(m => ({ aeEmail: m.aeEmail })));
   } else if (entity === 'ae_books') {
-    await processSimple(db, 'ae_books', records, job);
-    await syncNewAeEmails(db, records);
+    const mappings = records.map(r => ({ aeEmail: (r.aeEmail || '').trim().toLowerCase(), authorId: r.authorId, bookId: r.bookId })).filter(r => r.aeEmail && r.bookId);
+    await processAeBookMappings(db, mappings, job);
+    await syncNewAeEmails(db, mappings.map(m => ({ aeEmail: m.aeEmail })));
   } else if (entity === 'ae_payments') {
     await processSimple(db, 'ae_payments', records, job);
   }
@@ -138,23 +139,20 @@ async function processAes(db, records, job) {
       job.processed++;
       continue;
     }
-    record.email = email;
+
+    const doc = { email, name: record.name || '' };
 
     try {
       const existing = await db.collection('aes').findOne({ email });
       if (!existing) {
-        record.dateAdded = today;
-        record.createdAt = new Date();
-        record.updatedAt = new Date();
-        await db.collection('aes').insertOne(record);
+        doc.dateAdded = today;
+        doc.createdAt = new Date();
+        doc.updatedAt = new Date();
+        await db.collection('aes').insertOne(doc);
         job.inserted++;
       } else {
         const updateFields = {};
-        for (const [key, val] of Object.entries(record)) {
-          if (key === '_id' || key === 'dateAdded') continue;
-          if (isBlankOrError(val)) continue;
-          updateFields[key] = val;
-        }
+        if (doc.name && !isBlankOrError(doc.name)) updateFields.name = doc.name;
         if (Object.keys(updateFields).length > 0) {
           updateFields.updatedAt = new Date();
           await db.collection('aes').updateOne({ email }, { $set: updateFields });
@@ -177,6 +175,24 @@ async function processAeAuthorMappings(db, records, job) {
       } else {
         record.createdAt = new Date();
         await db.collection('ae_authors').insertOne(record);
+        job.inserted++;
+      }
+    } catch {
+      job.skipped++;
+    }
+    job.processed++;
+  }
+}
+
+async function processAeBookMappings(db, records, job) {
+  for (const record of records) {
+    try {
+      const existing = await db.collection('ae_books').findOne({ aeEmail: record.aeEmail, bookId: record.bookId });
+      if (existing) {
+        job.skipped++;
+      } else {
+        record.createdAt = new Date();
+        await db.collection('ae_books').insertOne(record);
         job.inserted++;
       }
     } catch {
