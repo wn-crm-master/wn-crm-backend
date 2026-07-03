@@ -587,6 +587,7 @@ const AUTHOR_COLS = [
   { field:'booksWBPContracted',     header:'Books WBP Contracted',     width:170, type:'rollup' },
   { field:'booksOFW',               header:'Books OFW',                width:110, type:'rollup' },
   { field:'firstContractDate',      header:'1st Contract Date',        width:160, type:'date' },
+  { field:'first300kWordDate',     header:'1st 300k Word Date',       width:170, type:'date' },
 ];
 const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
@@ -659,7 +660,7 @@ const state = {
 let fdCtx = null; // { entity, field, allVals, filteredVals }
 
 // Rollup fields — computed from books, read-only on author rows
-const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW','firstContractDate']);
+const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW','firstContractDate','first300kWordDate']);
 
 function isTruthy(val) {
   if (val === true || val === 1) return true;
@@ -1922,6 +1923,7 @@ const AUTHOR_ALIASES = {
   'no. of books wbp contracted':'booksWBPContracted',
   'no. of books ofw':'booksOFW',
   '1st contract date':'firstContractDate','first contract date':'firstContractDate','firstcontractdate':'firstContractDate',
+  '1st 300k word date':'first300kWordDate','first 300k word date':'first300kWordDate','first300kworddate':'first300kWordDate',
 };
 const BOOK_ALIASES = {
   'book id':'id','id':'id',
