@@ -2090,6 +2090,13 @@ async function confirmMapping() {
     textEl.textContent = `Importing ${records.length} records…`;
     const poll = setInterval(async () => {
       const s = await api('/api/import-job/' + startRes.jobId);
+      if (s.error || !s.status) {
+        clearInterval(poll);
+        textEl.textContent = 'Import connection lost (server may have restarted). Refresh to see data.';
+        setTimeout(() => progressEl.remove(), 5000);
+        loadAeSubTab(entity);
+        return;
+      }
       const pct = s.total ? Math.round((s.processed / s.total) * 100) : 0;
       fillEl.style.width = pct + '%';
       textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
@@ -2123,7 +2130,7 @@ async function confirmMapping() {
 
   const poll = setInterval(async () => {
     const s = await api('/api/import-job/'+startRes.jobId);
-    if (s.error) { clearInterval(poll); setMsg(msgEl,'error','Lost connection to import job.'); return; }
+    if (s.error || !s.status) { clearInterval(poll); setMsg(msgEl,'error','Import connection lost (server may have restarted). Refresh to see data.'); progressEl.classList.remove('active'); return; }
     const pct = s.total ? Math.round((s.processed/s.total)*100) : 0;
     fillEl.style.width = pct+'%';
     textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
