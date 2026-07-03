@@ -15,7 +15,10 @@ function register(app, getDb, authMiddleware) {
       const pipeline = [
         ...(Object.keys(query).length ? [{ $match: query }] : []),
         { $lookup: { from: 'authors', localField: 'authorId', foreignField: 'uid', as: '_author' } },
-        { $addFields: { authorPreContract: { $ifNull: [{ $arrayElemAt: ['$_author.preContractedTag', 0] }, ''] } } },
+        { $addFields: {
+          authorPreContract: { $ifNull: [{ $arrayElemAt: ['$_author.preContractedTag', 0] }, ''] },
+          authorAeEmail: { $ifNull: [{ $arrayElemAt: ['$_author.aeEmail', 0] }, ''] }
+        } },
         { $project: { _author: 0 } },
         { $skip: skip },
         { $limit: parseInt(limit) }
