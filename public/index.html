@@ -1167,7 +1167,9 @@ function renderTable(entity) {
       let tdContent = '';
 
       if (isAeEntity) {
-        tdContent = escHtml(String(rawVal));
+        if (ctype === 'date') tdContent = escHtml(formatDate(String(rawVal)));
+        else if (ctype === 'number') { tdClass += 'number-cell'; tdContent = escHtml(formatNumber(rawVal)); }
+        else tdContent = escHtml(String(rawVal));
       } else if (isForm2NA) {
         tdContent = 'NA';
       } else if (isId || col.readOnly) {
