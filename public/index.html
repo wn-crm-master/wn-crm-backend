@@ -2118,20 +2118,86 @@ async function confirmMapping() {
   const textEl=progressEl.querySelector('.import-progress-text');
   progressEl.classList.add('active');
   fillEl.style.width='0%';
-  textEl.textContent=`Uploading ${records.length} records…`;
-  setMsg(msgEl,'info',`Uploading ${records.length} ${entity} to server…`);
 
-  const startRes = await api('/api/import-job/'+entity, {method:'POST', body:JSON.stringify({records})});
-  if (!startRes.jobId) {
-    setMsg(msgEl,'error',startRes.error||'Failed to start import.');
-    progressEl.classList.remove('active');
-    return;
+  const CHUNK = 2000;
+  const totalRecords = records.length;
+
+  if (totalRecords <= CHUNK) {
+    textEl.textContent=`Uploading ${totalRecords} records…`;
+    setMsg(msgEl,'info',`Uploading ${totalRecords} ${entity} to server…`);
+    const startRes = await api('/api/import-job/'+entity, {method:'POST', body:JSON.stringify({records})});
+    if (!startRes.jobId) {
+      setMsg(msgEl,'error',startRes.error||'Failed to start import.');
+      progressEl.classList.remove('active');
+      return;
+    }
+    pollImportJob(startRes.jobId, entity, totalRecords, fillEl, textEl, msgEl, progressEl, 0);
+  } else {
+    const chunks = [];
+    for (let i = 0; i < totalRecords; i += CHUNK) chunks.push(records.slice(i, i + CHUNK));
+    let totalInserted = 0, totalUpdated = 0, totalSkipped = 0, totalStubs = 0;
+    let processed = 0;
+
+    setMsg(msgEl,'info',`Importing ${totalRecords} ${entity} in ${chunks.length} batches…`);
+    textEl.textContent = `Uploading batch 1 / ${chunks.length}…`;
+
+    for (let ci = 0; ci < chunks.length; ci++) {
+      textEl.textContent = `Uploading batch ${ci+1} / ${chunks.length}…`;
+      const startRes = await api('/api/import-job/'+entity, {method:'POST', body:JSON.stringify({records: chunks[ci]})});
+      if (!startRes.jobId) {
+        setMsg(msgEl,'error',startRes.error||`Failed to start batch ${ci+1}.`);
+        progressEl.classList.remove('active');
+        return;
+      }
+      const result = await waitForJob(startRes.jobId, entity, ci, chunks.length, totalRecords, processed, fillEl, textEl);
+      if (result.error) {
+        setMsg(msgEl,'error',`Batch ${ci+1} error: ${result.error}`);
+        progressEl.classList.remove('active');
+        return;
+      }
+      totalInserted += result.inserted || 0;
+      totalUpdated += result.updated || 0;
+      totalSkipped += result.skipped || 0;
+      totalStubs += result.stubs || 0;
+      processed += result.processed || chunks[ci].length;
+    }
+
+    fillEl.style.width='100%';
+    textEl.textContent='Complete';
+    let msg=`Done! ${totalInserted} added, ${totalUpdated} updated.`;
+    if(totalSkipped>0) msg+=` ${totalSkipped} skipped.`;
+    if(totalStubs>0) msg+=` ${totalStubs} stub author(s) created.`;
+    setMsg(msgEl,'success',msg);
+    if(entity==='authors') loadAuthors(); else if(entity==='aes') loadAeList(); else loadBooks(); loadStats();
+    setTimeout(()=>progressEl.classList.remove('active'),3000);
   }
+}
 
-  setMsg(msgEl,'info',`Server is importing ${records.length} ${entity}… You can close your laptop safely.`);
+function waitForJob(jobId, entity, chunkIdx, totalChunks, totalRecords, prevProcessed, fillEl, textEl) {
+  return new Promise(resolve => {
+    const poll = setInterval(async () => {
+      const s = await api('/api/import-job/'+jobId);
+      if (s.error || !s.status) {
+        clearInterval(poll);
+        resolve({ error: 'Connection lost (server may have restarted).' });
+        return;
+      }
+      const globalProcessed = prevProcessed + (s.processed || 0);
+      const pct = Math.round((globalProcessed / totalRecords) * 100);
+      fillEl.style.width = pct + '%';
+      textEl.textContent = `Batch ${chunkIdx+1}/${totalChunks} — ${globalProcessed} / ${totalRecords}…`;
+      if (s.status === 'done' || s.status === 'error') {
+        clearInterval(poll);
+        if (s.status === 'error') resolve({ error: s.error || 'Unknown' });
+        else resolve(s);
+      }
+    }, 1000);
+  });
+}
 
+function pollImportJob(jobId, entity, totalRecords, fillEl, textEl, msgEl, progressEl, prevProcessed) {
   const poll = setInterval(async () => {
-    const s = await api('/api/import-job/'+startRes.jobId);
+    const s = await api('/api/import-job/'+jobId);
     if (s.error || !s.status) { clearInterval(poll); setMsg(msgEl,'error','Import connection lost (server may have restarted). Refresh to see data.'); progressEl.classList.remove('active'); return; }
     const pct = s.total ? Math.round((s.processed/s.total)*100) : 0;
     fillEl.style.width = pct+'%';
