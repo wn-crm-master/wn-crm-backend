@@ -36,9 +36,11 @@ MongoClient.connect(MONGO_URI)
     db.collection('authors').createIndex({ uid: 1 }, { unique: true, sparse: true }).catch(() => {});
     db.collection('authors').dropIndex('id_1').catch(() => {});
     db.collection('books').createIndex({ id: 1 }, { unique: true }).catch(() => {});
+    db.collection('books').createIndex({ authorId: 1 }).catch(() => {});
     db.collection('users').createIndex({ email: 1 }, { unique: true }).catch(() => {});
     db.collection('authors_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
     db.collection('books_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
+    db.collection('authors').createIndex({ aeEmail: 1 }, { sparse: true }).catch(() => {});
     db.collection('aes').createIndex({ email: 1 }, { unique: true }).catch(() => {});
     db.collection('ae_authors').createIndex({ aeEmail: 1, uid: 1 }, { unique: true }).catch(() => {});
     db.collection('ae_books').createIndex({ aeEmail: 1 }).catch(() => {});
