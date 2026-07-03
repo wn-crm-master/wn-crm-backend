@@ -852,17 +852,17 @@ async function loadAeSubTab(subTab) {
 
 // ── AE List ───────────────────────────────────────────────────────
 const AE_COLS = [
-  { field:'dateAdded',              header:'Date Added',                                  width:120 },
+  { field:'dateAdded',              header:'Date Added',                                  width:120, type:'date' },
   { field:'email',                  header:'AE Email ID',                                 width:220 },
   { field:'name',                   header:'AE Name',                                     width:160 },
-  { field:'authorsReg',             header:'No. of Authors Reg.',                         width:170 },
-  { field:'preContractAuthorsReg',  header:'No. of Pre-Contract Validated Authors Reg.',  width:300 },
-  { field:'booksCreated',           header:'No. of Books Created',                        width:170 },
+  { field:'authorsReg',             header:'No. of Authors Reg.',                         width:170, type:'number' },
+  { field:'preContractAuthorsReg',  header:'No. of Pre-Contract Validated Authors Reg.',  width:300, type:'number' },
+  { field:'booksCreated',           header:'No. of Books Created',                        width:170, type:'number' },
   { field:'stage1Cleared',          header:'Stage 1 Cleared',                             width:140 },
   { field:'stage2Cleared',          header:'Stage 2 Cleared',                             width:140 },
   { field:'stage3Cleared',          header:'Stage 3 Cleared',                             width:140 },
-  { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200 },
-  { field:'latestRewardDate',       header:'Date of Latest Reward',                       width:180 },
+  { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200, type:'date' },
+  { field:'latestRewardDate',       header:'Date of Latest Reward',                       width:180, type:'date' },
 ];
 const AE_IMPORT_COLS = [
   { field:'email', header:'AE Email ID', width:220 },
@@ -932,7 +932,7 @@ function renderAeList() {
 const AE_AUTHORS_COLS = [
   { field:'uid',                  header:'Author ID',                 width:280 },
   { field:'aeEmail',              header:'AE Mail Id',                width:220 },
-  { field:'regnDate',             header:'Author Reg. Date',          width:150 },
+  { field:'regnDate',             header:'Author Reg. Date',          width:150, type:'date' },
   { field:'name',                 header:'Author Name',               width:180 },
   { field:'email',                header:'Author Email',              width:220 },
   { field:'preContractedTag',     header:'Pre-Contract Validation',   width:190 },
@@ -945,7 +945,7 @@ const AE_BOOKS_COLS = [
   { field:'authorName',     header:'Author Name',         width:180 },
   { field:'bookId',         header:'Book ID',             width:280 },
   { field:'bookTitle',      header:'Book Title',          width:200 },
-  { field:'createDate',     header:'Book Create Date',    width:150 },
+  { field:'createDate',     header:'Book Create Date',    width:150, type:'date' },
   { field:'genre',          header:'Genre',               width:120 },
 ];
 
@@ -953,8 +953,8 @@ const AE_PAYMENTS_COLS = [
   { field:'aeEmail',        header:'AE Mail Id',          width:220 },
   { field:'aeName',         header:'AE Name',             width:160 },
   { field:'stage',          header:'Stage',               width:120 },
-  { field:'rewardAmount',   header:'Reward Amount',       width:140 },
-  { field:'rewardDate',     header:'Reward Date',         width:140 },
+  { field:'rewardAmount',   header:'Reward Amount',       width:140, type:'number' },
+  { field:'rewardDate',     header:'Reward Date',         width:140, type:'date' },
   { field:'authorUid',      header:'Author UID',          width:280 },
   { field:'authorName',     header:'Author Name',         width:180 },
 ];
