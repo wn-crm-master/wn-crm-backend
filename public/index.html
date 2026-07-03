@@ -479,7 +479,7 @@
       </div>
       <div id="ae-sub-ae-authors" class="ae-sub-content">
         <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Authors List <span id="ae-authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
+          <div class="title-row"><div class="page-title">Authors List <span id="ae-authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="ae_authors-active-filters"></div></div>
           <div class="import-btns">
             <button class="btn btn-download" onclick="downloadAeSubCSV('ae-authors')">⬇ Download CSV</button>
             <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-authors')" /></label>
@@ -1298,9 +1298,10 @@ function clearAllFilters(entity) {
 
 function applyRowFilters(entity) {
   const s = state[entity];
-  const idField = entity==='authors'?'uid':'id';
+  const meta = ENTITY_META[entity];
+  const bodyId = meta ? meta.bodyId : entity+'-body';
   const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
-  const rows = document.querySelectorAll(`#${entity}-body tbody tr`);
+  const rows = document.querySelectorAll(`#${bodyId} tbody tr`);
   const visibleRows = [];
   rows.forEach(tr => {
     const idx = parseInt(tr.dataset.idx);
@@ -1373,7 +1374,8 @@ function openFD(event, entity, field, btn) {
   const filterSet = s.filter[field] || new Set();
 
   // Collect unique values for this column (including blanks)
-  const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
+  const meta = ENTITY_META[entity];
+  const cols = meta ? meta.cols : AUTHOR_COLS;
   const colDef = cols.find(c=>c.field===field);
   let dataVals;
   if (field === '_alarm') {
