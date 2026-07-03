@@ -35,7 +35,17 @@ function register(app, getDb, authMiddleware) {
           first300kWordDate:      { $min: { $map: {
             input: { $filter: { input: '$_books', cond: { $and: [
               { $ne: ['$$this.words300kDate', null] },
-              { $ne: ['$$this.words300kDate', ''] }
+              { $ne: ['$$this.words300kDate', ''] },
+              { $or: [
+                { $and: [
+                  { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'ongoing' } },
+                  { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus', ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } }
+                ] },
+                { $and: [
+                  { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'rejected' } },
+                  { $gt: [{ $ifNull: ['$$this.wbpRejectedDate', ''] }, '$$this.words300kDate'] }
+                ] }
+              ] }
             ] } } },
             in: '$$this.words300kDate'
           } } }
