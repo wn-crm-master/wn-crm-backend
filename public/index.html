@@ -956,6 +956,7 @@ async function loadAeList() {
       ae.stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
 
       const myPayments = aePayments.filter(p => (p.aeEmail || '').toLowerCase() === email);
+      const stageSet = new Set(myPayments.map(p => String(p.stage || '').toLowerCase()));
       ae.stage2Cleared = stageSet.has('2') || stageSet.has('stage 2') || myPayments.some(p => /stage\s*2/i.test(p.stage)) ? 'Yes' : '';
       ae.stage3Cleared = stageSet.has('3') || stageSet.has('stage 3') || myPayments.some(p => /stage\s*3/i.test(p.stage)) ? 'Yes' : '';
 
