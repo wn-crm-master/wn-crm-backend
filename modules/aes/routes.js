@@ -2,6 +2,19 @@ function register(app, getDb, authMiddleware) {
   app.get('/api/aes', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
+      const today = new Date().toISOString().slice(0, 10);
+      const [authEmails, bookEmails] = await Promise.all([
+        db.collection('ae_authors').distinct('aeEmail'),
+        db.collection('ae_books').distinct('aeEmail'),
+      ]);
+      const allEmails = [...new Set([...authEmails, ...bookEmails].map(e => (e || '').trim().toLowerCase()).filter(Boolean))];
+      if (allEmails.length) {
+        const existing = new Set((await db.collection('aes').find({}, { projection: { email: 1 } }).toArray()).map(d => d.email));
+        const missing = allEmails.filter(e => !existing.has(e));
+        if (missing.length) {
+          await db.collection('aes').insertMany(missing.map(email => ({ email, dateAdded: today, createdAt: new Date(), updatedAt: new Date() })));
+        }
+      }
       const limit = parseInt(req.query.limit) || 50000;
       const data = await db.collection('aes').find({}).limit(limit).toArray();
       res.json({ data });
