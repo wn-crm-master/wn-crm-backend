@@ -896,13 +896,15 @@ const AE_COLS = [
   { field:'email',                  header:'AE Email ID',                                 width:220 },
   { field:'name',                   header:'AE Name',                                     width:160 },
   { field:'authorsReg',             header:'No. of Authors Reg.',                         width:170, type:'number' },
+  { field:'firstAuthorRegDate',     header:'Reg. Date of First Author',                   width:200, type:'date' },
+  { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200, type:'date' },
   { field:'preContractAuthorsReg',  header:'No. of Pre-Contract Validated Authors Reg.',  width:300, type:'number' },
   { field:'booksCreated',           header:'No. of Books Created',                        width:170, type:'number' },
-  { field:'stage1Cleared',          header:'Stage 1 Cleared',                             width:140 },
-  { field:'stage2Cleared',          header:'Stage 2 Cleared',                             width:140 },
-  { field:'stage3Cleared',          header:'Stage 3 Cleared',                             width:140 },
-  { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200, type:'date' },
+  { field:'stage1Cleared',          header:'LM Stage 1 Cleared',                          width:160 },
+  { field:'stage2Cleared',          header:'LM Stage 2 Cleared',                          width:160 },
+  { field:'stage3Cleared',          header:'LM Stage 3 Cleared',                          width:160 },
   { field:'latestRewardDate',       header:'Date of Latest Reward',                       width:180, type:'date' },
+  { field:'lmEarnings',             header:'LM Earnings',                                 width:140, type:'number' },
 ];
 const AE_IMPORT_COLS = [
   { field:'email', header:'AE Email ID', width:220 },
@@ -949,10 +951,13 @@ async function loadAeList() {
       ae.stage3Cleared = stageSet.has('3') || stageSet.has('stage 3') || myPayments.some(p => /stage\s*3/i.test(p.stage)) ? 'Yes' : '';
 
       const regDates = uids.map(uid => authorMap[uid]?.regnDate).filter(d => d).sort();
+      ae.firstAuthorRegDate = regDates.length ? regDates[0] : '';
       ae.latestAuthorRegDate = regDates.length ? regDates[regDates.length - 1] : '';
 
       const rewardDates = myPayments.map(p => p.rewardDate).filter(d => d).sort();
       ae.latestRewardDate = rewardDates.length ? rewardDates[rewardDates.length - 1] : '';
+
+      ae.lmEarnings = myPayments.reduce((sum, p) => sum + (parseFloat(p.rewardAmount) || 0), 0);
     }
 
     state.aes.data = aes;
