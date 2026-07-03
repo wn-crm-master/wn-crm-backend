@@ -614,7 +614,7 @@ const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   aes:          { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
-  ae_authors:   { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_payments:  { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
 };
@@ -927,9 +927,9 @@ function renderAeList() {
 
 // ── AE Authors List ──────────────────────────────────────────────
 const AE_AUTHORS_COLS = [
+  { field:'uid',                  header:'Author ID',                 width:280 },
   { field:'aeEmail',              header:'AE Mail Id',                width:220 },
   { field:'regnDate',             header:'Registration Date',         width:150 },
-  { field:'uid',                  header:'UID',                       width:280 },
   { field:'name',                 header:'Author Name',               width:180 },
   { field:'email',                header:'Author Email',              width:220 },
   { field:'preContractedTag',     header:'Pre-Contract Validation',   width:190 },
@@ -1026,7 +1026,7 @@ const ENTITY_META = {
   authors:     { cols: AUTHOR_COLS,      idField: 'uid',     fixedField: 'uid',   special: SPECIAL_AUTHORS, bodyId: 'authors-body' },
   books:       { cols: BOOK_COLS,        idField: 'id',      fixedField: 'title', special: SPECIAL_BOOKS,   bodyId: 'books-body' },
   aes:         { cols: AE_COLS,          idField: 'email',   fixedField: null,    special: new Set(),       bodyId: 'ae-list-body' },
-  ae_authors:  { cols: AE_AUTHORS_COLS,  idField: 'uid',     fixedField: null,    special: new Set(),       bodyId: 'ae-authors-body' },
+  ae_authors:  { cols: AE_AUTHORS_COLS,  idField: 'uid',     fixedField: 'uid',   special: new Set(),       bodyId: 'ae-authors-body' },
   ae_books:    { cols: AE_BOOKS_COLS,    idField: 'bookId',  fixedField: null,    special: new Set(),       bodyId: 'ae-books-body' },
   ae_payments: { cols: AE_PAYMENTS_COLS, idField: 'aeEmail', fixedField: null,    special: new Set(),       bodyId: 'ae-payments-body' },
 };
