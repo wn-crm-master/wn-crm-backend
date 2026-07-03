@@ -199,13 +199,16 @@
     .cell-special { border-color: #e67e22; background: #fff8f0; }
 
     /* AE Sub-tabs */
-    .ae-sub-tabs { display: flex; align-items: center; gap: 0; border-bottom: 2px solid #e8e0e0; margin-bottom: 0; position: sticky; top: 0; background: #fff; z-index: 20; padding-top: 8px; }
-    .ae-sub-content > .tab-toolbar { position: sticky; top: 44px; background: #fff; z-index: 19; padding: 12px 0; margin-bottom: 0; }
+    #tab-ae.active { display: flex; flex-direction: column; height: calc(100vh - 108px); }
+    .ae-sub-tabs { display: flex; align-items: center; gap: 0; border-bottom: 2px solid #e8e0e0; margin-bottom: 0; background: #fff; z-index: 20; padding-top: 8px; flex-shrink: 0; }
+    .ae-sub-content > .tab-toolbar { background: #fff; z-index: 19; padding: 12px 0; margin-bottom: 0; flex-shrink: 0; }
     .ae-sub-tab { padding: 10px 20px; font-size: 0.88rem; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
     .ae-sub-tab:hover { color: #c0272d; }
     .ae-sub-tab.active { color: #c0272d; border-bottom-color: #c0272d; }
     .ae-sub-content { display: none; }
-    .ae-sub-content.active { display: block; }
+    .ae-sub-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .ae-sub-content > .table-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .ae-sub-content > .table-card > .table-scroll { flex: 1; min-height: 0; max-height: none; }
 
     /* Stages modal */
     .btn-stages { margin-left: auto; margin-bottom: -2px; padding: 4px 12px; font-size: 0.78rem; font-weight: 500; color: #888; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: color 0.15s; }
