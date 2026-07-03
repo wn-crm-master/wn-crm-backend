@@ -25,13 +25,13 @@ function register(app, getDb, authMiddleware) {
           booksExpressContracted: { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'express' } } } } },
           booksWBPContracted:     { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'wbp'     } } } } },
           booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',    ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } },
-          firstContractDate:      { $let: {
-            vars: { dates: { $filter: { input: '$_books', cond: { $and: [
+          firstContractDate:      { $min: { $map: {
+            input: { $filter: { input: '$_books', cond: { $and: [
               { $ne: ['$$this.contractSigningDate', null] },
               { $ne: ['$$this.contractSigningDate', ''] }
-            ] } } } },
-            in: { $cond: { if: { $gt: [{ $size: '$$dates' }, 0] }, then: { $min: { $map: { input: '$$dates', in: '$$this.contractSigningDate' } } }, else: null } }
-          }}
+            ] } } },
+            in: '$$this.contractSigningDate'
+          } } }
         }},
         { $project: { _books: 0 } },
         { $skip: skip },
