@@ -488,10 +488,9 @@
       </div>
       <div id="ae-sub-ae-books" class="ae-sub-content">
         <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Books Data</div></div>
+          <div class="title-row"><div class="page-title">Books Data <span id="ae-books-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="ae_books-active-filters"></div></div>
           <div class="import-btns">
             <button class="btn btn-download" onclick="downloadAeSubCSV('ae-books')">⬇ Download CSV</button>
-            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-books')" /></label>
           </div>
         </div>
         <div class="table-card"><div class="table-scroll"><div id="ae-books-body"></div></div></div>
@@ -827,21 +826,19 @@ async function loadAeSubTab(subTab) {
 
   if (subTab === 'ae-books') {
     try {
-      const res = await api(cfg.apiPath);
-      const mappings = res.data || [];
       await ensureAuthorsAndBooksLoaded();
-      const bookMap = {};
-      for (const b of state.books.data) bookMap[b.id] = b;
       const authorMap = {};
-      for (const a of state.authors.data) authorMap[a.uid] = a;
-      state.ae_books.data = mappings.map(m => {
-        const b = bookMap[m.bookId] || {};
-        const a = authorMap[m.authorId] || {};
-        return { aeEmail: m.aeEmail, authorId: m.authorId, authorName: a.name || b.authorName || '', bookId: m.bookId, bookTitle: b.title || '', createDate: b.createDate || '', genre: b.genre || '' };
-      });
+      for (const a of state.authors.data) {
+        if (a.uid && a.aeEmail) authorMap[a.uid] = (a.aeEmail || '').trim().toLowerCase();
+      }
+      state.ae_books.data = state.books.data
+        .filter(b => b.authorId && authorMap[b.authorId])
+        .map(b => ({ bookId: b.id, authorId: b.authorId, aeEmail: authorMap[b.authorId] }));
     } catch (e) {
       state.ae_books.data = [];
     }
+    const cntEl = document.getElementById('ae-books-count');
+    if (cntEl) cntEl.textContent = state.ae_books.data.length ? `(${state.ae_books.data.length})` : '';
     renderAeSubTable(subTab);
     return;
   }
@@ -945,13 +942,9 @@ const AE_AUTHORS_COLS = [
 
 
 const AE_BOOKS_COLS = [
-  { field:'aeEmail',        header:'AE Mail Id',          width:220 },
-  { field:'authorId',       header:'Author UID',          width:280 },
-  { field:'authorName',     header:'Author Name',         width:180 },
   { field:'bookId',         header:'Book ID',             width:280 },
-  { field:'bookTitle',      header:'Book Title',          width:200 },
-  { field:'createDate',     header:'Book Create Date',    width:150, type:'date' },
-  { field:'genre',          header:'Genre',               width:120 },
+  { field:'authorId',       header:'Author ID',           width:280 },
+  { field:'aeEmail',        header:'AE Email ID',         width:220 },
 ];
 
 const AE_PAYMENTS_COLS = [
@@ -1035,7 +1028,7 @@ const ENTITY_META = {
   books:       { cols: BOOK_COLS,        idField: 'id',      fixedField: 'title', special: SPECIAL_BOOKS,   bodyId: 'books-body' },
   aes:         { cols: AE_COLS,          idField: 'email',   fixedField: null,    special: new Set(),       bodyId: 'ae-list-body' },
   ae_authors:  { cols: AE_AUTHORS_COLS,  idField: 'uid',     fixedField: 'uid',   special: new Set(),       bodyId: 'ae-authors-body' },
-  ae_books:    { cols: AE_BOOKS_COLS,    idField: 'bookId',  fixedField: null,    special: new Set(),       bodyId: 'ae-books-body' },
+  ae_books:    { cols: AE_BOOKS_COLS,    idField: 'bookId',  fixedField: 'bookId', special: new Set(),       bodyId: 'ae-books-body' },
   ae_payments: { cols: AE_PAYMENTS_COLS, idField: 'aeEmail', fixedField: null,    special: new Set(),       bodyId: 'ae-payments-body' },
 };
 
