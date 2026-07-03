@@ -24,7 +24,14 @@ function register(app, getDb, authMiddleware) {
           booksModPassed:         { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.moderationStatus',''] } }, regex: 'pass'    } } } } },
           booksExpressContracted: { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'express' } } } } },
           booksWBPContracted:     { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'wbp'     } } } } },
-          booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',    ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } }
+          booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',    ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } },
+          firstContractDate:      { $let: {
+            vars: { dates: { $filter: { input: '$_books', cond: { $and: [
+              { $ne: ['$$this.contractSigningDate', null] },
+              { $ne: ['$$this.contractSigningDate', ''] }
+            ] } } } },
+            in: { $cond: { if: { $gt: [{ $size: '$$dates' }, 0] }, then: { $min: { $map: { input: '$$dates', in: '$$this.contractSigningDate' } } }, else: null } }
+          }}
         }},
         { $project: { _books: 0 } },
         { $skip: skip },

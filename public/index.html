@@ -659,7 +659,7 @@ const state = {
 let fdCtx = null; // { entity, field, allVals, filteredVals }
 
 // Rollup fields — computed from books, read-only on author rows
-const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW']);
+const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW','firstContractDate']);
 
 function isTruthy(val) {
   if (val === true || val === 1) return true;
