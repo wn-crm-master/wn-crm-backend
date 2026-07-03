@@ -479,7 +479,7 @@
       </div>
       <div id="ae-sub-ae-authors" class="ae-sub-content">
         <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Authors List</div></div>
+          <div class="title-row"><div class="page-title">Authors List <span id="ae-authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
           <div class="import-btns">
             <button class="btn btn-download" onclick="downloadAeSubCSV('ae-authors')">⬇ Download CSV</button>
             <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-authors')" /></label>
@@ -816,6 +816,8 @@ async function loadAeSubTab(subTab) {
     } catch (e) {
       state.ae_authors.data = [];
     }
+    const cntEl = document.getElementById('ae-authors-count');
+    if (cntEl) cntEl.textContent = state.ae_authors.data.length ? `(${state.ae_authors.data.length})` : '';
     renderAeSubTable(subTab);
     return;
   }
