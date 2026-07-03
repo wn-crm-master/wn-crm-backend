@@ -902,7 +902,7 @@ const AE_COLS = [
   { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200, type:'date' },
   { field:'preContractAuthorsReg',  header:'No. of Pre-Contract Validated Authors Reg.',  width:300, type:'number' },
   { field:'booksCreated',           header:'No. of Books Created',                        width:170, type:'number' },
-  { field:'authorsContracted',     header:'No. of Authors Contracted',                   width:200, type:'number' },
+  { field:'authorsContracted',     header:'No. of Authors Contracted as of LM',           width:260, type:'number' },
   { field:'stage1Cleared',          header:'LM Stage 1 Cleared',                          width:160, type:'number' },
   { field:'stage2Cleared',          header:'LM Stage 2 Cleared',                          width:160, type:'number' },
   { field:'stage3Cleared',          header:'LM Stage 3 Cleared',                          width:160 },
@@ -937,6 +937,7 @@ async function loadAeList() {
     const now = new Date();
     const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
     const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
     function isLastMonth(dateStr) {
       if (!dateStr) return false;
       const d = String(dateStr).slice(0, 10);
@@ -955,7 +956,7 @@ async function loadAeList() {
       }).length;
 
       ae.booksCreated = aeBooks.filter(b => (b.aeEmail || '').toLowerCase() === email).length;
-      ae.authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).trim() !== ''; }).length;
+      ae.authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0,10) < thisMonthStart; }).length;
 
       ae.stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
 
