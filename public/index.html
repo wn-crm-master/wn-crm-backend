@@ -972,7 +972,7 @@ async function loadAeList() {
       const rewardDates = myPayments.map(p => p.rewardDate).filter(d => d).sort();
       ae.latestRewardDate = rewardDates.length ? rewardDates[rewardDates.length - 1] : '';
 
-      ae.lmEarnings = myPayments.reduce((sum, p) => sum + (parseFloat(p.rewardAmount) || 0), 0);
+      ae.lmEarnings = ae.stage1Cleared * 50 + ae.stage2Cleared * 200 + ae.stage3Cleared * 100;
     }
 
     state.aes.data = aes;
