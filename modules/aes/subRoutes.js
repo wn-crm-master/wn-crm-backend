@@ -4,14 +4,18 @@ function register(app, getDb, authMiddleware) {
     try {
       const db = getDb();
       const col = db.collection('ae_authors');
-      const dupes = await col.aggregate([
-        { $group: { _id: { aeEmail: '$aeEmail', uid: '$uid' }, ids: { $push: '$_id' }, count: { $sum: 1 } } },
-        { $match: { count: { $gt: 1 } } }
-      ]).toArray();
-      for (const d of dupes) {
-        const toDelete = d.ids.slice(1);
-        await col.deleteMany({ _id: { $in: toDelete } });
+      const all = await col.find({}).toArray();
+      const seen = new Set();
+      const toDelete = [];
+      for (const doc of all) {
+        const key = (doc.uid || '').trim();
+        if (seen.has(key)) {
+          toDelete.push(doc._id);
+        } else {
+          seen.add(key);
+        }
       }
+      if (toDelete.length) await col.deleteMany({ _id: { $in: toDelete } });
       const limit = parseInt(req.query.limit) || 50000;
       const data = await col.find({}).limit(limit).toArray();
       res.json({ data });
