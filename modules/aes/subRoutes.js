@@ -8,7 +8,7 @@ function register(app, getDb, authMiddleware) {
       const seen = new Set();
       const toDelete = [];
       for (const doc of all) {
-        const key = (doc.uid || '').trim();
+        const key = ((doc.aeEmail || '').trim().toLowerCase()) + '|' + ((doc.uid || '').trim());
         if (seen.has(key)) {
           toDelete.push(doc._id);
         } else {
