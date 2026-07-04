@@ -205,6 +205,9 @@
     .earn-sub-tab { flex: 1; text-align: center; padding: 12px 0; cursor: pointer; font-weight: 500; color: #888; border: 1px solid #e0e0e0; border-radius: 24px; margin: 0 6px; transition: all .15s; background: #fff; }
     .earn-sub-tab:hover { color: #b71c1c; background: #fdf0f0; }
     .earn-sub-tab.active { color: #b71c1c; background: #fce8e8; border-color: #b71c1c; }
+    .earn-mo-item { display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:0.9rem;white-space:nowrap; }
+    .earn-mo-item:hover { background:#fdf2f2; }
+    .earn-mo-item input { accent-color:#c0272d; }
     .earn-sub-content { display: none; }
     .earn-sub-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     .earn-sub-content > .tab-toolbar { background: #fff; z-index: 19; padding: 12px 0; margin-bottom: 0; flex-shrink: 0; }
@@ -527,9 +530,14 @@
       <div id="earn-sub-earn-ae" class="earn-sub-content active">
         <div class="tab-toolbar">
           <div class="title-row">
-            <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;position:relative;">
               <label style="font-weight:500;color:#555;">Month:</label>
-              <select id="earn-ae-month" onchange="loadEarnAe()" style="padding:6px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;"></select>
+              <div id="earn-ae-month-wrap" style="position:relative;display:inline-block;">
+                <button id="earn-ae-month-btn" onclick="toggleEarnMonthDD()" style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;background:#fff;cursor:pointer;min-width:160px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                  <span id="earn-ae-month-label">Select months</span><span style="font-size:0.7rem;">&#9660;</span>
+                </button>
+                <div id="earn-ae-month-dd" style="display:none;position:absolute;top:100%;left:0;z-index:100;background:#fff;border:1px solid #ccc;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);max-height:260px;overflow-y:auto;min-width:180px;margin-top:4px;"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -839,45 +847,85 @@ function showEarnSubTab(name) {
   if (name === 'earn-ae') loadEarnAe();
 }
 
+let earnAeMonths = [];
+let earnAeSelected = new Set();
+
 function populateEarnAeMonths() {
-  const sel = document.getElementById('earn-ae-month');
-  if (!sel || sel.options.length > 0) return;
+  const dd = document.getElementById('earn-ae-month-dd');
+  if (!dd || earnAeMonths.length > 0) return;
   const now = new Date();
-  const months = [];
   let y = 2023, m = 11;
   while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth())) {
     const label = new Date(y, m, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
-    months.push({ value: `${y}-${String(m + 1).padStart(2, '0')}`, label });
+    earnAeMonths.push({ value: `${y}-${String(m + 1).padStart(2, '0')}`, label });
     m++;
     if (m > 11) { m = 0; y++; }
   }
-  months.reverse();
-  for (const mo of months) {
-    const opt = document.createElement('option');
-    opt.value = mo.value;
-    opt.textContent = mo.label;
-    sel.appendChild(opt);
+  earnAeMonths.reverse();
+  renderEarnMonthDD();
+}
+
+function renderEarnMonthDD() {
+  const dd = document.getElementById('earn-ae-month-dd');
+  dd.innerHTML = earnAeMonths.map(mo =>
+    `<label class="earn-mo-item"><input type="checkbox" value="${mo.value}" ${earnAeSelected.has(mo.value)?'checked':''} onchange="toggleEarnMonth('${mo.value}',this.checked)">${mo.label}</label>`
+  ).join('');
+}
+
+function toggleEarnMonthDD() {
+  const dd = document.getElementById('earn-ae-month-dd');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleEarnMonth(val, checked) {
+  if (checked) earnAeSelected.add(val); else earnAeSelected.delete(val);
+  updateEarnMonthLabel();
+  loadEarnAe();
+}
+
+function updateEarnMonthLabel() {
+  const lbl = document.getElementById('earn-ae-month-label');
+  if (earnAeSelected.size === 0) { lbl.textContent = 'Select months'; return; }
+  if (earnAeSelected.size <= 2) {
+    const names = [...earnAeSelected].map(v => { const mo = earnAeMonths.find(m => m.value === v); return mo ? mo.label : v; });
+    lbl.textContent = names.join(', ');
+  } else {
+    lbl.textContent = earnAeSelected.size + ' months selected';
   }
 }
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('earn-ae-month-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('earn-ae-month-dd').style.display = 'none';
+  }
+});
 
 async function loadEarnAe() {
   populateEarnAeMonths();
   const container = document.getElementById('earn-ae-body');
-  const sel = document.getElementById('earn-ae-month');
-  if (!sel || !sel.value) { container.innerHTML = '<div class="empty">Select a month to view earnings</div>'; return; }
+  if (earnAeSelected.size === 0) { container.innerHTML = '<div class="empty">Select a month to view earnings</div>'; return; }
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
     await ensureAuthorsAndBooksLoaded();
-    const [yearStr, monthStr] = sel.value.split('-');
-    const year = parseInt(yearStr), month = parseInt(monthStr) - 1;
-    const mStart = new Date(year, month, 1).toISOString().slice(0, 10);
-    const mEnd = new Date(year, month + 1, 0).toISOString().slice(0, 10);
-    const nextMonthStart = new Date(year, month + 1, 1).toISOString().slice(0, 10);
-    function isInMonth(dateStr) {
+
+    const monthRanges = [...earnAeSelected].map(v => {
+      const [yStr, mStr] = v.split('-');
+      const year = parseInt(yStr), month = parseInt(mStr) - 1;
+      return {
+        key: v,
+        start: new Date(year, month, 1).toISOString().slice(0, 10),
+        end: new Date(year, month + 1, 0).toISOString().slice(0, 10),
+        nextStart: new Date(year, month + 1, 1).toISOString().slice(0, 10),
+      };
+    });
+
+    function isInAnyMonth(dateStr) {
       if (!dateStr) return false;
       const d = String(dateStr).slice(0, 10);
-      return d >= mStart && d <= mEnd;
+      return monthRanges.some(r => d >= r.start && d <= r.end);
     }
+    const latestNextStart = monthRanges.reduce((max, r) => r.nextStart > max ? r.nextStart : max, '');
 
     const authorMap = {};
     for (const a of state.authors.data) if (a.uid) authorMap[a.uid] = a;
@@ -892,9 +940,9 @@ async function loadEarnAe() {
 
     const rows = [];
     for (const [aeEmail, uids] of Object.entries(aeMap)) {
-      const contracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < nextMonthStart; }).length;
-      const s1 = uids.filter(uid => isInMonth(authorMap[uid]?.firstContractDate)).length;
-      const s2 = uids.filter(uid => isInMonth(authorMap[uid]?.first300kWordDate)).length;
+      const contracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < latestNextStart; }).length;
+      const s1 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.firstContractDate)).length;
+      const s2 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.first300kWordDate)).length;
       const s3 = (s1 !== 0 && contracted % 10 === 0) ? Math.floor(s1 / 10) + 1 : 0;
       const earnings = s1 * 50 + s2 * 200 + s3 * 100;
       rows.push({ aeEmail, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
