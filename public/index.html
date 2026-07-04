@@ -527,8 +527,7 @@
       <div id="earn-sub-earn-ae" class="earn-sub-content active">
         <div class="tab-toolbar">
           <div class="title-row">
-            <div class="page-title">Acq. Editor Earnings <span id="earn-ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div>
-            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
               <label style="font-weight:500;color:#555;">Month:</label>
               <select id="earn-ae-month" onchange="loadEarnAe()" style="padding:6px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;"></select>
             </div>
@@ -904,8 +903,6 @@ async function loadEarnAe() {
     state.earn_ae.data = rows;
     state.earn_ae.filter = {};
     state.earn_ae.sort = { field: null, dir: 'asc' };
-    const cntEl = document.getElementById('earn-ae-count');
-    if (cntEl) cntEl.textContent = rows.length ? `(${rows.length})` : '';
     renderTable('earn_ae');
   } catch (e) {
     container.innerHTML = '<div class="empty">Error loading earnings data</div>';
