@@ -378,10 +378,10 @@
     <span class="brand">CRM</span>
     <div class="nav-links">
       <div class="nav-link active" onclick="showTab('dashboard')">Dashboard</div>
+      <div class="nav-link" onclick="showTab('ae')">AEs</div>
       <div class="nav-link" onclick="showTab('authors')">Authors</div>
       <div class="nav-link" onclick="showTab('books')">Books</div>
       <div class="nav-link" onclick="showTab('review')">Review</div>
-      <div class="nav-link" onclick="showTab('ae')">AEs</div>
       <div class="nav-link" onclick="showTab('earnings')">Earnings</div>
     </div>
     <div class="nav-right">
@@ -792,7 +792,7 @@ function showApp() {
   showTab('dashboard'); loadStats();
 }
 
-const NAV_TAB_ORDER = ['dashboard','authors','books','review','ae','earnings'];
+const NAV_TAB_ORDER = ['dashboard','ae','authors','books','review','earnings'];
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
