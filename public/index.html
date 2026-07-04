@@ -951,12 +951,11 @@ async function loadEarnAe() {
 
     const rows = [];
     for (const [aeEmail, uids] of Object.entries(aeMap)) {
-      const contracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < latestNextStart; }).length;
+      const authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < earliestStart; }).length;
       const s1 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.firstContractDate)).length;
       const s2 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.first300kWordDate)).length;
       const s3 = Math.floor((authorsContracted + s1) / 10) - Math.floor(authorsContracted / 10);
       const earnings = s1 * 50 + s2 * 200 + s3 * 100;
-      const authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < earliestStart; }).length;
       rows.push({ aeEmail, authorsContracted, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
     }
 
