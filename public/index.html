@@ -936,6 +936,7 @@ async function loadEarnAe() {
       return monthRanges.some(r => d >= r.start && d <= r.end);
     }
     const latestNextStart = monthRanges.reduce((max, r) => r.nextStart > max ? r.nextStart : max, '');
+    const earliestStart = monthRanges.reduce((min, r) => r.start < min ? r.start : min, monthRanges[0].start);
 
     const authorMap = {};
     for (const a of state.authors.data) if (a.uid) authorMap[a.uid] = a;
@@ -955,7 +956,8 @@ async function loadEarnAe() {
       const s2 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.first300kWordDate)).length;
       const s3 = (s1 !== 0 && contracted % 10 === 0) ? Math.floor(s1 / 10) + 1 : 0;
       const earnings = s1 * 50 + s2 * 200 + s3 * 100;
-      rows.push({ aeEmail, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
+      const authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < earliestStart; }).length;
+      rows.push({ aeEmail, authorsContracted, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
     }
 
     state.earn_ae.data = rows;
@@ -1052,12 +1054,13 @@ const AE_IMPORT_COLS = [
 
 // ── Earnings: AE ─────────────────────────────────────────────────
 const EARN_AE_COLS = [
-  { field:'aeEmail',       header:'AE Email ID',       width:220 },
-  { field:'stage1Cleared', header:'Stage 1 Cleared',   width:150, type:'number' },
-  { field:'stage2Cleared', header:'Stage 2 Cleared',   width:150, type:'number' },
-  { field:'stage3Cleared', header:'Stage 3 Cleared',   width:150, type:'number' },
-  { field:'earnings',      header:'Earnings',           width:140, type:'number' },
-  { field:'payment',       header:'Payment',            width:140 },
+  { field:'aeEmail',             header:'AE Email ID',                      width:220 },
+  { field:'authorsContracted',   header:'No. of Authors cont. before this pd', width:270, type:'number' },
+  { field:'stage1Cleared',       header:'Stage 1 Cleared',                 width:150, type:'number' },
+  { field:'stage2Cleared',       header:'Stage 2 Cleared',                 width:150, type:'number' },
+  { field:'stage3Cleared',       header:'Stage 3 Cleared',                 width:150, type:'number' },
+  { field:'earnings',            header:'Earnings',                         width:140, type:'number' },
+  { field:'payment',             header:'Payment',                          width:140 },
 ];
 
 async function loadAeList() {
