@@ -201,10 +201,10 @@
     /* AE Sub-tabs */
     #tab-ae.active { display: flex; flex-direction: column; height: calc(100vh - 108px); }
     #tab-earnings.active { display: flex; flex-direction: column; height: calc(100vh - 108px); }
-    .earn-sub-tabs { display: flex; align-items: center; gap: 0; border-bottom: 2px solid #e8e0e0; margin-bottom: 0; background: #fff; z-index: 20; padding-top: 8px; flex-shrink: 0; }
-    .earn-sub-tab { padding: 10px 28px; cursor: pointer; font-weight: 500; color: #888; border-bottom: 3px solid transparent; transition: color .15s, border-color .15s; }
-    .earn-sub-tab:hover { color: #b71c1c; }
-    .earn-sub-tab.active { color: #b71c1c; border-bottom-color: #b71c1c; }
+    .earn-sub-tabs { display: flex; align-items: center; gap: 0; margin-bottom: 0; background: #fff; z-index: 20; padding: 8px 0 0; flex-shrink: 0; }
+    .earn-sub-tab { flex: 1; text-align: center; padding: 12px 0; cursor: pointer; font-weight: 500; color: #888; border: 1px solid #e0e0e0; border-radius: 24px; margin: 0 6px; transition: all .15s; background: #fff; }
+    .earn-sub-tab:hover { color: #b71c1c; background: #fdf0f0; }
+    .earn-sub-tab.active { color: #b71c1c; background: #fce8e8; border-color: #b71c1c; }
     .earn-sub-content { display: none; }
     .earn-sub-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
     .earn-sub-content > .tab-toolbar { background: #fff; z-index: 19; padding: 12px 0; margin-bottom: 0; flex-shrink: 0; }
