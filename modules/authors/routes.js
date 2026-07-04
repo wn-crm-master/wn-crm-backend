@@ -34,13 +34,12 @@ function register(app, getDb, authMiddleware) {
           } } },
           first300kWordDate:      { $min: { $map: {
             input: { $filter: { input: '$_books', cond: { $and: [
+              { $ne: ['$$this.contractSigningDate', null] },
+              { $ne: ['$$this.contractSigningDate', ''] },
               { $ne: ['$$this.words300kDate', null] },
               { $ne: ['$$this.words300kDate', ''] },
               { $or: [
-                { $and: [
-                  { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'ongoing' } },
-                  { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus', ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } }
-                ] },
+                { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'ongoing' } },
                 { $and: [
                   { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'rejected' } },
                   { $gt: [{ $ifNull: ['$$this.wbpRejectedDate', ''] }, '$$this.words300kDate'] }
