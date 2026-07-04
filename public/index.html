@@ -867,9 +867,19 @@ function populateEarnAeMonths() {
 
 function renderEarnMonthDD() {
   const dd = document.getElementById('earn-ae-month-dd');
-  dd.innerHTML = earnAeMonths.map(mo =>
-    `<label class="earn-mo-item"><input type="checkbox" value="${mo.value}" ${earnAeSelected.has(mo.value)?'checked':''} onchange="toggleEarnMonth('${mo.value}',this.checked)">${mo.label}</label>`
-  ).join('');
+  const allChecked = earnAeSelected.size === earnAeMonths.length;
+  dd.innerHTML = `<label class="earn-mo-item" style="border-bottom:1px solid #eee;font-weight:600;"><input type="checkbox" ${allChecked?'checked':''} onchange="toggleEarnMonthAll(this.checked)">Select All</label>` +
+    earnAeMonths.map(mo =>
+      `<label class="earn-mo-item"><input type="checkbox" value="${mo.value}" ${earnAeSelected.has(mo.value)?'checked':''} onchange="toggleEarnMonth('${mo.value}',this.checked)">${mo.label}</label>`
+    ).join('');
+}
+
+function toggleEarnMonthAll(checked) {
+  if (checked) { earnAeMonths.forEach(m => earnAeSelected.add(m.value)); }
+  else { earnAeSelected.clear(); }
+  renderEarnMonthDD();
+  updateEarnMonthLabel();
+  loadEarnAe();
 }
 
 function toggleEarnMonthDD() {
