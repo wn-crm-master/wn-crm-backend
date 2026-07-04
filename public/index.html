@@ -91,7 +91,7 @@
     /* Table */
     .table-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
     .table-scroll { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; max-height: calc(100vh - 160px); border-radius: 10px; }
-    table { border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+    table { border-collapse: separate; border-spacing: 0; table-layout: fixed; margin-bottom: 14px; }
     table.wide { min-width: max-content; }
 
     thead { position: sticky; top: 0; z-index: 20; }
@@ -210,9 +210,9 @@
     .earn-mo-item input { accent-color:#c0272d; }
     .earn-sub-content { display: none; }
     .earn-sub-content.active { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-    .earn-sub-content > .tab-toolbar { background: #fff; z-index: 19; padding: 12px 0; margin-bottom: 0; flex-shrink: 0; }
+    .earn-sub-content > .tab-toolbar { background: #fff; z-index: 30; position: relative; padding: 12px 0; margin-bottom: 0; flex-shrink: 0; overflow: visible; }
     .earn-sub-content > .table-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-    .earn-sub-content > .table-card > .table-scroll { flex: 1; min-height: 0; max-height: none; padding-bottom: 18px; }
+    .earn-sub-content > .table-card > .table-scroll { flex: 1; min-height: 0; max-height: none; }
     .ae-sub-tabs { display: flex; align-items: center; gap: 0; border-bottom: 2px solid #e8e0e0; margin-bottom: 0; background: #fff; z-index: 20; padding-top: 8px; flex-shrink: 0; }
     .ae-sub-content > .tab-toolbar { background: #fff; z-index: 19; padding: 12px 0; margin-bottom: 0; flex-shrink: 0; }
     .ae-sub-tab { padding: 10px 20px; font-size: 0.88rem; font-weight: 600; color: #888; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
