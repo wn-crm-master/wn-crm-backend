@@ -526,9 +526,15 @@
       </div>
       <div id="earn-sub-earn-ae" class="earn-sub-content active">
         <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Acq. Editor Earnings</div></div>
+          <div class="title-row">
+            <div class="page-title">Acq. Editor Earnings <span id="earn-ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+              <label style="font-weight:500;color:#555;">Month:</label>
+              <select id="earn-ae-month" onchange="loadEarnAe()" style="padding:6px 12px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;"></select>
+            </div>
+          </div>
         </div>
-        <div class="table-card"><div class="table-scroll"><div id="earn-ae-body"><div class="empty">Coming soon</div></div></div></div>
+        <div class="table-card"><div class="table-scroll"><div id="earn-ae-body"><div class="empty">Select a month to view earnings</div></div></div></div>
       </div>
       <div id="earn-sub-earn-authors" class="earn-sub-content">
         <div class="tab-toolbar">
@@ -655,6 +661,7 @@ const state = {
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_payments:  { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  earn_ae:      { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
 };
 
 // Active filter dropdown context
@@ -808,6 +815,7 @@ function showTab(name) {
   if (name==='review') loadReview();
   if (name==='settings') loadBackups();
   if (name==='ae') { ensureAuthorsAndBooksLoaded(); loadAeList(); }
+  if (name==='earnings') { populateEarnAeMonths(); loadEarnAe(); }
 }
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
@@ -829,6 +837,79 @@ function showEarnSubTab(name) {
   document.querySelectorAll('.earn-sub-content').forEach(c => c.classList.remove('active'));
   document.querySelector(`.earn-sub-tab[onclick*="${name}"]`).classList.add('active');
   document.getElementById('earn-sub-' + name).classList.add('active');
+  if (name === 'earn-ae') loadEarnAe();
+}
+
+function populateEarnAeMonths() {
+  const sel = document.getElementById('earn-ae-month');
+  if (!sel || sel.options.length > 0) return;
+  const now = new Date();
+  const months = [];
+  let y = 2023, m = 11;
+  while (y < now.getFullYear() || (y === now.getFullYear() && m <= now.getMonth())) {
+    const label = new Date(y, m, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    months.push({ value: `${y}-${String(m + 1).padStart(2, '0')}`, label });
+    m++;
+    if (m > 11) { m = 0; y++; }
+  }
+  months.reverse();
+  for (const mo of months) {
+    const opt = document.createElement('option');
+    opt.value = mo.value;
+    opt.textContent = mo.label;
+    sel.appendChild(opt);
+  }
+}
+
+async function loadEarnAe() {
+  populateEarnAeMonths();
+  const container = document.getElementById('earn-ae-body');
+  const sel = document.getElementById('earn-ae-month');
+  if (!sel || !sel.value) { container.innerHTML = '<div class="empty">Select a month to view earnings</div>'; return; }
+  container.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    await ensureAuthorsAndBooksLoaded();
+    const [yearStr, monthStr] = sel.value.split('-');
+    const year = parseInt(yearStr), month = parseInt(monthStr) - 1;
+    const mStart = new Date(year, month, 1).toISOString().slice(0, 10);
+    const mEnd = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+    const nextMonthStart = new Date(year, month + 1, 1).toISOString().slice(0, 10);
+    function isInMonth(dateStr) {
+      if (!dateStr) return false;
+      const d = String(dateStr).slice(0, 10);
+      return d >= mStart && d <= mEnd;
+    }
+
+    const authorMap = {};
+    for (const a of state.authors.data) if (a.uid) authorMap[a.uid] = a;
+
+    const aeMap = {};
+    for (const a of state.authors.data) {
+      const ae = (a.aeEmail || '').trim().toLowerCase();
+      if (!ae || !a.uid) continue;
+      if (!aeMap[ae]) aeMap[ae] = [];
+      aeMap[ae].push(a.uid);
+    }
+
+    const rows = [];
+    for (const [aeEmail, uids] of Object.entries(aeMap)) {
+      const contracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < nextMonthStart; }).length;
+      const s1 = uids.filter(uid => isInMonth(authorMap[uid]?.firstContractDate)).length;
+      const s2 = uids.filter(uid => isInMonth(authorMap[uid]?.first300kWordDate)).length;
+      const s3 = (s1 !== 0 && contracted % 10 === 0) ? Math.floor(s1 / 10) + 1 : 0;
+      const earnings = s1 * 50 + s2 * 200 + s3 * 100;
+      rows.push({ aeEmail, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
+    }
+
+    state.earn_ae.data = rows;
+    state.earn_ae.filter = {};
+    state.earn_ae.sort = { field: null, dir: 'asc' };
+    const cntEl = document.getElementById('earn-ae-count');
+    if (cntEl) cntEl.textContent = rows.length ? `(${rows.length})` : '';
+    renderTable('earn_ae');
+  } catch (e) {
+    container.innerHTML = '<div class="empty">Error loading earnings data</div>';
+  }
 }
 
 async function ensureAuthorsAndBooksLoaded() {
@@ -914,6 +995,15 @@ const AE_IMPORT_COLS = [
   { field:'name',  header:'AE Name',     width:160 },
 ];
 
+// ── Earnings: AE ─────────────────────────────────────────────────
+const EARN_AE_COLS = [
+  { field:'aeEmail',       header:'AE Email ID',       width:220 },
+  { field:'stage1Cleared', header:'Stage 1 Cleared',   width:150, type:'number' },
+  { field:'stage2Cleared', header:'Stage 2 Cleared',   width:150, type:'number' },
+  { field:'stage3Cleared', header:'Stage 3 Cleared',   width:150, type:'number' },
+  { field:'earnings',      header:'Earnings',           width:140, type:'number' },
+  { field:'payment',       header:'Payment',            width:140 },
+];
 
 async function loadAeList() {
   const container = document.getElementById('ae-list-body');
@@ -1088,6 +1178,7 @@ const ENTITY_META = {
   ae_authors:  { cols: AE_AUTHORS_COLS,  idField: 'uid',     fixedField: 'uid',   special: new Set(),       bodyId: 'ae-authors-body' },
   ae_books:    { cols: AE_BOOKS_COLS,    idField: 'bookId',  fixedField: 'bookId', special: new Set(),       bodyId: 'ae-books-body' },
   ae_payments: { cols: AE_PAYMENTS_COLS, idField: 'aeEmail', fixedField: null,    special: new Set(),       bodyId: 'ae-payments-body' },
+  earn_ae:     { cols: EARN_AE_COLS,    idField: 'aeEmail', fixedField: null,    special: new Set(),       bodyId: 'earn-ae-body' },
 };
 
 function renderTable(entity) {
