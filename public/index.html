@@ -954,7 +954,7 @@ async function loadEarnAe() {
       const contracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < latestNextStart; }).length;
       const s1 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.firstContractDate)).length;
       const s2 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.first300kWordDate)).length;
-      const s3 = (s1 !== 0 && contracted % 10 === 0) ? Math.floor(s1 / 10) + 1 : 0;
+      const s3 = Math.floor((authorsContracted + s1) / 10) - Math.floor(authorsContracted / 10);
       const earnings = s1 * 50 + s2 * 200 + s3 * 100;
       const authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < earliestStart; }).length;
       rows.push({ aeEmail, authorsContracted, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
@@ -1111,7 +1111,7 @@ async function loadAeList() {
       const myPayments = aePayments.filter(p => (p.aeEmail || '').toLowerCase() === email);
       const stageSet = new Set(myPayments.map(p => String(p.stage || '').toLowerCase()));
       ae.stage2Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.first300kWordDate)).length;
-      ae.stage3Cleared = (ae.stage1Cleared !== 0 && ae.authorsContracted % 10 === 0) ? Math.floor(ae.stage1Cleared / 10) + 1 : 0;
+      ae.stage3Cleared = Math.floor((ae.authorsContracted + ae.stage1Cleared) / 10) - Math.floor(ae.authorsContracted / 10);
 
       const regDates = uids.map(uid => authorMap[uid]?.regnDate).filter(d => d).sort();
       ae.firstAuthorRegDate = regDates.length ? regDates[0] : '';
