@@ -62,6 +62,17 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: db ? 'connected' : 'disconnected' });
 });
 
+// Manual resync
+app.post('/api/resync', authMiddleware, async (req, res) => {
+  try {
+    const start = Date.now();
+    await syncRollups(getDb());
+    res.json({ success: true, duration: Date.now() - start });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Register all modules
 registerAuth(app, getDb, JWT_SECRET);
 registerAuthorImport(app, getDb, authMiddleware);
