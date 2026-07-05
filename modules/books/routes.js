@@ -1,4 +1,5 @@
 function register(app, getDb, authMiddleware) {
+  const { triggerSync } = require('../rollupSync');
   app.get('/api/books', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
@@ -51,6 +52,7 @@ function register(app, getDb, authMiddleware) {
         { id: { $in: ids } },
         { $set: { [field]: value, updatedAt: new Date() } }
       );
+      triggerSync(db);
       res.json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -71,6 +73,7 @@ function register(app, getDb, authMiddleware) {
       const { _id: bId, ...bookData } = existing;
       await db.collection('books_backups').insertOne({ ...bookData, _originalId: bId, importId: 'direct-edit', backedUpAt: new Date() });
       await db.collection('books').updateOne({ id: req.params.id }, { $set: { ...updates, updatedAt: new Date() } });
+      triggerSync(db);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -92,6 +95,7 @@ function register(app, getDb, authMiddleware) {
       const db = getDb();
       const result = await db.collection('books').deleteOne({ id: req.params.id });
       if (result.deletedCount === 0) return res.status(404).json({ error: 'Book not found' });
+      triggerSync(db);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });

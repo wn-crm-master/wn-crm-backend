@@ -1,5 +1,6 @@
 const { importRecords, isBlankOrError } = require('../import/engine');
 const { SPECIAL_FIELDS } = require('./fields');
+const { triggerSync } = require('../rollupSync');
 
 function register(app, getDb, authMiddleware) {
   app.post('/api/import/books', authMiddleware, async (req, res) => {
@@ -41,6 +42,7 @@ function register(app, getDb, authMiddleware) {
       }
 
       const result = await importRecords(db, 'books', 'books_backups', books, 'id', SPECIAL_FIELDS);
+      triggerSync(db);
       res.json({ success: true, ...result, stubAuthorsCreated: stubsCreated });
     } catch (err) {
       res.status(500).json({ error: err.message });

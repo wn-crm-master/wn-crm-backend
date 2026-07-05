@@ -1,5 +1,5 @@
 function register(app, getDb, authMiddleware) {
-  const TRUTHY_VALS = [true, 1, 'true', 'TRUE', 'True', 'yes', 'YES', 'Yes', 'y', 'Y', '1'];
+  const { triggerSync } = require('../rollupSync');
 
   app.get('/api/authors', authMiddleware, async (req, res) => {
     try {
@@ -13,65 +13,11 @@ function register(app, getDb, authMiddleware) {
       ];
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const total = await db.collection('authors').countDocuments(matchQuery);
-
-      const wantAll = parseInt(limit) > 10000;
-      const pipeline = [
-        ...(Object.keys(matchQuery).length ? [{ $match: matchQuery }] : []),
-        ...(!wantAll ? [{ $skip: skip }, { $limit: parseInt(limit) }] : []),
-        { $lookup: { from: 'books', localField: 'uid', foreignField: 'authorId', as: '_books' } },
-        { $addFields: {
-          booksCreated:           { $size: '$_books' },
-          booksChp1Published:     { $size: { $filter: { input: '$_books', cond: { $in: ['$$this.chp1Published',     TRUTHY_VALS] } } } },
-          books10kCompleted:      { $size: { $filter: { input: '$_books', cond: { $in: ['$$this.words10kCompleted', TRUTHY_VALS] } } } },
-          booksModPassed:         { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.moderationStatus',''] } }, regex: 'pass'    } } } } },
-          booksExpressContracted: { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'express' } } } } },
-          booksWBPContracted:     { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'wbp'     } } } } },
-          booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',    ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } },
-          _firstContract: { $reduce: {
-            input: { $filter: { input: '$_books', cond: { $and: [
-              { $ne: ['$$this.contractSigningDate', null] },
-              { $ne: ['$$this.contractSigningDate', ''] }
-            ] } } },
-            initialValue: null,
-            in: { $cond: [
-              { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.contractSigningDate', '$$value.d'] }] },
-              { d: '$$this.contractSigningDate', id: '$$this.id' },
-              '$$value'
-            ] }
-          } },
-          _first300k: { $reduce: {
-            input: { $filter: { input: '$_books', cond: { $and: [
-              { $ne: ['$$this.contractSigningDate', null] },
-              { $ne: ['$$this.contractSigningDate', ''] },
-              { $ne: ['$$this.words300kDate', null] },
-              { $ne: ['$$this.words300kDate', ''] },
-              { $or: [
-                { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'ongoing' } },
-                { $and: [
-                  { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'rejected' } },
-                  { $gt: [{ $ifNull: ['$$this.wbpRejectedDate', ''] }, '$$this.words300kDate'] }
-                ] }
-              ] }
-            ] } } },
-            initialValue: null,
-            in: { $cond: [
-              { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.words300kDate', '$$value.d'] }] },
-              { d: '$$this.words300kDate', id: '$$this.id' },
-              '$$value'
-            ] }
-          } }
-        }},
-        { $addFields: {
-          firstContractDate:      { $ifNull: ['$_firstContract.d', null] },
-          firstContractBookId:    { $ifNull: ['$_firstContract.id', ''] },
-          first300kWordDate:      { $ifNull: ['$_first300k.d', null] },
-          first300kWordBookId:    { $ifNull: ['$_first300k.id', ''] }
-        }},
-        { $project: { _books: 0, _firstContract: 0, _first300k: 0 } },
-        ...(wantAll ? [{ $skip: skip }, { $limit: parseInt(limit) }] : [])
-      ];
-
-      const data = await db.collection('authors').aggregate(pipeline, { allowDiskUse: true }).toArray();
+      const data = await db.collection('authors')
+        .find(matchQuery)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .toArray();
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -99,6 +45,7 @@ function register(app, getDb, authMiddleware) {
         { uid: { $in: ids } },
         { $set: { [field]: value, updatedAt: new Date() } }
       );
+      triggerSync(db);
       res.json({ success: true, matched: result.matchedCount, modified: result.modifiedCount });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -119,6 +66,7 @@ function register(app, getDb, authMiddleware) {
       const { _id: aId, ...authData } = existing;
       await db.collection('authors_backups').insertOne({ ...authData, _originalId: aId, importId: 'direct-edit', backedUpAt: new Date() });
       await db.collection('authors').updateOne({ uid: req.params.id }, { $set: { ...updates, updatedAt: new Date() } });
+      triggerSync(db);
       res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
