@@ -1033,6 +1033,7 @@ async function loadAeSubTab(subTab) {
 
 // ── AE List ───────────────────────────────────────────────────────
 const AE_COLS = [
+  { field:'aeStatus',               header:'',                                            width:36, type:'status' },
   { field:'dateAdded',              header:'Date Added',                                  width:120, type:'date' },
   { field:'email',                  header:'AE Email ID',                                 width:220 },
   { field:'name',                   header:'AE Name',                                     width:160 },
@@ -1041,6 +1042,7 @@ const AE_COLS = [
   { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200, type:'date' },
   { field:'preContractAuthorsReg',  header:'No. of Pre-Contract Validated Authors Reg.',  width:300, type:'number' },
   { field:'booksCreated',           header:'No. of Books Created',                        width:170, type:'number' },
+  { field:'activeBooks',            header:'Current Active Books',                        width:170, type:'number' },
   { field:'authorsContracted',     header:'No. of Authors Contracted as of LM',           width:260, type:'number' },
   { field:'stage1Cleared',          header:'LM Stage 1 Cleared',                          width:160, type:'number' },
   { field:'stage2Cleared',          header:'LM Stage 2 Cleared',                          width:160, type:'number' },
@@ -1093,6 +1095,9 @@ async function loadAeList() {
       return d >= lmStart && d <= lmEnd;
     }
 
+    const bookMap = {};
+    for (const b of state.books.data) if (b.id) bookMap[b.id] = b;
+
     for (const ae of aes) {
       const email = (ae.email || '').toLowerCase();
       const mappings = aeAuthors.filter(m => (m.aeEmail || '').toLowerCase() === email);
@@ -1104,7 +1109,14 @@ async function loadAeList() {
         return a && a.preContractedTag && String(a.preContractedTag).toLowerCase() !== 'no' && String(a.preContractedTag).trim() !== '';
       }).length;
 
-      ae.booksCreated = aeBooks.filter(b => (b.aeEmail || '').toLowerCase() === email).length;
+      const aeBookList = aeBooks.filter(b => (b.aeEmail || '').toLowerCase() === email);
+      ae.booksCreated = aeBookList.length;
+      ae.activeBooks = aeBookList.filter(b => {
+        const book = bookMap[b.bookId];
+        if (!book) return false;
+        const s = (book.bookStatus || '').toLowerCase();
+        return s === 'approved' || s === 'published';
+      }).length;
       ae.authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0,10) < thisMonthStart; }).length;
 
       ae.stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
@@ -1122,6 +1134,7 @@ async function loadAeList() {
       ae.latestRewardDate = rewardDates.length ? rewardDates[rewardDates.length - 1] : '';
 
       ae.lmEarnings = ae.stage1Cleared * 50 + ae.stage2Cleared * 200 + ae.stage3Cleared * 100;
+      ae.aeStatus = ae.activeBooks > 0 ? 'active' : 'inactive';
     }
 
     state.aes.data = aes;
@@ -1371,7 +1384,8 @@ function renderTable(entity) {
       let tdContent = '';
 
       if (isAeEntity) {
-        if (ctype === 'date') tdContent = escHtml(formatDate(String(rawVal)));
+        if (ctype === 'status') { tdContent = rawVal === 'active' ? '<span style="color:#2e7d32;font-size:1.1rem;">&#9679;</span>' : '<span style="color:#f9a825;font-size:1.1rem;">&#9679;</span>'; }
+        else if (ctype === 'date') tdContent = escHtml(formatDate(String(rawVal)));
         else if (ctype === 'number') { tdClass += 'number-cell'; tdContent = escHtml(formatNumber(rawVal)); }
         else tdContent = escHtml(String(rawVal));
       } else if (isForm2NA) {
