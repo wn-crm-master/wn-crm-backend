@@ -1109,12 +1109,10 @@ async function loadAeList() {
         return a && a.preContractedTag && String(a.preContractedTag).toLowerCase() !== 'no' && String(a.preContractedTag).trim() !== '';
       }).length;
 
-      const aeBookList = aeBooks.filter(b => (b.aeEmail || '').toLowerCase() === email);
+      const aeBookList = state.books.data.filter(b => b.authorId && uids.includes(b.authorId));
       ae.booksCreated = aeBookList.length;
       ae.activeBooks = aeBookList.filter(b => {
-        const book = bookMap[b.bookId];
-        if (!book) return false;
-        const s = (book.status || '').toLowerCase();
+        const s = (b.status || '').toLowerCase();
         return s === 'approved' || s === 'published';
       }).length;
       ae.authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0,10) < thisMonthStart; }).length;
