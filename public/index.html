@@ -668,7 +668,7 @@ let token = localStorage.getItem('crm_token') || '';
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
-  aes:          { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_payments:  { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -1055,9 +1055,9 @@ async function loadAeSubTab(subTab) {
 
 // ── AE List ───────────────────────────────────────────────────────
 const AE_COLS = [
-  { field:'aeStatus',               header:'',                                            width:36, type:'status' },
-  { field:'dateAdded',              header:'Date Added',                                  width:120, type:'date' },
+  { field:'aeStatus',               header:'',                                            width:36, type:'status', noControls:true },
   { field:'email',                  header:'AE Email ID',                                 width:220 },
+  { field:'dateAdded',              header:'Date Added',                                  width:120, type:'date' },
   { field:'name',                   header:'AE Name',                                     width:160 },
   { field:'authorsReg',             header:'No. of Authors Reg.',                         width:170, type:'number' },
   { field:'firstAuthorRegDate',     header:'Reg. Date of First Author',                   width:200, type:'date' },
@@ -1266,7 +1266,7 @@ function getStickyOffsets(cols, pinned, entity) {
 const ENTITY_META = {
   authors:     { cols: AUTHOR_COLS,      idField: 'uid',     fixedField: 'uid',   special: SPECIAL_AUTHORS, bodyId: 'authors-body' },
   books:       { cols: BOOK_COLS,        idField: 'id',      fixedField: 'title', special: SPECIAL_BOOKS,   bodyId: 'books-body' },
-  aes:         { cols: AE_COLS,          idField: 'email',   fixedField: null,    special: new Set(),       bodyId: 'ae-list-body' },
+  aes:         { cols: AE_COLS,          idField: 'email',   fixedField: 'email', special: new Set(),       bodyId: 'ae-list-body' },
   ae_authors:  { cols: AE_AUTHORS_COLS,  idField: 'uid',     fixedField: 'uid',   special: new Set(),       bodyId: 'ae-authors-body' },
   ae_books:    { cols: AE_BOOKS_COLS,    idField: 'bookId',  fixedField: 'bookId', special: new Set(),       bodyId: 'ae-books-body' },
   ae_payments: { cols: AE_PAYMENTS_COLS, idField: 'aeEmail', fixedField: null,    special: new Set(),       bodyId: 'ae-payments-body' },
@@ -1323,6 +1323,11 @@ function renderTable(entity) {
     const hasFilter = filterSet.size > 0;
     const filterLabel = hasFilter ? filterSet.size+' selected' : 'All';
 
+    if (col.noControls) {
+      html += `<th class="${isSticky?'is-sticky':''}" style="width:${col.width}px;min-width:${col.width}px;${stStyle}">
+        <div class="th-inner"><div class="th-top"><span class="th-label">${col.header}</span></div></div>
+      </th>`;
+    } else {
     html += `<th class="${isSticky?'is-sticky':''} ${isPinned?'is-pinned':''} ${hasFilter?'has-active-filter':''}" style="width:${col.width}px;min-width:${col.width}px;${stStyle}">
       <div class="th-inner">
         <div class="th-top">
@@ -1341,6 +1346,7 @@ function renderTable(entity) {
         </div>
       </div>
     </th>`;
+    }
   }
   if (!isAeEntity) html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
   if (entity==='books') {
