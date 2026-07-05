@@ -25,32 +25,47 @@ function register(app, getDb, authMiddleware) {
           booksExpressContracted: { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'express' } } } } },
           booksWBPContracted:     { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus',       ''] } }, regex: 'wbp'     } } } } },
           booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',    ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } },
-          firstContractDate:      { $min: { $map: {
+          _firstContract: { $reduce: {
             input: { $filter: { input: '$_books', cond: { $and: [
               { $ne: ['$$this.contractSigningDate', null] },
               { $ne: ['$$this.contractSigningDate', ''] }
             ] } } },
-            in: '$$this.contractSigningDate'
-          } } },
-          first300kWordDate:      { $min: { $map: {
+            initialValue: null,
+            in: { $cond: [
+              { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.contractSigningDate', '$$value.d'] }] },
+              { d: '$$this.contractSigningDate', id: '$$this.id' },
+              '$$value'
+            ] }
+          } },
+          _first300k: { $reduce: {
             input: { $filter: { input: '$_books', cond: { $and: [
+              { $ne: ['$$this.contractSigningDate', null] },
+              { $ne: ['$$this.contractSigningDate', ''] },
               { $ne: ['$$this.words300kDate', null] },
               { $ne: ['$$this.words300kDate', ''] },
               { $or: [
-                { $and: [
-                  { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'ongoing' } },
-                  { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus', ''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } }
-                ] },
+                { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'ongoing' } },
                 { $and: [
                   { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'rejected' } },
                   { $gt: [{ $ifNull: ['$$this.wbpRejectedDate', ''] }, '$$this.words300kDate'] }
                 ] }
               ] }
             ] } } },
-            in: '$$this.words300kDate'
-          } } }
+            initialValue: null,
+            in: { $cond: [
+              { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.words300kDate', '$$value.d'] }] },
+              { d: '$$this.words300kDate', id: '$$this.id' },
+              '$$value'
+            ] }
+          } }
         }},
-        { $project: { _books: 0 } },
+        { $addFields: {
+          firstContractDate:      { $ifNull: ['$_firstContract.d', null] },
+          firstContractBookId:    { $ifNull: ['$_firstContract.id', ''] },
+          first300kWordDate:      { $ifNull: ['$_first300k.d', null] },
+          first300kWordBookId:    { $ifNull: ['$_first300k.id', ''] }
+        }},
+        { $project: { _books: 0, _firstContract: 0, _first300k: 0 } },
         { $skip: skip },
         { $limit: parseInt(limit) }
       ];
