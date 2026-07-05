@@ -1,33 +1,37 @@
 function register(app, getDb, authMiddleware) {
   // ae_authors
+  let lastAeSync = 0;
   app.get('/api/ae-authors', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
       const col = db.collection('ae_authors');
 
-      // Auto-sync: create ae_authors mappings from main authors' aeEmail field
-      const [authorsWithAe, existing] = await Promise.all([
-        db.collection('authors').find(
-          { aeEmail: { $exists: true, $nin: [null, ''] } },
-          { projection: { uid: 1, aeEmail: 1 } }
-        ).toArray(),
-        col.find({}, { projection: { aeEmail: 1, uid: 1 } }).toArray()
-      ]);
-      const existingKeys = new Set(
-        existing.map(d => ((d.aeEmail || '').trim().toLowerCase()) + '|' + ((d.uid || '').trim()))
-      );
-      const toInsert = [];
-      for (const a of authorsWithAe) {
-        const aeEmail = (a.aeEmail || '').trim().toLowerCase();
-        const uid = (a.uid || '').trim();
-        if (!aeEmail || !uid) continue;
-        const key = aeEmail + '|' + uid;
-        if (!existingKeys.has(key)) {
-          existingKeys.add(key);
-          toInsert.push({ aeEmail, uid, createdAt: new Date() });
+      // Auto-sync at most once per 60 seconds
+      if (Date.now() - lastAeSync > 60000) {
+        lastAeSync = Date.now();
+        const [authorsWithAe, existing] = await Promise.all([
+          db.collection('authors').find(
+            { aeEmail: { $exists: true, $nin: [null, ''] } },
+            { projection: { uid: 1, aeEmail: 1 } }
+          ).toArray(),
+          col.find({}, { projection: { aeEmail: 1, uid: 1 } }).toArray()
+        ]);
+        const existingKeys = new Set(
+          existing.map(d => ((d.aeEmail || '').trim().toLowerCase()) + '|' + ((d.uid || '').trim()))
+        );
+        const toInsert = [];
+        for (const a of authorsWithAe) {
+          const aeEmail = (a.aeEmail || '').trim().toLowerCase();
+          const uid = (a.uid || '').trim();
+          if (!aeEmail || !uid) continue;
+          const key = aeEmail + '|' + uid;
+          if (!existingKeys.has(key)) {
+            existingKeys.add(key);
+            toInsert.push({ aeEmail, uid, createdAt: new Date() });
+          }
         }
+        if (toInsert.length) await col.insertMany(toInsert);
       }
-      if (toInsert.length) await col.insertMany(toInsert);
 
       const limit = parseInt(req.query.limit) || 50000;
       const data = await col.find({}).limit(limit).toArray();
