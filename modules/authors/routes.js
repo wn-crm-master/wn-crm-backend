@@ -37,8 +37,6 @@ function register(app, getDb, authMiddleware) {
               '$$value'
             ] }
           } },
-          firstContractDate:      { $ifNull: ['$_firstContract.d', null] },
-          firstContractBookId:    { $ifNull: ['$_firstContract.id', ''] },
           _first300k: { $reduce: {
             input: { $filter: { input: '$_books', cond: { $and: [
               { $ne: ['$$this.contractSigningDate', null] },
@@ -59,7 +57,11 @@ function register(app, getDb, authMiddleware) {
               { d: '$$this.words300kDate', id: '$$this.id' },
               '$$value'
             ] }
-          } },
+          } }
+        }},
+        { $addFields: {
+          firstContractDate:      { $ifNull: ['$_firstContract.d', null] },
+          firstContractBookId:    { $ifNull: ['$_firstContract.id', ''] },
           first300kWordDate:      { $ifNull: ['$_first300k.d', null] },
           first300kWordBookId:    { $ifNull: ['$_first300k.id', ''] }
         }},
