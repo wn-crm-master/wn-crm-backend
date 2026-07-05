@@ -16,6 +16,7 @@ const { register: registerImportJobs } = require('./modules/import/jobRoutes');
 const { register: registerAeRoutes } = require('./modules/aes/routes');
 const { register: registerAeImport } = require('./modules/aes/import');
 const { register: registerAeSubRoutes } = require('./modules/aes/subRoutes');
+const { syncRollups } = require('./modules/rollupSync');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,6 +47,7 @@ MongoClient.connect(MONGO_URI)
     db.collection('ae_books').createIndex({ aeEmail: 1 }).catch(() => {});
     db.collection('ae_payments').createIndex({ aeEmail: 1 }).catch(() => {});
     seedUsers(db).catch(err => console.error('User seed error:', err));
+    syncRollups(db).catch(err => console.error('Initial rollup sync error:', err));
     startScheduledSync(getDb);
   })
   .catch(err => {
