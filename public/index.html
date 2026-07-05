@@ -1114,7 +1114,7 @@ async function loadAeList() {
       ae.activeBooks = aeBookList.filter(b => {
         const book = bookMap[b.bookId];
         if (!book) return false;
-        const s = (book.bookStatus || '').toLowerCase();
+        const s = (book.status || '').toLowerCase();
         return s === 'approved' || s === 'published';
       }).length;
       ae.authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0,10) < thisMonthStart; }).length;
