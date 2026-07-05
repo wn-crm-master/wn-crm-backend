@@ -600,7 +600,9 @@ const AUTHOR_COLS = [
   { field:'booksWBPContracted',     header:'Books WBP Contracted',     width:170, type:'rollup' },
   { field:'booksOFW',               header:'Books OFW',                width:110, type:'rollup' },
   { field:'firstContractDate',      header:'1st Contract Date',        width:160, type:'date' },
+  { field:'firstContractBookId',   header:'1st Contract Date Book ID', width:200, readOnly:true },
   { field:'first300kWordDate',     header:'1st 300k Word Date',       width:170, type:'date' },
+  { field:'first300kWordBookId',   header:'1st 300k Word Date Book ID', width:220, readOnly:true },
 ];
 const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
@@ -675,7 +677,7 @@ const state = {
 let fdCtx = null; // { entity, field, allVals, filteredVals }
 
 // Rollup fields — computed from books, read-only on author rows
-const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW','firstContractDate','first300kWordDate']);
+const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW','firstContractDate','firstContractBookId','first300kWordDate','first300kWordBookId']);
 
 function isTruthy(val) {
   if (val === true || val === 1) return true;
