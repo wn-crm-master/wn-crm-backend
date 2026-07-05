@@ -6,6 +6,7 @@ async function syncRollups(db) {
   if (syncing) return;
   syncing = true;
   try {
+    // ── Author rollups ──────────────────────────────────────────────
     const pipeline = [
       { $lookup: { from: 'books', localField: 'uid', foreignField: 'authorId', as: '_books' } },
       { $addFields: {
@@ -86,10 +87,138 @@ async function syncRollups(db) {
     }
     if (results.length) await bulk.execute();
     console.log(`Rollup sync complete: ${results.length} authors updated`);
+
+    // ── AE rollups ──────────────────────────────────────────────────
+    await syncAeRollups(db, results);
   } catch (err) {
     console.error('Rollup sync error:', err);
   } finally {
     syncing = false;
+  }
+}
+
+async function syncAeRollups(db, authorResults) {
+  try {
+    const now = new Date();
+    const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+    const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+
+    const authorMap = {};
+    for (const a of authorResults) authorMap[a.uid] = a;
+
+    const allAuthors = await db.collection('authors').find({}, {
+      projection: { uid: 1, aeEmail: 1, regnDate: 1, preContractedTag: 1, firstContractDate: 1, first300kWordDate: 1 }
+    }).toArray();
+    for (const a of allAuthors) {
+      if (!authorMap[a.uid]) authorMap[a.uid] = a;
+      else Object.assign(authorMap[a.uid], { aeEmail: a.aeEmail, regnDate: a.regnDate, preContractedTag: a.preContractedTag });
+    }
+
+    const aeAuthors = await db.collection('ae_authors').find({}).toArray();
+    const books = await db.collection('books').find({}, {
+      projection: { id: 1, authorId: 1, status: 1 }
+    }).toArray();
+
+    const aePayments = await db.collection('ae_payments').find({}, {
+      projection: { aeEmail: 1, rewardDate: 1 }
+    }).toArray();
+
+    const mappingsByAe = {};
+    for (const m of aeAuthors) {
+      const email = (m.aeEmail || '').trim().toLowerCase();
+      if (!email) continue;
+      if (!mappingsByAe[email]) mappingsByAe[email] = [];
+      mappingsByAe[email].push(m.uid);
+    }
+
+    const booksByAuthor = {};
+    for (const b of books) {
+      if (!b.authorId) continue;
+      if (!booksByAuthor[b.authorId]) booksByAuthor[b.authorId] = [];
+      booksByAuthor[b.authorId].push(b);
+    }
+
+    const paymentsByAe = {};
+    for (const p of aePayments) {
+      const email = (p.aeEmail || '').trim().toLowerCase();
+      if (!email) continue;
+      if (!paymentsByAe[email]) paymentsByAe[email] = [];
+      paymentsByAe[email].push(p);
+    }
+
+    function isLastMonth(dateStr) {
+      if (!dateStr) return false;
+      const d = String(dateStr).slice(0, 10);
+      return d >= lmStart && d <= lmEnd;
+    }
+
+    const aes = await db.collection('aes').find({}).toArray();
+    if (!aes.length) return;
+
+    const aeBulk = db.collection('aes').initializeUnorderedBulkOp();
+    for (const ae of aes) {
+      const email = (ae.email || '').toLowerCase();
+      const uids = mappingsByAe[email] || [];
+
+      const authorsReg = uids.length;
+      const preContractAuthorsReg = uids.filter(uid => {
+        const a = authorMap[uid];
+        return a && a.preContractedTag && String(a.preContractedTag).toLowerCase() !== 'no' && String(a.preContractedTag).trim() !== '';
+      }).length;
+
+      let booksCreated = 0, activeBooks = 0, activeBooksUncont = 0;
+      const uncontUids = new Set(uids.filter(uid => {
+        const d = authorMap[uid]?.firstContractDate;
+        return !d || String(d).trim() === '';
+      }));
+      for (const uid of uids) {
+        const uidBooks = booksByAuthor[uid] || [];
+        booksCreated += uidBooks.length;
+        for (const b of uidBooks) {
+          const s = (b.status || '').toLowerCase();
+          if (s === 'approved' || s === 'published') {
+            activeBooks++;
+            if (uncontUids.has(uid)) activeBooksUncont++;
+          }
+        }
+      }
+
+      const totalAuthCont = uids.filter(uid => {
+        const d = authorMap[uid]?.firstContractDate;
+        return d && String(d).trim() !== '';
+      }).length;
+
+      const authContBeforeLM = uids.filter(uid => {
+        const d = authorMap[uid]?.firstContractDate;
+        return d && String(d).slice(0, 10) < lmStart;
+      }).length;
+
+      const stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
+      const stage2Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.first300kWordDate)).length;
+      const stage3Cleared = Math.floor((authContBeforeLM + stage1Cleared) / 10) - Math.floor(authContBeforeLM / 10);
+      const lmEarnings = stage1Cleared * 50 + stage2Cleared * 200 + stage3Cleared * 100;
+
+      const regDates = uids.map(uid => authorMap[uid]?.regnDate).filter(d => d).sort();
+      const firstAuthorRegDate = regDates.length ? regDates[0] : '';
+      const latestAuthorRegDate = regDates.length ? regDates[regDates.length - 1] : '';
+
+      const myPayments = paymentsByAe[email] || [];
+      const rewardDates = myPayments.map(p => p.rewardDate).filter(d => d).sort();
+      const latestRewardDate = rewardDates.length ? rewardDates[rewardDates.length - 1] : '';
+
+      const aeStatus = activeBooks > 0 ? 'active' : 'inactive';
+
+      aeBulk.find({ email }).updateOne({ $set: {
+        authorsReg, preContractAuthorsReg, booksCreated, activeBooks, activeBooksUncont,
+        totalAuthCont, authContBeforeLM, lmEarnings,
+        firstAuthorRegDate, latestAuthorRegDate, latestRewardDate,
+        aeStatus, _rollupsUpdatedAt: new Date()
+      }});
+    }
+    await aeBulk.execute();
+    console.log(`AE rollup sync complete: ${aes.length} AEs updated`);
+  } catch (err) {
+    console.error('AE rollup sync error:', err);
   }
 }
 
