@@ -23,7 +23,7 @@ function register(app, getDb, authMiddleware) {
         { $skip: skip },
         { $limit: parseInt(limit) }
       ];
-      const data = await db.collection('books').aggregate(pipeline).toArray();
+      const data = await db.collection('books').aggregate(pipeline, { allowDiskUse: true }).toArray();
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
     } catch (err) {
       res.status(500).json({ error: err.message });

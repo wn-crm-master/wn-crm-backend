@@ -14,8 +14,10 @@ function register(app, getDb, authMiddleware) {
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const total = await db.collection('authors').countDocuments(matchQuery);
 
+      const wantAll = parseInt(limit) > 10000;
       const pipeline = [
         ...(Object.keys(matchQuery).length ? [{ $match: matchQuery }] : []),
+        ...(!wantAll ? [{ $skip: skip }, { $limit: parseInt(limit) }] : []),
         { $lookup: { from: 'books', localField: 'uid', foreignField: 'authorId', as: '_books' } },
         { $addFields: {
           booksCreated:           { $size: '$_books' },
@@ -66,11 +68,10 @@ function register(app, getDb, authMiddleware) {
           first300kWordBookId:    { $ifNull: ['$_first300k.id', ''] }
         }},
         { $project: { _books: 0, _firstContract: 0, _first300k: 0 } },
-        { $skip: skip },
-        { $limit: parseInt(limit) }
+        ...(wantAll ? [{ $skip: skip }, { $limit: parseInt(limit) }] : [])
       ];
 
-      const data = await db.collection('authors').aggregate(pipeline).toArray();
+      const data = await db.collection('authors').aggregate(pipeline, { allowDiskUse: true }).toArray();
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
     } catch (err) {
       res.status(500).json({ error: err.message });
