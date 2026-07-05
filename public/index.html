@@ -1063,12 +1063,9 @@ const AE_COLS = [
   { field:'firstAuthorRegDate',     header:'Reg. Date of First Author',                   width:200, type:'date' },
   { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200, type:'date' },
   { field:'preContractAuthorsReg',  header:'No. of Pre-Contract Validated Authors Reg.',  width:300, type:'number' },
+  { field:'totalAuthCont',          header:'Total Auth. Cont.',                            width:150, type:'number' },
   { field:'booksCreated',           header:'No. of Books Created',                        width:170, type:'number' },
   { field:'activeBooks',            header:'Current Active Books',                        width:170, type:'number' },
-  { field:'authorsContracted',     header:'No. of Authors Contracted as of LM',           width:260, type:'number' },
-  { field:'stage1Cleared',          header:'LM Stage 1 Cleared',                          width:160, type:'number' },
-  { field:'stage2Cleared',          header:'LM Stage 2 Cleared',                          width:160, type:'number' },
-  { field:'stage3Cleared',          header:'LM Stage 3 Cleared',                          width:160, type:'number' },
   { field:'latestRewardDate',       header:'Date of Latest Reward',                       width:180, type:'date' },
   { field:'lmEarnings',             header:'LM Earnings',                                 width:140, type:'number' },
 ];
@@ -1137,14 +1134,14 @@ async function loadAeList() {
         const s = (b.status || '').toLowerCase();
         return s === 'approved' || s === 'published';
       }).length;
-      ae.authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0,10) < thisMonthStart; }).length;
+      ae.totalAuthCont = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).trim() !== ''; }).length;
+      const authorsContractedBeforeLM = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0,10) < thisMonthStart; }).length;
 
-      ae.stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
+      const stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
 
       const myPayments = aePayments.filter(p => (p.aeEmail || '').toLowerCase() === email);
-      const stageSet = new Set(myPayments.map(p => String(p.stage || '').toLowerCase()));
-      ae.stage2Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.first300kWordDate)).length;
-      ae.stage3Cleared = Math.floor((ae.authorsContracted + ae.stage1Cleared) / 10) - Math.floor(ae.authorsContracted / 10);
+      const stage2Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.first300kWordDate)).length;
+      const stage3Cleared = Math.floor((authorsContractedBeforeLM + stage1Cleared) / 10) - Math.floor(authorsContractedBeforeLM / 10);
 
       const regDates = uids.map(uid => authorMap[uid]?.regnDate).filter(d => d).sort();
       ae.firstAuthorRegDate = regDates.length ? regDates[0] : '';
@@ -1153,7 +1150,7 @@ async function loadAeList() {
       const rewardDates = myPayments.map(p => p.rewardDate).filter(d => d).sort();
       ae.latestRewardDate = rewardDates.length ? rewardDates[rewardDates.length - 1] : '';
 
-      ae.lmEarnings = ae.stage1Cleared * 50 + ae.stage2Cleared * 200 + ae.stage3Cleared * 100;
+      ae.lmEarnings = stage1Cleared * 50 + stage2Cleared * 200 + stage3Cleared * 100;
       ae.aeStatus = ae.activeBooks > 0 ? 'active' : 'inactive';
     }
 
