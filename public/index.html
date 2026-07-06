@@ -1511,11 +1511,15 @@ function updateTotals(entity, visibleRows) {
   const idField = meta.idField;
   const sourceRows = sel.size > 0 ? visibleRows.filter(r => sel.has(String(r[idField]||''))) : visibleRows;
 
+  const serverTotal = state[entity].total;
+  const hasFilters = Object.keys(state[entity].filter).some(k => state[entity].filter[k] && state[entity].filter[k].size > 0);
+  const displayCount = sel.size > 0 ? sourceRows.length : (hasFilters ? sourceRows.length : (serverTotal || sourceRows.length));
+
   const countEl = document.getElementById(entity+'-totals-count');
-  if (countEl) countEl.textContent = sourceRows.length;
+  if (countEl) countEl.textContent = displayCount;
 
   const labelEl = document.getElementById(entity+'-totals-label');
-  if (labelEl) labelEl.textContent = sel.size > 0 ? `Selected (${sourceRows.length})` : `Total (${sourceRows.length})`;
+  if (labelEl) labelEl.textContent = sel.size > 0 ? `Selected (${sourceRows.length})` : `Total (${displayCount.toLocaleString()})`;
 
   for (const col of cols) {
     const el = document.getElementById('tot-'+entity+'-'+col.field);
