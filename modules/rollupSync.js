@@ -210,7 +210,9 @@ async function syncAeRollups(db, authorResults) {
 
       aeBulk.find({ email }).updateOne({ $set: {
         authorsReg, preContractAuthorsReg, booksCreated, activeBooks, activeBooksUncont,
-        totalAuthCont, authContBeforeLM, lmEarnings,
+        totalAuthCont, authContBeforeLM,
+        lmStage1Cleared: stage1Cleared, lmStage2Cleared: stage2Cleared, lmStage3Cleared: stage3Cleared,
+        lmEarnings,
         firstAuthorRegDate, latestAuthorRegDate, latestRewardDate,
         aeStatus, _rollupsUpdatedAt: new Date()
       }});
