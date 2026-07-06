@@ -47,6 +47,15 @@
     .btn-logout:hover { background: rgba(255,255,255,0.15); }
     .main { padding: 80px 28px 28px; }
 
+    /* Pagination */
+    .pager { display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 0; font-size:0.85rem; color:#555; }
+    .pager button { padding:5px 12px; border:1px solid #ddd; border-radius:5px; background:#fff; cursor:pointer; font-size:0.85rem; transition:all 0.15s; }
+    .pager button:hover:not(:disabled) { background:#f5f5f5; border-color:#c0272d; color:#c0272d; }
+    .pager button:disabled { opacity:0.4; cursor:default; }
+    .pager button.active { background:#c0272d; color:#fff; border-color:#c0272d; }
+    .pager select { padding:4px 8px; border:1px solid #ddd; border-radius:5px; font-size:0.85rem; }
+    .pager .pager-info { color:#888; font-size:0.8rem; }
+
     /* Tabs */
     .tab { display: none; }
     .tab.active { display: block; }
@@ -421,6 +430,7 @@
       <div id="authors-import-msg" class="inline-msg"></div>
       <div id="authors-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
       <div class="table-card"><div class="table-scroll"><div id="authors-body"><div class="loading">Loading…</div></div></div></div>
+      <div class="pager" id="authors-pager"></div>
     </div>
 
     <div id="tab-books" class="tab">
@@ -438,6 +448,7 @@
       <div id="books-import-msg" class="inline-msg"></div>
       <div id="books-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
       <div class="table-card"><div class="table-scroll"><div id="books-body"><div class="loading">Loading…</div></div></div></div>
+      <div class="pager" id="books-pager"></div>
     </div>
 
     <div id="tab-review" class="tab">
@@ -666,8 +677,8 @@ const BASE = '';
 let token = localStorage.getItem('crm_token') || '';
 
 const state = {
-  authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
-  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
   aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -814,6 +825,7 @@ async function manualResync() {
     if (res.success) {
       state.authors.data = [];
       state.books.data = [];
+      _allAuthors = null; _allBooks = null;
       const active = document.querySelector('.nav-link.active');
       if (active) active.click();
     }
@@ -963,10 +975,10 @@ async function loadEarnAe() {
     const earliestStart = monthRanges.reduce((min, r) => r.start < min ? r.start : min, monthRanges[0].start);
 
     const authorMap = {};
-    for (const a of state.authors.data) if (a.uid) authorMap[a.uid] = a;
+    for (const a of _allAuthors) if (a.uid) authorMap[a.uid] = a;
 
     const aeMap = {};
-    for (const a of state.authors.data) {
+    for (const a of _allAuthors) {
       const ae = (a.aeEmail || '').trim().toLowerCase();
       if (!ae || !a.uid) continue;
       if (!aeMap[ae]) aeMap[ae] = [];
@@ -992,10 +1004,11 @@ async function loadEarnAe() {
   }
 }
 
+let _allAuthors = null, _allBooks = null;
 async function ensureAuthorsAndBooksLoaded() {
   const promises = [];
-  if (!state.authors.data.length) promises.push(api('/api/authors?limit=50000').then(r => { state.authors.data = r.data||(Array.isArray(r)?r:[]); }));
-  if (!state.books.data.length) promises.push(api('/api/books?limit=50000').then(r => { state.books.data = r.data||(Array.isArray(r)?r:[]); }));
+  if (!_allAuthors) promises.push(api('/api/authors?limit=50000').then(r => { _allAuthors = r.data||(Array.isArray(r)?r:[]); }));
+  if (!_allBooks) promises.push(api('/api/books?limit=50000').then(r => { _allBooks = r.data||(Array.isArray(r)?r:[]); }));
   if (promises.length) await Promise.all(promises);
 }
 
@@ -1011,7 +1024,7 @@ async function loadAeSubTab(subTab) {
       const mappings = res.data || [];
       await ensureAuthorsAndBooksLoaded();
       const authorMap = {};
-      for (const a of state.authors.data) authorMap[a.uid] = a;
+      for (const a of _allAuthors) authorMap[a.uid] = a;
       state.ae_authors.data = mappings.map(m => {
         const a = authorMap[m.uid] || {};
         return { aeEmail: m.aeEmail, uid: m.uid, regnDate: a.regnDate || '', name: a.name || '', email: a.email || '', preContractedTag: a.preContractedTag || '' };
@@ -1029,10 +1042,10 @@ async function loadAeSubTab(subTab) {
     try {
       await ensureAuthorsAndBooksLoaded();
       const authorMap = {};
-      for (const a of state.authors.data) {
+      for (const a of _allAuthors) {
         if (a.uid && a.aeEmail) authorMap[a.uid] = (a.aeEmail || '').trim().toLowerCase();
       }
-      state.ae_books.data = state.books.data
+      state.ae_books.data = _allBooks
         .filter(b => b.authorId && authorMap[b.authorId])
         .map(b => ({ bookId: b.id, authorId: b.authorId, aeEmail: authorMap[b.authorId] }));
     } catch (e) {
@@ -1996,23 +2009,64 @@ function showSave(ok, err) {
 }
 
 // ── Load data ──────────────────────────────────────────────────────
-async function loadAuthors() {
+const PAGE_SIZE = 1000;
+
+async function loadAuthors(page) {
+  const p = page || state.authors.page || 1;
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
-  const res = await api('/api/authors?limit=50000');
+  const res = await api(`/api/authors?limit=${PAGE_SIZE}&page=${p}`);
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
+  state.authors.page = res.page || p;
+  state.authors.pages = res.pages || 1;
+  state.authors.total = res.total || 0;
   state.authors.selected.clear();
-  const n = state.authors.data.length;
-  document.getElementById('authors-count').textContent = `(${n.toLocaleString()})`;
+  document.getElementById('authors-count').textContent = `(${(state.authors.total).toLocaleString()})`;
   renderTable('authors');
+  renderPager('authors');
   updateSelectionUI('authors');
 }
-async function loadBooks() {
+async function loadBooks(page) {
+  const p = page || state.books.page || 1;
   document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
-  const res = await api('/api/books?limit=50000');
+  const res = await api(`/api/books?limit=${PAGE_SIZE}&page=${p}`);
   state.books.data = res.data||(Array.isArray(res)?res:[]);
+  state.books.page = res.page || p;
+  state.books.pages = res.pages || 1;
+  state.books.total = res.total || 0;
   state.books.selected.clear();
   renderTable('books');
+  renderPager('books');
   updateSelectionUI('books');
+}
+
+function renderPager(entity) {
+  const el = document.getElementById(`${entity}-pager`);
+  if (!el) return;
+  const s = state[entity];
+  if (s.pages <= 1) { el.innerHTML = `<span class="pager-info">${s.total.toLocaleString()} records</span>`; return; }
+  const start = (s.page - 1) * PAGE_SIZE + 1;
+  const end = Math.min(s.page * PAGE_SIZE, s.total);
+  let html = `<span class="pager-info">${start.toLocaleString()}–${end.toLocaleString()} of ${s.total.toLocaleString()}</span>`;
+  html += `<button ${s.page<=1?'disabled':''} onclick="goPage('${entity}',1)">⟨⟨</button>`;
+  html += `<button ${s.page<=1?'disabled':''} onclick="goPage('${entity}',${s.page-1})">⟨</button>`;
+  const maxBtns = 7;
+  let pStart = Math.max(1, s.page - Math.floor(maxBtns/2));
+  let pEnd = Math.min(s.pages, pStart + maxBtns - 1);
+  if (pEnd - pStart < maxBtns - 1) pStart = Math.max(1, pEnd - maxBtns + 1);
+  for (let i = pStart; i <= pEnd; i++) {
+    html += `<button class="${i===s.page?'active':''}" onclick="goPage('${entity}',${i})">${i}</button>`;
+  }
+  html += `<button ${s.page>=s.pages?'disabled':''} onclick="goPage('${entity}',${s.page+1})">⟩</button>`;
+  html += `<button ${s.page>=s.pages?'disabled':''} onclick="goPage('${entity}',${s.pages})">⟩⟩</button>`;
+  html += ` <select onchange="goPage('${entity}',+this.value)">`;
+  for (let i = 1; i <= s.pages; i++) html += `<option value="${i}" ${i===s.page?'selected':''}>Page ${i}</option>`;
+  html += '</select>';
+  el.innerHTML = html;
+}
+
+function goPage(entity, page) {
+  if (entity === 'authors') loadAuthors(page);
+  else if (entity === 'books') loadBooks(page);
 }
 
 async function deleteAllEntity(entity) {
@@ -2345,6 +2399,7 @@ async function confirmMapping() {
     if(totalSkipped>0) msg+=` ${totalSkipped} skipped.`;
     if(totalStubs>0) msg+=` ${totalStubs} stub author(s) created.`;
     setMsg(msgEl,'success',msg);
+    _allAuthors = null; _allBooks = null;
     if(entity==='authors') loadAuthors(); else if(entity==='aes') loadAeList(); else loadBooks(); loadStats();
     setTimeout(()=>progressEl.classList.remove('active'),3000);
   }
