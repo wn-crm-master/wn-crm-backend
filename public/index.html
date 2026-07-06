@@ -396,6 +396,7 @@
       <div class="nav-link" onclick="showTab('books')">Books</div>
       <div class="nav-link" onclick="showTab('review')">Review</div>
       <div class="nav-link" onclick="showTab('earnings')">Earnings</div>
+      <div class="nav-link" onclick="showTab('reports')">Reports</div>
     </div>
     <div class="nav-right">
       <span class="nav-date" id="nav-date"></span>
@@ -562,6 +563,14 @@
         </div>
         <div class="table-card"><div class="table-scroll"><div id="earn-authors-body"><div class="empty">Coming soon</div></div></div></div>
       </div>
+    </div>
+
+    <div id="tab-reports" class="tab">
+      <div class="tab-toolbar">
+        <div class="title-row"><div class="page-title">Reports</div></div>
+      </div>
+      <h3 style="margin:0 0 12px;font-size:1rem;color:#c0272d;">AE LM Earnings</h3>
+      <div class="table-card"><div class="table-scroll" style="max-height:calc(100vh - 240px);"><div id="reports-ae-lm-body"><div class="empty">Loading…</div></div></div></div>
     </div>
 
     <div id="tab-settings" class="tab">
@@ -842,7 +851,7 @@ function showApp() {
   showTab('dashboard'); loadStats();
 }
 
-const NAV_TAB_ORDER = ['dashboard','ae','authors','books','review','earnings'];
+const NAV_TAB_ORDER = ['dashboard','ae','authors','books','review','earnings','reports'];
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
@@ -859,6 +868,7 @@ function showTab(name) {
   if (name==='settings') loadBackups();
   if (name==='ae') { loadAeList(); }
   if (name==='earnings') { populateEarnAeMonths(); loadEarnAe(); }
+  if (name==='reports') { loadReportAeLM(); }
 }
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
@@ -1102,6 +1112,105 @@ const EARN_AE_COLS = [
   { field:'earnings',            header:'Earnings',                         width:140, type:'number' },
   { field:'payment',             header:'Payment',                          width:140 },
 ];
+
+async function loadReportAeLM() {
+  const container = document.getElementById('reports-ae-lm-body');
+  container.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    await ensureAuthorsAndBooksLoaded();
+    const [aeAuthRes] = await Promise.all([api('/api/ae-authors')]);
+    const aeAuthors = aeAuthRes.data || [];
+
+    const authorMap = {};
+    for (const a of _allAuthors) if (a.uid) authorMap[a.uid] = a;
+
+    const bookMap = {};
+    for (const b of _allBooks) if (b.id) bookMap[b.id] = b;
+
+    const now = new Date();
+    const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+    const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+    function isLastMonth(dateStr) {
+      if (!dateStr) return false;
+      const d = String(dateStr).slice(0, 10);
+      return d >= lmStart && d <= lmEnd;
+    }
+
+    const mappingsByAe = {};
+    for (const m of aeAuthors) {
+      const email = (m.aeEmail || '').trim().toLowerCase();
+      if (!email) continue;
+      if (!mappingsByAe[email]) mappingsByAe[email] = [];
+      mappingsByAe[email].push(m.uid);
+    }
+
+    const rows = [];
+    for (const [aeEmail, uids] of Object.entries(mappingsByAe)) {
+      for (const uid of uids) {
+        const author = authorMap[uid];
+        if (!author) continue;
+        if (isLastMonth(author.firstContractDate)) {
+          const bookId = author.firstContractBookId || '';
+          const book = bookId ? bookMap[bookId] : null;
+          rows.push({
+            aeEmail,
+            authorName: author.name || '',
+            authorId: uid,
+            bookName: book ? (book.title || '') : '',
+            bookId,
+            achievement: 'Contracted for the 1st Time',
+            achievementDate: author.firstContractDate || ''
+          });
+        }
+        if (isLastMonth(author.first300kWordDate)) {
+          const bookId = author.first300kWordBookId || '';
+          const book = bookId ? bookMap[bookId] : null;
+          rows.push({
+            aeEmail,
+            authorName: author.name || '',
+            authorId: uid,
+            bookName: book ? (book.title || '') : '',
+            bookId,
+            achievement: '1st 300k Words Completed on a Contracted Book',
+            achievementDate: author.first300kWordDate || ''
+          });
+        }
+      }
+    }
+
+    rows.sort((a, b) => a.aeEmail.localeCompare(b.aeEmail) || a.authorName.localeCompare(b.authorName));
+
+    if (!rows.length) { container.innerHTML = '<div class="empty">No eligible AE achievements last month</div>'; return; }
+
+    let html = '<table class="wide"><thead><tr>';
+    const cols = [
+      { header: 'AE Email ID', width: 220 },
+      { header: 'Author Name', width: 160 },
+      { header: 'Author ID', width: 220 },
+      { header: 'Book Name', width: 200 },
+      { header: 'Book ID', width: 180 },
+      { header: 'Achievement', width: 320 },
+      { header: 'Date of Achievement', width: 160 },
+    ];
+    for (const c of cols) html += `<th style="width:${c.width}px;min-width:${c.width}px;"><div class="th-inner"><div class="th-top"><span class="th-label">${c.header}</span></div></div></th>`;
+    html += '</tr></thead><tbody>';
+    for (const r of rows) {
+      html += '<tr>';
+      html += `<td>${r.aeEmail}</td>`;
+      html += `<td>${r.authorName}</td>`;
+      html += `<td>${r.authorId}</td>`;
+      html += `<td>${r.bookName}</td>`;
+      html += `<td>${r.bookId}</td>`;
+      html += `<td>${r.achievement}</td>`;
+      html += `<td>${r.achievementDate}</td>`;
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<div class="empty">Error loading report</div>';
+  }
+}
 
 async function loadAeList() {
   const container = document.getElementById('ae-list-body');
