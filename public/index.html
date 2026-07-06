@@ -1159,7 +1159,8 @@ async function loadReportAeLM() {
             bookName: book ? (book.title || '') : '',
             bookId,
             achievement: 'Contracted for the 1st Time',
-            achievementDate: author.firstContractDate || ''
+            achievementDate: author.firstContractDate || '',
+            earnings: 50
           });
         }
         if (isLastMonth(author.first300kWordDate)) {
@@ -1172,7 +1173,8 @@ async function loadReportAeLM() {
             bookName: book ? (book.title || '') : '',
             bookId,
             achievement: '1st 300k Words Completed on a Contracted Book',
-            achievementDate: author.first300kWordDate || ''
+            achievementDate: author.first300kWordDate || '',
+            earnings: 200
           });
         }
       }
@@ -1191,6 +1193,7 @@ async function loadReportAeLM() {
       { header: 'Book ID', width: 180 },
       { header: 'Achievement', width: 320 },
       { header: 'Date of Achievement', width: 160 },
+      { header: 'Earnings', width: 100 },
     ];
     for (const c of cols) html += `<th style="width:${c.width}px;min-width:${c.width}px;"><div class="th-inner"><div class="th-top"><span class="th-label">${c.header}</span></div></div></th>`;
     html += '</tr></thead><tbody>';
@@ -1203,6 +1206,7 @@ async function loadReportAeLM() {
       html += `<td>${r.bookId}</td>`;
       html += `<td>${r.achievement}</td>`;
       html += `<td>${r.achievementDate}</td>`;
+      html += `<td>$${r.earnings}</td>`;
       html += '</tr>';
     }
     html += '</tbody></table>';
