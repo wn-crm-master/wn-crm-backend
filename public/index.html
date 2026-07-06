@@ -1607,12 +1607,22 @@ function renderFilterTags(entity) {
 
 function clearFilter(entity, field) {
   state[entity].filter[field] = new Set();
+  if ((entity === 'authors' || entity === 'books') && !hasActiveFilters(entity)) {
+    state[entity]._allLoaded = false;
+    if (entity === 'authors') loadAuthors(1); else loadBooks(1);
+    return;
+  }
   applyRowFilters(entity);
   renderTable(entity);
 }
 
 function clearAllFilters(entity) {
   state[entity].filter = {};
+  if (entity === 'authors' || entity === 'books') {
+    state[entity]._allLoaded = false;
+    if (entity === 'authors') loadAuthors(1); else loadBooks(1);
+    return;
+  }
   applyRowFilters(entity);
   renderTable(entity);
 }
@@ -1733,6 +1743,16 @@ function openFD(event, entity, field, btn) {
 }
 
 function closeFD() {
+  if (fdCtx) {
+    const entity = fdCtx.entity;
+    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity) && !state[entity]._allLoaded) {
+      state[entity]._allLoaded = true;
+      document.getElementById('filter-dropdown').classList.remove('open');
+      fdCtx = null;
+      if (entity === 'authors') loadAuthors(); else loadBooks();
+      return;
+    }
+  }
   document.getElementById('filter-dropdown').classList.remove('open');
   fdCtx = null;
 }
@@ -2148,13 +2168,20 @@ function showSave(ok, err) {
 // ── Load data ──────────────────────────────────────────────────────
 const PAGE_SIZE = 1000;
 
+function hasActiveFilters(entity) {
+  const f = state[entity].filter;
+  return Object.keys(f).some(k => f[k] && f[k].size > 0);
+}
+
 async function loadAuthors(page) {
-  const p = page || state.authors.page || 1;
+  const filtered = hasActiveFilters('authors');
+  const p = filtered ? 1 : (page || state.authors.page || 1);
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
-  const res = await api(`/api/authors?limit=${PAGE_SIZE}&page=${p}`);
+  const limit = filtered ? 50000 : PAGE_SIZE;
+  const res = await api(`/api/authors?limit=${limit}&page=${p}`);
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
-  state.authors.page = res.page || p;
-  state.authors.pages = res.pages || 1;
+  state.authors.page = filtered ? 1 : (res.page || p);
+  state.authors.pages = filtered ? 1 : (res.pages || 1);
   state.authors.total = res.total || 0;
   state.authors.selected.clear();
   document.getElementById('authors-count').textContent = `(${(state.authors.total).toLocaleString()})`;
@@ -2163,12 +2190,14 @@ async function loadAuthors(page) {
   updateSelectionUI('authors');
 }
 async function loadBooks(page) {
-  const p = page || state.books.page || 1;
+  const filtered = hasActiveFilters('books');
+  const p = filtered ? 1 : (page || state.books.page || 1);
   document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
-  const res = await api(`/api/books?limit=${PAGE_SIZE}&page=${p}`);
+  const limit = filtered ? 50000 : PAGE_SIZE;
+  const res = await api(`/api/books?limit=${limit}&page=${p}`);
   state.books.data = res.data||(Array.isArray(res)?res:[]);
-  state.books.page = res.page || p;
-  state.books.pages = res.pages || 1;
+  state.books.page = filtered ? 1 : (res.page || p);
+  state.books.pages = filtered ? 1 : (res.pages || 1);
   state.books.total = res.total || 0;
   state.books.selected.clear();
   renderTable('books');
