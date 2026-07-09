@@ -1612,8 +1612,7 @@ function renderFilterTags(entity) {
 
 function clearFilter(entity, field) {
   state[entity].filter[field] = new Set();
-  if ((entity === 'authors' || entity === 'books') && !hasActiveFilters(entity)) {
-    state[entity]._allLoaded = false;
+  if (entity === 'authors' || entity === 'books') {
     if (entity === 'authors') loadAuthors(1); else loadBooks(1);
     return;
   }
@@ -1624,7 +1623,6 @@ function clearFilter(entity, field) {
 function clearAllFilters(entity) {
   state[entity].filter = {};
   if (entity === 'authors' || entity === 'books') {
-    state[entity]._allLoaded = false;
     if (entity === 'authors') loadAuthors(1); else loadBooks(1);
     return;
   }
@@ -1713,27 +1711,41 @@ function openFD(event, entity, field, btn) {
   const s = state[entity];
   const filterSet = s.filter[field] || new Set();
 
-  // Collect unique values for this column (including blanks)
+  // Collect unique values for this column
   const meta = ENTITY_META[entity];
   const cols = meta ? meta.cols : AUTHOR_COLS;
   const colDef = cols.find(c=>c.field===field);
+
+  fdCtx = { entity, field, allVals: [], filterSet, loading: true };
+  document.getElementById('fd-search').value = '';
+  document.getElementById('fd-options').innerHTML = '<div class="fd-empty">Loading…</div>';
+
+  // Fetch distinct values from server for books/authors, use local data for others
   let dataVals;
-  if (field === '_alarm') {
+  if ((entity === 'books' || entity === 'authors') && field !== '_alarm' && field !== '_nextStep') {
+    try {
+      const r = await api(`/api/${entity}/distinct/${field}`);
+      dataVals = new Set((r.values || []).map(v => String(v ?? '')));
+    } catch (e) {
+      dataVals = new Set(s.data.map(r => String(r[field]??'')));
+    }
+  } else if (field === '_alarm') {
     dataVals = new Set(s.data.map(r => getBookNextStep(r).alarm || 'none'));
     ['dead','urgent','pending','none'].forEach(v => dataVals.add(v));
   } else if (field === '_nextStep') {
     dataVals = new Set(s.data.map(r => getBookNextStep(r).label));
   } else {
     dataVals = new Set(s.data.map(r => String(r[field]??'')));
-    if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
   }
+  if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
+
   const nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b)=>{
     const n=Number(a),m=Number(b); return (!isNaN(n)&&!isNaN(m))?n-m:a.localeCompare(b,undefined,{numeric:true});
   });
   const allVals = dataVals.has('') ? ['', ...nonBlank] : nonBlank;
 
-  fdCtx = { entity, field, allVals, filterSet };
-  document.getElementById('fd-search').value = '';
+  fdCtx.allVals = allVals;
+  fdCtx.loading = false;
   renderFDOptions(allVals, filterSet, '');
 
   // Position below the button
@@ -1750,11 +1762,10 @@ function openFD(event, entity, field, btn) {
 function closeFD() {
   if (fdCtx) {
     const entity = fdCtx.entity;
-    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity) && !state[entity]._allLoaded) {
-      state[entity]._allLoaded = true;
+    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity)) {
       document.getElementById('filter-dropdown').classList.remove('open');
       fdCtx = null;
-      if (entity === 'authors') loadAuthors(); else loadBooks();
+      if (entity === 'authors') loadAuthors(1); else loadBooks(1);
       return;
     }
   }
@@ -1795,7 +1806,8 @@ function fdToggle(value, checked) {
   checked ? set.add(value) : set.delete(value);
   fdCtx.filterSet = set;
   updateFilterBtn(entity, field);
-  applyRowFilters(entity);
+  if (entity !== 'authors' && entity !== 'books') applyRowFilters(entity);
+  else renderFilterTags(entity);
 }
 
 function fdSelectAll() {
@@ -1808,7 +1820,8 @@ function fdSelectAll() {
   fdCtx.filterSet = state[entity].filter[field];
   renderFDOptions(allVals, fdCtx.filterSet, search);
   updateFilterBtn(entity, field);
-  applyRowFilters(entity);
+  if (entity !== 'authors' && entity !== 'books') applyRowFilters(entity);
+  else renderFilterTags(entity);
 }
 
 function fdClearAll() {
@@ -1822,7 +1835,8 @@ function fdClearAll() {
   fdCtx.filterSet = set;
   renderFDOptions(allVals, fdCtx.filterSet, search);
   updateFilterBtn(entity, field);
-  applyRowFilters(entity);
+  if (entity !== 'authors' && entity !== 'books') applyRowFilters(entity);
+  else renderFilterTags(entity);
 }
 
 function updateFilterBtn(entity, field) {
@@ -2178,15 +2192,22 @@ function hasActiveFilters(entity) {
   return Object.keys(f).some(k => f[k] && f[k].size > 0);
 }
 
+function buildFilterParam(entity) {
+  const f = state[entity].filter;
+  const active = {};
+  for (const [k, v] of Object.entries(f)) {
+    if (v && v.size > 0) active[k] = [...v];
+  }
+  return Object.keys(active).length ? '&filters=' + encodeURIComponent(JSON.stringify(active)) : '';
+}
 async function loadAuthors(page) {
-  const filtered = hasActiveFilters('authors');
-  const p = filtered ? 1 : (page || state.authors.page || 1);
+  const p = page || state.authors.page || 1;
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
-  const limit = filtered ? 50000 : PAGE_SIZE;
-  const res = await api(`/api/authors?limit=${limit}&page=${p}`);
+  const filterParam = buildFilterParam('authors');
+  const res = await api(`/api/authors?limit=${PAGE_SIZE}&page=${p}${filterParam}`);
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
-  state.authors.page = filtered ? 1 : (res.page || p);
-  state.authors.pages = filtered ? 1 : (res.pages || 1);
+  state.authors.page = res.page || p;
+  state.authors.pages = res.pages || 1;
   state.authors.total = res.total || 0;
   state.authors.selected.clear();
   document.getElementById('authors-count').textContent = `(${(state.authors.total).toLocaleString()})`;
@@ -2195,14 +2216,13 @@ async function loadAuthors(page) {
   updateSelectionUI('authors');
 }
 async function loadBooks(page) {
-  const filtered = hasActiveFilters('books');
-  const p = filtered ? 1 : (page || state.books.page || 1);
+  const p = page || state.books.page || 1;
   document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
-  const limit = filtered ? 50000 : PAGE_SIZE;
-  const res = await api(`/api/books?limit=${limit}&page=${p}`);
+  const filterParam = buildFilterParam('books');
+  const res = await api(`/api/books?limit=${PAGE_SIZE}&page=${p}${filterParam}`);
   state.books.data = res.data||(Array.isArray(res)?res:[]);
-  state.books.page = filtered ? 1 : (res.page || p);
-  state.books.pages = filtered ? 1 : (res.pages || 1);
+  state.books.page = res.page || p;
+  state.books.pages = res.pages || 1;
   state.books.total = res.total || 0;
   state.books.selected.clear();
   renderTable('books');

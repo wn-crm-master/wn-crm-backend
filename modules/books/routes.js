@@ -3,7 +3,7 @@ function register(app, getDb, authMiddleware) {
   app.get('/api/books', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const { search, genre, authorId, page = 1, limit = 100 } = req.query;
+      const { search, genre, authorId, page = 1, limit = 100, filters } = req.query;
       const query = {};
       if (search) query.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -11,6 +11,21 @@ function register(app, getDb, authMiddleware) {
       ];
       if (genre) query.genre = { $regex: genre, $options: 'i' };
       if (authorId) query.authorId = authorId;
+      if (filters) {
+        try {
+          const f = JSON.parse(filters);
+          for (const [field, values] of Object.entries(f)) {
+            if (!Array.isArray(values) || !values.length) continue;
+            const hasBlank = values.includes('');
+            const nonBlank = values.filter(v => v !== '');
+            const conditions = [];
+            if (nonBlank.length) conditions.push({ [field]: { $in: nonBlank } });
+            if (hasBlank) conditions.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
+            if (conditions.length === 1) Object.assign(query, conditions[0]);
+            else query.$and = [...(query.$and || []), { $or: conditions }];
+          }
+        } catch (e) {}
+      }
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const total = await db.collection('books').countDocuments(query);
       const pipeline = [
@@ -27,6 +42,16 @@ function register(app, getDb, authMiddleware) {
       ];
       const data = await db.collection('books').aggregate(pipeline, { allowDiskUse: true }).toArray();
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/books/distinct/:field', authMiddleware, async (req, res) => {
+    try {
+      const db = getDb();
+      const values = await db.collection('books').distinct(req.params.field);
+      res.json({ values: values.map(v => v == null ? '' : String(v)).sort() });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

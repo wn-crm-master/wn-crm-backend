@@ -4,21 +4,44 @@ function register(app, getDb, authMiddleware) {
   app.get('/api/authors', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const { search, page = 1, limit = 100 } = req.query;
+      const { search, page = 1, limit = 100, filters } = req.query;
       const matchQuery = { uid: { $exists: true, $ne: '' } };
       if (search) matchQuery.$or = [
         { name: { $regex: search, $options: 'i' } },
         { uid: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
+      if (filters) {
+        try {
+          const f = JSON.parse(filters);
+          for (const [field, values] of Object.entries(f)) {
+            if (!Array.isArray(values) || !values.length) continue;
+            const hasBlank = values.includes('');
+            const nonBlank = values.filter(v => v !== '');
+            const conditions = [];
+            if (nonBlank.length) conditions.push({ [field]: { $in: nonBlank } });
+            if (hasBlank) conditions.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
+            if (conditions.length === 1) Object.assign(matchQuery, conditions[0]);
+            else matchQuery.$and = [...(matchQuery.$and || []), { $or: conditions }];
+          }
+        } catch (e) {}
+      }
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      const total = await db.collection('authors').countDocuments(matchQuery);
-      const data = await db.collection('authors')
-        .find(matchQuery)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .toArray();
+      const [total, data] = await Promise.all([
+        db.collection('authors').countDocuments(matchQuery),
+        db.collection('authors').find(matchQuery).skip(skip).limit(parseInt(limit)).toArray()
+      ]);
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/authors/distinct/:field', authMiddleware, async (req, res) => {
+    try {
+      const db = getDb();
+      const values = await db.collection('authors').distinct(req.params.field, { uid: { $exists: true, $ne: '' } });
+      res.json({ values: values.map(v => v == null ? '' : String(v)).sort() });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
