@@ -856,6 +856,7 @@ function showApp() {
   const ist = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
   document.getElementById('nav-date').innerHTML = ist.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) + '<small>(IST)</small>';
   showTab('dashboard'); loadStats();
+  resumeActiveImports();
 }
 
 const NAV_TAB_ORDER = ['dashboard','ae','authors','books','review','earnings','reports'];
@@ -2532,6 +2533,7 @@ async function confirmMapping() {
       progressEl.classList.remove('active');
       return;
     }
+    saveActiveImport(entity, startRes.jobId, totalRecords);
     pollImportJob(startRes.jobId, entity, totalRecords, fillEl, textEl, msgEl, progressEl, 0);
   } else {
     const chunks = [];
@@ -2550,6 +2552,7 @@ async function confirmMapping() {
         progressEl.classList.remove('active');
         return;
       }
+      saveActiveImport(entity, startRes.jobId, totalRecords);
       const result = await waitForJob(startRes.jobId, entity, ci, chunks.length, totalRecords, processed, fillEl, textEl);
       if (result.error) {
         setMsg(msgEl,'error',`Batch ${ci+1} error: ${result.error}`);
@@ -2569,6 +2572,7 @@ async function confirmMapping() {
     if(totalSkipped>0) msg+=` ${totalSkipped} skipped.`;
     if(totalStubs>0) msg+=` ${totalStubs} stub author(s) created.`;
     setMsg(msgEl,'success',msg);
+    clearActiveImport(entity);
     _allAuthors = null; _allBooks = null;
     if(entity==='authors') loadAuthors(); else if(entity==='aes') loadAeList(); else loadBooks(); loadStats();
     setTimeout(()=>progressEl.classList.remove('active'),3000);
@@ -2600,13 +2604,14 @@ function waitForJob(jobId, entity, chunkIdx, totalChunks, totalRecords, prevProc
 function pollImportJob(jobId, entity, totalRecords, fillEl, textEl, msgEl, progressEl, prevProcessed) {
   const poll = setInterval(async () => {
     const s = await api('/api/import-job/'+jobId);
-    if (s.error || !s.status) { clearInterval(poll); setMsg(msgEl,'error','Import connection lost (server may have restarted). Refresh to see data.'); progressEl.classList.remove('active'); return; }
+    if (s.error || !s.status) { clearInterval(poll); clearActiveImport(entity); setMsg(msgEl,'error','Import connection lost (server may have restarted). Refresh to see data.'); progressEl.classList.remove('active'); return; }
     const pct = s.total ? Math.round((s.processed/s.total)*100) : 0;
     fillEl.style.width = pct+'%';
     textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
 
     if (s.status==='done' || s.status==='error') {
       clearInterval(poll);
+      clearActiveImport(entity);
       if (s.status==='error') {
         setMsg(msgEl,'error','Import error: '+(s.error||'Unknown'));
       } else {
@@ -2621,6 +2626,60 @@ function pollImportJob(jobId, entity, totalRecords, fillEl, textEl, msgEl, progr
       setTimeout(()=>progressEl.classList.remove('active'),3000);
     }
   }, 1000);
+}
+
+function saveActiveImport(entity, jobId, total) {
+  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
+  jobs[entity] = { jobId, total, ts: Date.now() };
+  localStorage.setItem('activeImports', JSON.stringify(jobs));
+}
+function clearActiveImport(entity) {
+  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
+  delete jobs[entity];
+  localStorage.setItem('activeImports', JSON.stringify(jobs));
+}
+function resumeActiveImports() {
+  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
+  const cutoff = Date.now() - 30 * 60 * 1000;
+  for (const [entity, info] of Object.entries(jobs)) {
+    if (info.ts < cutoff) { clearActiveImport(entity); continue; }
+    const progressEl = document.getElementById(entity + '-import-progress');
+    if (!progressEl) continue;
+    progressEl.classList.add('active');
+    const fillEl = progressEl.querySelector('.import-progress-fill');
+    const textEl = progressEl.querySelector('.import-progress-text');
+    textEl.textContent = 'Reconnecting to import…';
+    const poll = setInterval(async () => {
+      const s = await api('/api/import-job/' + info.jobId);
+      if (s.error || !s.status) {
+        clearInterval(poll);
+        clearActiveImport(entity);
+        textEl.textContent = 'Import finished (or server restarted). Refresh to see data.';
+        setTimeout(() => progressEl.classList.remove('active'), 4000);
+        return;
+      }
+      const pct = s.total ? Math.round((s.processed / s.total) * 100) : 0;
+      fillEl.style.width = pct + '%';
+      textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
+      if (s.status === 'done' || s.status === 'error') {
+        clearInterval(poll);
+        clearActiveImport(entity);
+        fillEl.style.width = '100%';
+        if (s.status === 'error') {
+          textEl.textContent = 'Import error: ' + (s.error || 'Unknown');
+        } else {
+          let msg = `Done! ${s.inserted} added, ${s.updated} updated.`;
+          if (s.skipped > 0) msg += ` ${s.skipped} skipped.`;
+          if (s.stubs > 0) msg += ` ${s.stubs} stub author(s) created.`;
+          textEl.textContent = msg;
+        }
+        _allAuthors = null; _allBooks = null;
+        if (entity === 'authors') loadAuthors(); else if (entity === 'aes') loadAeList(); else loadBooks();
+        loadStats();
+        setTimeout(() => progressEl.classList.remove('active'), 4000);
+      }
+    }, 1500);
+  }
 }
 
 function downloadCSV(entity) {
