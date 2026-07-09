@@ -755,7 +755,7 @@ function getBookNextStep(row) {
     return { label: 'Dead — Book ' + (row.status||''), css: 'step-dead', alarm: 'dead' };
   }
   const showStatus = String(row.showStatus||'').trim().toLowerCase();
-  if (showStatus && showStatus !== 'active') {
+  if (showStatus && showStatus !== 'active' && showStatus !== 'published') {
     return { label: 'Dead — Show ' + (row.showStatus||''), css: 'step-dead', alarm: 'dead' };
   }
   const ppv = String(row.ppvTag||'').trim().toLowerCase();
