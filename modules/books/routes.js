@@ -1,5 +1,25 @@
 function register(app, getDb, authMiddleware) {
   const { triggerSync } = require('../rollupSync');
+  const AUTHOR_FIELD_MAP = {
+    authorPreContract: 'preContractedTag',
+    authorPreContractCompany: 'preContractCompany',
+    authorAeEmail: 'aeEmail',
+  };
+
+  function buildFilterConditions(f) {
+    const conditions = [];
+    for (const [field, values] of Object.entries(f)) {
+      if (!Array.isArray(values) || !values.length) continue;
+      const hasBlank = values.includes('');
+      const nonBlank = values.filter(v => v !== '');
+      const orConds = [];
+      if (nonBlank.length) orConds.push({ [field]: { $in: nonBlank } });
+      if (hasBlank) orConds.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
+      conditions.push(orConds.length === 1 ? orConds[0] : { $or: orConds });
+    }
+    return conditions;
+  }
+
   app.get('/api/books', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
@@ -11,23 +31,25 @@ function register(app, getDb, authMiddleware) {
       ];
       if (genre) query.genre = { $regex: genre, $options: 'i' };
       if (authorId) query.authorId = authorId;
+
+      let bookFilterConds = [];
+      let lookupFilterConds = [];
       if (filters) {
         try {
           const f = JSON.parse(filters);
+          const bookFilters = {};
+          const lookupFilters = {};
           for (const [field, values] of Object.entries(f)) {
-            if (!Array.isArray(values) || !values.length) continue;
-            const hasBlank = values.includes('');
-            const nonBlank = values.filter(v => v !== '');
-            const conditions = [];
-            if (nonBlank.length) conditions.push({ [field]: { $in: nonBlank } });
-            if (hasBlank) conditions.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
-            if (conditions.length === 1) Object.assign(query, conditions[0]);
-            else query.$and = [...(query.$and || []), { $or: conditions }];
+            if (AUTHOR_FIELD_MAP[field]) lookupFilters[field] = values;
+            else bookFilters[field] = values;
           }
+          bookFilterConds = buildFilterConditions(bookFilters);
+          lookupFilterConds = buildFilterConditions(lookupFilters);
         } catch (e) {}
       }
+      if (bookFilterConds.length) query.$and = [...(query.$and || []), ...bookFilterConds];
+
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      const total = await db.collection('books').countDocuments(query);
       const pipeline = [
         ...(Object.keys(query).length ? [{ $match: query }] : []),
         { $lookup: { from: 'authors', localField: 'authorId', foreignField: 'uid', as: '_author' } },
@@ -37,21 +59,20 @@ function register(app, getDb, authMiddleware) {
           authorAeEmail: { $ifNull: [{ $arrayElemAt: ['$_author.aeEmail', 0] }, ''] }
         } },
         { $project: { _author: 0 } },
-        { $skip: skip },
-        { $limit: parseInt(limit) }
+        ...(lookupFilterConds.length ? [{ $match: { $and: lookupFilterConds } }] : []),
       ];
-      const data = await db.collection('books').aggregate(pipeline, { allowDiskUse: true }).toArray();
+      const countPipeline = [...pipeline, { $count: 'total' }];
+      const dataPipeline = [...pipeline, { $skip: skip }, { $limit: parseInt(limit) }];
+      const [countResult, data] = await Promise.all([
+        db.collection('books').aggregate(countPipeline, { allowDiskUse: true }).toArray(),
+        db.collection('books').aggregate(dataPipeline, { allowDiskUse: true }).toArray()
+      ]);
+      const total = countResult[0]?.total || 0;
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
-
-  const AUTHOR_FIELD_MAP = {
-    authorPreContract: 'preContractedTag',
-    authorPreContractCompany: 'preContractCompany',
-    authorAeEmail: 'aeEmail',
-  };
 
   app.get('/api/books/distinct/:field', authMiddleware, async (req, res) => {
     try {
