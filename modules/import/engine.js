@@ -14,46 +14,55 @@ async function importRecords(db, collection, backupCollection, records, idField,
   const skippedReasons = [];
   const specialFieldChanges = [];
 
+  const validRecords = [];
   for (const record of records) {
     const uid = record[idField];
-
     if (!uid || isBlankOrError(uid)) {
       skipped++;
       skippedReasons.push({ id: null, reason: 'Missing unique ID' });
-      continue;
+    } else {
+      validRecords.push(record);
     }
+  }
 
-    const existing = await db.collection(collection).findOne({ [idField]: uid });
+  if (!validRecords.length) {
+    return { importId, inserted, updated, skipped, skippedReasons, specialFieldChanges };
+  }
+
+  const allIds = validRecords.map(r => r[idField]);
+  const existingDocs = await db.collection(collection).find({ [idField]: { $in: allIds } }).toArray();
+  const existingMap = new Map();
+  for (const doc of existingDocs) existingMap.set(doc[idField], doc);
+
+  // Backup all existing docs that will be updated
+  const backups = [];
+  for (const doc of existingDocs) {
+    const { _id, ...data } = doc;
+    backups.push({ ...data, _originalId: _id, importId, backedUpAt: new Date() });
+  }
+  if (backups.length) await db.collection(backupCollection).insertMany(backups, { ordered: false });
+
+  const ops = [];
+  for (const record of validRecords) {
+    const uid = record[idField];
+    const existing = existingMap.get(uid);
 
     if (!existing) {
-      await db.collection(collection).insertOne({ ...record, createdAt: new Date(), updatedAt: new Date() });
+      ops.push({ insertOne: { document: { ...record, createdAt: new Date(), updatedAt: new Date() } } });
       inserted++;
     } else {
-      const { _id, ...existingData } = existing;
-      await db.collection(backupCollection).insertOne({
-        ...existingData,
-        _originalId: _id,
-        importId,
-        backedUpAt: new Date()
-      });
-
       const updateFields = {};
       let allBlank = true;
 
       for (const [key, newVal] of Object.entries(record)) {
         if (key === '_id') continue;
         if (isBlankOrError(newVal)) continue;
-
         allBlank = false;
 
         if (specialFields.includes(key) && existing[key] !== undefined && existing[key] !== newVal) {
           specialFieldChanges.push({
-            importId,
-            entityId: uid,
-            field: key,
-            oldValue: existing[key],
-            newValue: newVal,
-            status: 'pending_approval'
+            importId, entityId: uid, field: key,
+            oldValue: existing[key], newValue: newVal, status: 'pending_approval'
           });
         } else {
           updateFields[key] = newVal;
@@ -68,12 +77,13 @@ async function importRecords(db, collection, backupCollection, records, idField,
 
       if (Object.keys(updateFields).length > 0) {
         updateFields.updatedAt = new Date();
-        await db.collection(collection).updateOne({ [idField]: uid }, { $set: updateFields });
+        ops.push({ updateOne: { filter: { [idField]: uid }, update: { $set: updateFields } } });
       }
-
       updated++;
     }
   }
+
+  if (ops.length) await db.collection(collection).bulkWrite(ops, { ordered: false });
 
   if (specialFieldChanges.length > 0) {
     await db.collection('pending_approvals').insertMany(specialFieldChanges);

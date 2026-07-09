@@ -18,6 +18,7 @@ function register(app, getDb, authMiddleware) {
         { $lookup: { from: 'authors', localField: 'authorId', foreignField: 'uid', as: '_author' } },
         { $addFields: {
           authorPreContract: { $ifNull: [{ $arrayElemAt: ['$_author.preContractedTag', 0] }, ''] },
+          authorPreContractCompany: { $ifNull: [{ $arrayElemAt: ['$_author.preContractCompany', 0] }, ''] },
           authorAeEmail: { $ifNull: [{ $arrayElemAt: ['$_author.aeEmail', 0] }, ''] }
         } },
         { $project: { _author: 0 } },

@@ -7,6 +7,8 @@ const SEED_USERS = [
   { email: 'lalit@pocketfm.com', password: 'Pocketfm@2026', name: 'Lalit' },
   { email: 'prateek@pocketfm.com', password: 'Pocketfm@2026', name: 'Prateek' },
   { email: 'rohan@pocketfm.com', password: 'Pocketfm@2026', name: 'Rohan' },
+  { email: 'alok.birthare@pocketfm.com', password: 'Pocketfm@2026', name: 'Alok Birthare' },
+  { email: 'nivesh.aron@pocketfm.com', password: 'Pocketfm@2026', name: 'Nivesh Aron' },
 ];
 
 function createAuthMiddleware(JWT_SECRET) {

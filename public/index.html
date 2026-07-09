@@ -47,6 +47,15 @@
     .btn-logout:hover { background: rgba(255,255,255,0.15); }
     .main { padding: 80px 28px 28px; }
 
+    /* Pagination */
+    .pager { display:flex; align-items:center; justify-content:center; gap:8px; padding:8px 0; font-size:0.85rem; color:#555; position:fixed; bottom:0; left:0; right:0; background:#fff; z-index:150; border-top:1px solid #ddd; box-shadow:0 -2px 8px rgba(0,0,0,0.06); }
+    .pager button { padding:5px 12px; border:1px solid #ddd; border-radius:5px; background:#fff; cursor:pointer; font-size:0.85rem; transition:all 0.15s; }
+    .pager button:hover:not(:disabled) { background:#f5f5f5; border-color:#c0272d; color:#c0272d; }
+    .pager button:disabled { opacity:0.4; cursor:default; }
+    .pager button.active { background:#c0272d; color:#fff; border-color:#c0272d; }
+    .pager select { padding:4px 8px; border:1px solid #ddd; border-radius:5px; font-size:0.85rem; }
+    .pager .pager-info { color:#888; font-size:0.8rem; }
+
     /* Tabs */
     .tab { display: none; }
     .tab.active { display: block; }
@@ -91,7 +100,7 @@
 
     /* Table */
     .table-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-    .table-scroll { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; max-height: calc(100vh - 160px); border-radius: 10px; }
+    .table-scroll { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; max-height: calc(100vh - 200px); border-radius: 10px; }
     table { border-collapse: separate; border-spacing: 0; table-layout: fixed; margin-bottom: 14px; }
     table.wide { min-width: max-content; }
 
@@ -387,6 +396,7 @@
       <div class="nav-link" onclick="showTab('books')">Books</div>
       <div class="nav-link" onclick="showTab('review')">Review</div>
       <div class="nav-link" onclick="showTab('earnings')">Earnings</div>
+      <div class="nav-link" onclick="showTab('reports')">Reports</div>
     </div>
     <div class="nav-right">
       <span class="nav-date" id="nav-date"></span>
@@ -421,6 +431,7 @@
       <div id="authors-import-msg" class="inline-msg"></div>
       <div id="authors-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
       <div class="table-card"><div class="table-scroll"><div id="authors-body"><div class="loading">Loading…</div></div></div></div>
+      <div class="pager" id="authors-pager"></div>
     </div>
 
     <div id="tab-books" class="tab">
@@ -438,6 +449,7 @@
       <div id="books-import-msg" class="inline-msg"></div>
       <div id="books-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
       <div class="table-card"><div class="table-scroll"><div id="books-body"><div class="loading">Loading…</div></div></div></div>
+      <div class="pager" id="books-pager"></div>
     </div>
 
     <div id="tab-review" class="tab">
@@ -553,6 +565,17 @@
       </div>
     </div>
 
+    <div id="tab-reports" class="tab">
+      <div class="tab-toolbar">
+        <div class="title-row"><div class="page-title">Reports</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin:0 0 12px;">
+        <h3 style="margin:0;font-size:1rem;color:#c0272d;">AE LM Earnings</h3>
+        <button class="btn" style="padding:4px 12px;font-size:0.8rem;" onclick="copyReportTable('reports-ae-lm-body')" id="copy-report-btn">Copy Table</button>
+      </div>
+      <div class="table-card"><div class="table-scroll" style="max-height:calc(100vh - 240px);"><div id="reports-ae-lm-body"><div class="empty">Loading…</div></div></div></div>
+    </div>
+
     <div id="tab-settings" class="tab">
       <div class="page-title">Settings</div>
       <div class="settings-section">
@@ -611,6 +634,7 @@ const BOOK_COLS = [
   { field:'id',                   header:'Book ID',              width:140 },
   { field:'authorId',             header:'Author ID',            width:160 },
   { field:'authorPreContract',   header:'Author Pre-Contract',   width:180, type:'text', readOnly:true },
+  { field:'authorPreContractCompany', header:'Author Pre-Contract Company', width:220, type:'text', readOnly:true },
   { field:'authorAeEmail',       header:'AE Email',              width:200, type:'text', readOnly:true },
   { field:'showId',               header:'Show ID',              width:120 },
   { field:'showTitle',            header:'Show Title',           width:180 },
@@ -633,6 +657,9 @@ const BOOK_COLS = [
   { field:'form2FollowUp1Date',   header:'Form 2 Follow Up 1 Date', width:190, type:'date' },
   { field:'form2FollowUp2Date',   header:'Form 2 Follow Up 2 Date', width:190, type:'date' },
   { field:'form2RecdDate',        header:'Form 2 Recd Date',     width:150, type:'date' },
+  { field:'reviewBucket',         header:'Review Bucket',        width:140 },
+  { field:'sentForReview',        header:'Sent For Review',      width:140, type:'checkbox' },
+  { field:'dateAddedForReview',   header:'Date Added for Review', width:180, type:'date' },
   { field:'words50kCompleted',    header:'50k Words Completed',  width:150, type:'checkbox' },
   { field:'words50kDate',         header:'50k Words Date',       width:140, type:'date' },
   { field:'llmScore5hr',          header:'5hr LLM Score',        width:120, type:'decimal' },
@@ -666,9 +693,9 @@ const BASE = '';
 let token = localStorage.getItem('crm_token') || '';
 
 const state = {
-  authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
-  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
-  aes:          { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
+  authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_payments:  { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -814,6 +841,7 @@ async function manualResync() {
     if (res.success) {
       state.authors.data = [];
       state.books.data = [];
+      _allAuthors = null; _allBooks = null;
       const active = document.querySelector('.nav-link.active');
       if (active) active.click();
     }
@@ -828,9 +856,10 @@ function showApp() {
   const ist = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Kolkata'}));
   document.getElementById('nav-date').innerHTML = ist.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}) + '<small>(IST)</small>';
   showTab('dashboard'); loadStats();
+  resumeActiveImports();
 }
 
-const NAV_TAB_ORDER = ['dashboard','ae','authors','books','review','earnings'];
+const NAV_TAB_ORDER = ['dashboard','ae','authors','books','review','earnings','reports'];
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
@@ -845,8 +874,9 @@ function showTab(name) {
   if (name==='dashboard') loadStats();
   if (name==='review') loadReview();
   if (name==='settings') loadBackups();
-  if (name==='ae') { ensureAuthorsAndBooksLoaded(); loadAeList(); }
+  if (name==='ae') { loadAeList(); }
   if (name==='earnings') { populateEarnAeMonths(); loadEarnAe(); }
+  if (name==='reports') { loadReportAeLM(); }
 }
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
@@ -963,10 +993,10 @@ async function loadEarnAe() {
     const earliestStart = monthRanges.reduce((min, r) => r.start < min ? r.start : min, monthRanges[0].start);
 
     const authorMap = {};
-    for (const a of state.authors.data) if (a.uid) authorMap[a.uid] = a;
+    for (const a of _allAuthors) if (a.uid) authorMap[a.uid] = a;
 
     const aeMap = {};
-    for (const a of state.authors.data) {
+    for (const a of _allAuthors) {
       const ae = (a.aeEmail || '').trim().toLowerCase();
       if (!ae || !a.uid) continue;
       if (!aeMap[ae]) aeMap[ae] = [];
@@ -992,10 +1022,11 @@ async function loadEarnAe() {
   }
 }
 
+let _allAuthors = null, _allBooks = null;
 async function ensureAuthorsAndBooksLoaded() {
   const promises = [];
-  if (!state.authors.data.length) promises.push(api('/api/authors?limit=50000').then(r => { state.authors.data = r.data||(Array.isArray(r)?r:[]); }));
-  if (!state.books.data.length) promises.push(api('/api/books?limit=50000').then(r => { state.books.data = r.data||(Array.isArray(r)?r:[]); }));
+  if (!_allAuthors) promises.push(api('/api/authors?limit=50000').then(r => { _allAuthors = r.data||(Array.isArray(r)?r:[]); }));
+  if (!_allBooks) promises.push(api('/api/books?limit=50000').then(r => { _allBooks = r.data||(Array.isArray(r)?r:[]); }));
   if (promises.length) await Promise.all(promises);
 }
 
@@ -1011,7 +1042,7 @@ async function loadAeSubTab(subTab) {
       const mappings = res.data || [];
       await ensureAuthorsAndBooksLoaded();
       const authorMap = {};
-      for (const a of state.authors.data) authorMap[a.uid] = a;
+      for (const a of _allAuthors) authorMap[a.uid] = a;
       state.ae_authors.data = mappings.map(m => {
         const a = authorMap[m.uid] || {};
         return { aeEmail: m.aeEmail, uid: m.uid, regnDate: a.regnDate || '', name: a.name || '', email: a.email || '', preContractedTag: a.preContractedTag || '' };
@@ -1029,10 +1060,10 @@ async function loadAeSubTab(subTab) {
     try {
       await ensureAuthorsAndBooksLoaded();
       const authorMap = {};
-      for (const a of state.authors.data) {
+      for (const a of _allAuthors) {
         if (a.uid && a.aeEmail) authorMap[a.uid] = (a.aeEmail || '').trim().toLowerCase();
       }
-      state.ae_books.data = state.books.data
+      state.ae_books.data = _allBooks
         .filter(b => b.authorId && authorMap[b.authorId])
         .map(b => ({ bookId: b.id, authorId: b.authorId, aeEmail: authorMap[b.authorId] }));
     } catch (e) {
@@ -1055,21 +1086,23 @@ async function loadAeSubTab(subTab) {
 
 // ── AE List ───────────────────────────────────────────────────────
 const AE_COLS = [
-  { field:'aeStatus',               header:'',                                            width:36, type:'status' },
-  { field:'dateAdded',              header:'Date Added',                                  width:120, type:'date' },
+  { field:'aeStatus',               header:'',                                            width:36, type:'status', noControls:true },
   { field:'email',                  header:'AE Email ID',                                 width:220 },
+  { field:'dateAdded',              header:'Date Added',                                  width:120, type:'date' },
   { field:'name',                   header:'AE Name',                                     width:160 },
   { field:'authorsReg',             header:'No. of Authors Reg.',                         width:170, type:'number' },
   { field:'firstAuthorRegDate',     header:'Reg. Date of First Author',                   width:200, type:'date' },
   { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200, type:'date' },
   { field:'preContractAuthorsReg',  header:'No. of Pre-Contract Validated Authors Reg.',  width:300, type:'number' },
+  { field:'totalAuthCont',          header:'Total Auth. Cont.',                            width:150, type:'number' },
   { field:'booksCreated',           header:'No. of Books Created',                        width:170, type:'number' },
   { field:'activeBooks',            header:'Current Active Books',                        width:170, type:'number' },
-  { field:'authorsContracted',     header:'No. of Authors Contracted as of LM',           width:260, type:'number' },
-  { field:'stage1Cleared',          header:'LM Stage 1 Cleared',                          width:160, type:'number' },
-  { field:'stage2Cleared',          header:'LM Stage 2 Cleared',                          width:160, type:'number' },
-  { field:'stage3Cleared',          header:'LM Stage 3 Cleared',                          width:160, type:'number' },
+  { field:'activeBooksUncont',      header:'Active Books of Uncont. Auth.',                width:220, type:'number' },
   { field:'latestRewardDate',       header:'Date of Latest Reward',                       width:180, type:'date' },
+  { field:'authContBeforeLM',       header:'Auth. Cont. before LM',                       width:190, type:'number' },
+  { field:'lmStage1Cleared',       header:'LM Stage 1 Cleared',                          width:160, type:'number' },
+  { field:'lmStage2Cleared',       header:'LM Stage 2 Cleared',                          width:160, type:'number' },
+  { field:'lmStage3Cleared',       header:'LM Stage 3 Cleared',                          width:160, type:'number' },
   { field:'lmEarnings',             header:'LM Earnings',                                 width:140, type:'number' },
 ];
 const AE_IMPORT_COLS = [
@@ -1088,76 +1121,129 @@ const EARN_AE_COLS = [
   { field:'payment',             header:'Payment',                          width:140 },
 ];
 
-async function loadAeList() {
-  const container = document.getElementById('ae-list-body');
+async function loadReportAeLM() {
+  const container = document.getElementById('reports-ae-lm-body');
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
-    const [aesRes, aeAuthRes, aeBooksRes, aePayRes] = await Promise.all([
-      api('/api/aes'),
-      api('/api/ae-authors'),
-      api('/api/ae-books'),
-      api('/api/ae-payments'),
-    ]);
     await ensureAuthorsAndBooksLoaded();
-    const aes = aesRes.data || [];
+    const [aeAuthRes] = await Promise.all([api('/api/ae-authors')]);
     const aeAuthors = aeAuthRes.data || [];
-    const aeBooks = aeBooksRes.data || [];
-    const aePayments = aePayRes.data || [];
 
     const authorMap = {};
-    for (const a of state.authors.data) authorMap[a.uid] = a;
+    for (const a of _allAuthors) if (a.uid) authorMap[a.uid] = a;
+
+    const bookMap = {};
+    for (const b of _allBooks) if (b.id) bookMap[b.id] = b;
 
     const now = new Date();
     const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
     const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
     function isLastMonth(dateStr) {
       if (!dateStr) return false;
       const d = String(dateStr).slice(0, 10);
       return d >= lmStart && d <= lmEnd;
     }
 
-    const bookMap = {};
-    for (const b of state.books.data) if (b.id) bookMap[b.id] = b;
-
-    for (const ae of aes) {
-      const email = (ae.email || '').toLowerCase();
-      const mappings = aeAuthors.filter(m => (m.aeEmail || '').toLowerCase() === email);
-      const uids = mappings.map(m => m.uid);
-
-      ae.authorsReg = uids.length;
-      ae.preContractAuthorsReg = uids.filter(uid => {
-        const a = authorMap[uid];
-        return a && a.preContractedTag && String(a.preContractedTag).toLowerCase() !== 'no' && String(a.preContractedTag).trim() !== '';
-      }).length;
-
-      const aeBookList = state.books.data.filter(b => b.authorId && uids.includes(b.authorId));
-      ae.booksCreated = aeBookList.length;
-      ae.activeBooks = aeBookList.filter(b => {
-        const s = (b.status || '').toLowerCase();
-        return s === 'approved' || s === 'published';
-      }).length;
-      ae.authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0,10) < thisMonthStart; }).length;
-
-      ae.stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
-
-      const myPayments = aePayments.filter(p => (p.aeEmail || '').toLowerCase() === email);
-      const stageSet = new Set(myPayments.map(p => String(p.stage || '').toLowerCase()));
-      ae.stage2Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.first300kWordDate)).length;
-      ae.stage3Cleared = Math.floor((ae.authorsContracted + ae.stage1Cleared) / 10) - Math.floor(ae.authorsContracted / 10);
-
-      const regDates = uids.map(uid => authorMap[uid]?.regnDate).filter(d => d).sort();
-      ae.firstAuthorRegDate = regDates.length ? regDates[0] : '';
-      ae.latestAuthorRegDate = regDates.length ? regDates[regDates.length - 1] : '';
-
-      const rewardDates = myPayments.map(p => p.rewardDate).filter(d => d).sort();
-      ae.latestRewardDate = rewardDates.length ? rewardDates[rewardDates.length - 1] : '';
-
-      ae.lmEarnings = ae.stage1Cleared * 50 + ae.stage2Cleared * 200 + ae.stage3Cleared * 100;
-      ae.aeStatus = ae.activeBooks > 0 ? 'active' : 'inactive';
+    const mappingsByAe = {};
+    for (const m of aeAuthors) {
+      const email = (m.aeEmail || '').trim().toLowerCase();
+      if (!email) continue;
+      if (!mappingsByAe[email]) mappingsByAe[email] = [];
+      mappingsByAe[email].push(m.uid);
     }
 
-    state.aes.data = aes;
+    const rows = [];
+    for (const [aeEmail, uids] of Object.entries(mappingsByAe)) {
+      for (const uid of uids) {
+        const author = authorMap[uid];
+        if (!author) continue;
+        if (isLastMonth(author.firstContractDate)) {
+          const bookId = author.firstContractBookId || '';
+          const book = bookId ? bookMap[bookId] : null;
+          rows.push({
+            aeEmail,
+            authorName: author.name || '',
+            authorId: uid,
+            bookName: book ? (book.title || '') : '',
+            bookId,
+            achievement: 'Contracted for the 1st Time',
+            achievementDate: author.firstContractDate || '',
+            earnings: 50
+          });
+        }
+        if (isLastMonth(author.first300kWordDate)) {
+          const bookId = author.first300kWordBookId || '';
+          const book = bookId ? bookMap[bookId] : null;
+          rows.push({
+            aeEmail,
+            authorName: author.name || '',
+            authorId: uid,
+            bookName: book ? (book.title || '') : '',
+            bookId,
+            achievement: '1st 300k Words Completed on a Contracted Book',
+            achievementDate: author.first300kWordDate || '',
+            earnings: 200
+          });
+        }
+      }
+    }
+
+    rows.sort((a, b) => a.aeEmail.localeCompare(b.aeEmail) || a.authorName.localeCompare(b.authorName));
+
+    if (!rows.length) { container.innerHTML = '<div class="empty">No eligible AE achievements last month</div>'; return; }
+
+    let html = '<table class="wide"><thead><tr>';
+    const cols = [
+      { header: 'AE Email ID', width: 220 },
+      { header: 'Author Name', width: 160 },
+      { header: 'Author ID', width: 220 },
+      { header: 'Book Name', width: 200 },
+      { header: 'Book ID', width: 180 },
+      { header: 'Achievement', width: 320 },
+      { header: 'Date of Achievement', width: 160 },
+      { header: 'Earnings', width: 100 },
+    ];
+    for (const c of cols) html += `<th style="width:${c.width}px;min-width:${c.width}px;"><div class="th-inner"><div class="th-top"><span class="th-label">${c.header}</span></div></div></th>`;
+    html += '</tr></thead><tbody>';
+    for (const r of rows) {
+      html += '<tr>';
+      html += `<td>${r.aeEmail}</td>`;
+      html += `<td>${r.authorName}</td>`;
+      html += `<td>${r.authorId}</td>`;
+      html += `<td>${r.bookName}</td>`;
+      html += `<td>${r.bookId}</td>`;
+      html += `<td>${r.achievement}</td>`;
+      html += `<td>${r.achievementDate}</td>`;
+      html += `<td>$${r.earnings}</td>`;
+      html += '</tr>';
+    }
+    const totalEarnings = rows.reduce((sum, r) => sum + r.earnings, 0);
+    html += `<tr style="font-weight:700;background:#f9f3f3;"><td colspan="7">Total (${rows.length})</td><td>$${totalEarnings.toLocaleString()}</td></tr>`;
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<div class="empty">Error loading report</div>';
+  }
+}
+
+function copyReportTable(containerId) {
+  const el = document.getElementById(containerId);
+  const table = el && el.querySelector('table');
+  if (!table) return;
+  const rows = table.querySelectorAll('tr');
+  const tsv = [...rows].map(tr => [...tr.querySelectorAll('th,td')].map(c => c.textContent.trim()).join('\t')).join('\n');
+  navigator.clipboard.writeText(tsv).then(() => {
+    const btn = document.getElementById('copy-report-btn');
+    if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = 'Copy Table'; }, 2000); }
+  });
+}
+
+async function loadAeList() {
+  const container = document.getElementById('ae-list-body');
+  container.innerHTML = '<div class="loading">Loading…</div>';
+  try {
+    const res = await api('/api/aes');
+    state.aes.data = res.data || [];
     renderAeList();
   } catch (e) {
     container.innerHTML = '<div class="empty">Error loading data</div>';
@@ -1266,7 +1352,7 @@ function getStickyOffsets(cols, pinned, entity) {
 const ENTITY_META = {
   authors:     { cols: AUTHOR_COLS,      idField: 'uid',     fixedField: 'uid',   special: SPECIAL_AUTHORS, bodyId: 'authors-body' },
   books:       { cols: BOOK_COLS,        idField: 'id',      fixedField: 'title', special: SPECIAL_BOOKS,   bodyId: 'books-body' },
-  aes:         { cols: AE_COLS,          idField: 'email',   fixedField: null,    special: new Set(),       bodyId: 'ae-list-body' },
+  aes:         { cols: AE_COLS,          idField: 'email',   fixedField: 'email', special: new Set(),       bodyId: 'ae-list-body' },
   ae_authors:  { cols: AE_AUTHORS_COLS,  idField: 'uid',     fixedField: 'uid',   special: new Set(),       bodyId: 'ae-authors-body' },
   ae_books:    { cols: AE_BOOKS_COLS,    idField: 'bookId',  fixedField: 'bookId', special: new Set(),       bodyId: 'ae-books-body' },
   ae_payments: { cols: AE_PAYMENTS_COLS, idField: 'aeEmail', fixedField: null,    special: new Set(),       bodyId: 'ae-payments-body' },
@@ -1323,6 +1409,11 @@ function renderTable(entity) {
     const hasFilter = filterSet.size > 0;
     const filterLabel = hasFilter ? filterSet.size+' selected' : 'All';
 
+    if (col.noControls) {
+      html += `<th class="${isSticky?'is-sticky':''}" style="width:${col.width}px;min-width:${col.width}px;${stStyle}">
+        <div class="th-inner"><div class="th-top"><span class="th-label">${col.header}</span></div></div>
+      </th>`;
+    } else {
     html += `<th class="${isSticky?'is-sticky':''} ${isPinned?'is-pinned':''} ${hasFilter?'has-active-filter':''}" style="width:${col.width}px;min-width:${col.width}px;${stStyle}">
       <div class="th-inner">
         <div class="th-top">
@@ -1341,6 +1432,7 @@ function renderTable(entity) {
         </div>
       </div>
     </th>`;
+    }
   }
   if (!isAeEntity) html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
   if (entity==='books') {
@@ -1520,12 +1612,22 @@ function renderFilterTags(entity) {
 
 function clearFilter(entity, field) {
   state[entity].filter[field] = new Set();
+  if ((entity === 'authors' || entity === 'books') && !hasActiveFilters(entity)) {
+    state[entity]._allLoaded = false;
+    if (entity === 'authors') loadAuthors(1); else loadBooks(1);
+    return;
+  }
   applyRowFilters(entity);
   renderTable(entity);
 }
 
 function clearAllFilters(entity) {
   state[entity].filter = {};
+  if (entity === 'authors' || entity === 'books') {
+    state[entity]._allLoaded = false;
+    if (entity === 'authors') loadAuthors(1); else loadBooks(1);
+    return;
+  }
   applyRowFilters(entity);
   renderTable(entity);
 }
@@ -1557,11 +1659,15 @@ function updateTotals(entity, visibleRows) {
   const idField = meta.idField;
   const sourceRows = sel.size > 0 ? visibleRows.filter(r => sel.has(String(r[idField]||''))) : visibleRows;
 
+  const serverTotal = state[entity].total;
+  const hasFilters = Object.keys(state[entity].filter).some(k => state[entity].filter[k] && state[entity].filter[k].size > 0);
+  const displayCount = sel.size > 0 ? sourceRows.length : (hasFilters ? sourceRows.length : (serverTotal || sourceRows.length));
+
   const countEl = document.getElementById(entity+'-totals-count');
-  if (countEl) countEl.textContent = sourceRows.length;
+  if (countEl) countEl.textContent = displayCount;
 
   const labelEl = document.getElementById(entity+'-totals-label');
-  if (labelEl) labelEl.textContent = sel.size > 0 ? `Selected (${sourceRows.length})` : `Total (${sourceRows.length})`;
+  if (labelEl) labelEl.textContent = sel.size > 0 ? `Selected (${sourceRows.length})` : `Total (${displayCount.toLocaleString()})`;
 
   for (const col of cols) {
     const el = document.getElementById('tot-'+entity+'-'+col.field);
@@ -1642,6 +1748,16 @@ function openFD(event, entity, field, btn) {
 }
 
 function closeFD() {
+  if (fdCtx) {
+    const entity = fdCtx.entity;
+    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity) && !state[entity]._allLoaded) {
+      state[entity]._allLoaded = true;
+      document.getElementById('filter-dropdown').classList.remove('open');
+      fdCtx = null;
+      if (entity === 'authors') loadAuthors(); else loadBooks();
+      return;
+    }
+  }
   document.getElementById('filter-dropdown').classList.remove('open');
   fdCtx = null;
 }
@@ -2055,23 +2171,73 @@ function showSave(ok, err) {
 }
 
 // ── Load data ──────────────────────────────────────────────────────
-async function loadAuthors() {
+const PAGE_SIZE = 1000;
+
+function hasActiveFilters(entity) {
+  const f = state[entity].filter;
+  return Object.keys(f).some(k => f[k] && f[k].size > 0);
+}
+
+async function loadAuthors(page) {
+  const filtered = hasActiveFilters('authors');
+  const p = filtered ? 1 : (page || state.authors.page || 1);
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
-  const res = await api('/api/authors?limit=50000');
+  const limit = filtered ? 50000 : PAGE_SIZE;
+  const res = await api(`/api/authors?limit=${limit}&page=${p}`);
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
+  state.authors.page = filtered ? 1 : (res.page || p);
+  state.authors.pages = filtered ? 1 : (res.pages || 1);
+  state.authors.total = res.total || 0;
   state.authors.selected.clear();
-  const n = state.authors.data.length;
-  document.getElementById('authors-count').textContent = `(${n.toLocaleString()})`;
+  document.getElementById('authors-count').textContent = `(${(state.authors.total).toLocaleString()})`;
   renderTable('authors');
+  renderPager('authors');
   updateSelectionUI('authors');
 }
-async function loadBooks() {
+async function loadBooks(page) {
+  const filtered = hasActiveFilters('books');
+  const p = filtered ? 1 : (page || state.books.page || 1);
   document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
-  const res = await api('/api/books?limit=50000');
+  const limit = filtered ? 50000 : PAGE_SIZE;
+  const res = await api(`/api/books?limit=${limit}&page=${p}`);
   state.books.data = res.data||(Array.isArray(res)?res:[]);
+  state.books.page = filtered ? 1 : (res.page || p);
+  state.books.pages = filtered ? 1 : (res.pages || 1);
+  state.books.total = res.total || 0;
   state.books.selected.clear();
   renderTable('books');
+  renderPager('books');
   updateSelectionUI('books');
+}
+
+function renderPager(entity) {
+  const el = document.getElementById(`${entity}-pager`);
+  if (!el) return;
+  const s = state[entity];
+  if (s.pages <= 1) { el.innerHTML = `<span class="pager-info">${s.total.toLocaleString()} records</span>`; return; }
+  const start = (s.page - 1) * PAGE_SIZE + 1;
+  const end = Math.min(s.page * PAGE_SIZE, s.total);
+  let html = `<span class="pager-info">${start.toLocaleString()}–${end.toLocaleString()} of ${s.total.toLocaleString()}</span>`;
+  html += `<button ${s.page<=1?'disabled':''} onclick="goPage('${entity}',1)">⟨⟨</button>`;
+  html += `<button ${s.page<=1?'disabled':''} onclick="goPage('${entity}',${s.page-1})">⟨</button>`;
+  const maxBtns = 7;
+  let pStart = Math.max(1, s.page - Math.floor(maxBtns/2));
+  let pEnd = Math.min(s.pages, pStart + maxBtns - 1);
+  if (pEnd - pStart < maxBtns - 1) pStart = Math.max(1, pEnd - maxBtns + 1);
+  for (let i = pStart; i <= pEnd; i++) {
+    html += `<button class="${i===s.page?'active':''}" onclick="goPage('${entity}',${i})">${i}</button>`;
+  }
+  html += `<button ${s.page>=s.pages?'disabled':''} onclick="goPage('${entity}',${s.page+1})">⟩</button>`;
+  html += `<button ${s.page>=s.pages?'disabled':''} onclick="goPage('${entity}',${s.pages})">⟩⟩</button>`;
+  html += ` <select onchange="goPage('${entity}',+this.value)">`;
+  for (let i = 1; i <= s.pages; i++) html += `<option value="${i}" ${i===s.page?'selected':''}>Page ${i}</option>`;
+  html += '</select>';
+  el.innerHTML = html;
+}
+
+function goPage(entity, page) {
+  if (entity === 'authors') loadAuthors(page);
+  else if (entity === 'books') loadBooks(page);
 }
 
 async function deleteAllEntity(entity) {
@@ -2355,7 +2521,7 @@ async function confirmMapping() {
   progressEl.classList.add('active');
   fillEl.style.width='0%';
 
-  const CHUNK = 2000;
+  const CHUNK = 5000;
   const totalRecords = records.length;
 
   if (totalRecords <= CHUNK) {
@@ -2367,6 +2533,7 @@ async function confirmMapping() {
       progressEl.classList.remove('active');
       return;
     }
+    saveActiveImport(entity, startRes.jobId, totalRecords);
     pollImportJob(startRes.jobId, entity, totalRecords, fillEl, textEl, msgEl, progressEl, 0);
   } else {
     const chunks = [];
@@ -2385,6 +2552,7 @@ async function confirmMapping() {
         progressEl.classList.remove('active');
         return;
       }
+      saveActiveImport(entity, startRes.jobId, totalRecords);
       const result = await waitForJob(startRes.jobId, entity, ci, chunks.length, totalRecords, processed, fillEl, textEl);
       if (result.error) {
         setMsg(msgEl,'error',`Batch ${ci+1} error: ${result.error}`);
@@ -2404,6 +2572,8 @@ async function confirmMapping() {
     if(totalSkipped>0) msg+=` ${totalSkipped} skipped.`;
     if(totalStubs>0) msg+=` ${totalStubs} stub author(s) created.`;
     setMsg(msgEl,'success',msg);
+    clearActiveImport(entity);
+    _allAuthors = null; _allBooks = null;
     if(entity==='authors') loadAuthors(); else if(entity==='aes') loadAeList(); else loadBooks(); loadStats();
     setTimeout(()=>progressEl.classList.remove('active'),3000);
   }
@@ -2434,13 +2604,14 @@ function waitForJob(jobId, entity, chunkIdx, totalChunks, totalRecords, prevProc
 function pollImportJob(jobId, entity, totalRecords, fillEl, textEl, msgEl, progressEl, prevProcessed) {
   const poll = setInterval(async () => {
     const s = await api('/api/import-job/'+jobId);
-    if (s.error || !s.status) { clearInterval(poll); setMsg(msgEl,'error','Import connection lost (server may have restarted). Refresh to see data.'); progressEl.classList.remove('active'); return; }
+    if (s.error || !s.status) { clearInterval(poll); clearActiveImport(entity); setMsg(msgEl,'error','Import connection lost (server may have restarted). Refresh to see data.'); progressEl.classList.remove('active'); return; }
     const pct = s.total ? Math.round((s.processed/s.total)*100) : 0;
     fillEl.style.width = pct+'%';
     textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
 
     if (s.status==='done' || s.status==='error') {
       clearInterval(poll);
+      clearActiveImport(entity);
       if (s.status==='error') {
         setMsg(msgEl,'error','Import error: '+(s.error||'Unknown'));
       } else {
@@ -2455,6 +2626,60 @@ function pollImportJob(jobId, entity, totalRecords, fillEl, textEl, msgEl, progr
       setTimeout(()=>progressEl.classList.remove('active'),3000);
     }
   }, 1000);
+}
+
+function saveActiveImport(entity, jobId, total) {
+  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
+  jobs[entity] = { jobId, total, ts: Date.now() };
+  localStorage.setItem('activeImports', JSON.stringify(jobs));
+}
+function clearActiveImport(entity) {
+  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
+  delete jobs[entity];
+  localStorage.setItem('activeImports', JSON.stringify(jobs));
+}
+function resumeActiveImports() {
+  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
+  const cutoff = Date.now() - 30 * 60 * 1000;
+  for (const [entity, info] of Object.entries(jobs)) {
+    if (info.ts < cutoff) { clearActiveImport(entity); continue; }
+    const progressEl = document.getElementById(entity + '-import-progress');
+    if (!progressEl) continue;
+    progressEl.classList.add('active');
+    const fillEl = progressEl.querySelector('.import-progress-fill');
+    const textEl = progressEl.querySelector('.import-progress-text');
+    textEl.textContent = 'Reconnecting to import…';
+    const poll = setInterval(async () => {
+      const s = await api('/api/import-job/' + info.jobId);
+      if (s.error || !s.status) {
+        clearInterval(poll);
+        clearActiveImport(entity);
+        textEl.textContent = 'Import finished (or server restarted). Refresh to see data.';
+        setTimeout(() => progressEl.classList.remove('active'), 4000);
+        return;
+      }
+      const pct = s.total ? Math.round((s.processed / s.total) * 100) : 0;
+      fillEl.style.width = pct + '%';
+      textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
+      if (s.status === 'done' || s.status === 'error') {
+        clearInterval(poll);
+        clearActiveImport(entity);
+        fillEl.style.width = '100%';
+        if (s.status === 'error') {
+          textEl.textContent = 'Import error: ' + (s.error || 'Unknown');
+        } else {
+          let msg = `Done! ${s.inserted} added, ${s.updated} updated.`;
+          if (s.skipped > 0) msg += ` ${s.skipped} skipped.`;
+          if (s.stubs > 0) msg += ` ${s.stubs} stub author(s) created.`;
+          textEl.textContent = msg;
+        }
+        _allAuthors = null; _allBooks = null;
+        if (entity === 'authors') loadAuthors(); else if (entity === 'aes') loadAeList(); else loadBooks();
+        loadStats();
+        setTimeout(() => progressEl.classList.remove('active'), 4000);
+      }
+    }, 1500);
+  }
 }
 
 function downloadCSV(entity) {
