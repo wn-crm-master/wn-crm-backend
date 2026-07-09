@@ -730,7 +730,10 @@ function daysAgo(dateVal) {
 }
 
 function getForm2Step(row) {
-  if (!isBlankish(row.form2RecdDate)) return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
+  if (!isBlankish(row.form2RecdDate)) {
+    if (isTruthy(row.sentForReview) || !isBlankish(row.dateAddedForReview)) return { label: 'Awaiting Editorial Score', css: 'step-awaiting', alarm: 'pending' };
+    return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
+  }
   const fu2Days = daysAgo(row.form2FollowUp2Date);
   if (fu2Days >= 0) {
     if (fu2Days >= 4) return { label: 'Awaiting Form 2 Response or 50k Words', css: 'step-awaiting', alarm: 'pending' };
@@ -771,7 +774,10 @@ function getBookNextStep(row) {
     if (edScore===10 && !isNaN(wc) && wc>10000) {
       const pc = String(row.authorPreContract||'').trim().toLowerCase();
       if (pc && pc!=='no' && pc!=='false') {
-        if (!isNaN(wc) && wc>=38000) return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
+        if (!isNaN(wc) && wc>=38000) {
+          if (isTruthy(row.sentForReview) || !isBlankish(row.dateAddedForReview)) return { label: 'Awaiting Editorial Score', css: 'step-awaiting', alarm: 'pending' };
+          return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
+        }
         const form2 = getForm2Step(row);
         if (form2) return form2;
       }
