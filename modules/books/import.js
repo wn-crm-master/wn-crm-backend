@@ -10,19 +10,15 @@ function register(app, getDb, authMiddleware) {
       if (!Array.isArray(books) || books.length === 0)
         return res.status(400).json({ error: 'books array is required' });
 
-      // Auto-create stub author entries for any authorId not yet in authors collection
       const authorIds = [...new Set(books.map(b => b.authorId).filter(id => id && !isBlankOrError(id)))];
       let stubsCreated = 0;
-      for (const authorId of authorIds) {
-        const exists = await db.collection('authors').findOne({ uid: authorId });
-        if (!exists) {
-          await db.collection('authors').insertOne({
-            uid: authorId,
-            _stub: true,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          stubsCreated++;
+      if (authorIds.length) {
+        const existingAuthors = await db.collection('authors').find({ uid: { $in: authorIds } }, { projection: { uid: 1 } }).toArray();
+        const existingSet = new Set(existingAuthors.map(a => a.uid));
+        const stubs = authorIds.filter(id => !existingSet.has(id)).map(uid => ({ uid, _stub: true, createdAt: new Date(), updatedAt: new Date() }));
+        if (stubs.length) {
+          await db.collection('authors').insertMany(stubs, { ordered: false });
+          stubsCreated = stubs.length;
         }
       }
 
