@@ -1508,7 +1508,8 @@ function renderTable(entity) {
         tdClass += 'rollup-cell';
         tdContent = rawVal !== '' ? String(rawVal) : '0';
       } else if (ctype === 'checkbox') {
-        const checked = isTruthy(rawVal);
+        let checked = isTruthy(rawVal);
+        if (col.field === 'sentForReview' && !checked && row.dateAddedForReview && String(row.dateAddedForReview).trim()) checked = true;
         tdClass += 'checkbox-cell';
         tdClick = `onclick="toggleCheckbox('${entity}','${rowIdEsc}','${col.field}',${checked},this)"`;
         tdContent = checked ? '<span class="cb-check">✓</span>' : '<span class="cb-uncheck">✗</span>';
