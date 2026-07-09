@@ -1699,7 +1699,7 @@ function togglePin(entity, field) {
 }
 
 // ── Filter Dropdown ────────────────────────────────────────────────
-function openFD(event, entity, field, btn) {
+async function openFD(event, entity, field, btn) {
   event.stopPropagation();
   const dd = document.getElementById('filter-dropdown');
 
