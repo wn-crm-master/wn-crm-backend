@@ -47,10 +47,20 @@ function register(app, getDb, authMiddleware) {
     }
   });
 
+  const AUTHOR_FIELD_MAP = {
+    authorPreContract: 'preContractedTag',
+    authorPreContractCompany: 'preContractCompany',
+    authorAeEmail: 'aeEmail',
+  };
+
   app.get('/api/books/distinct/:field', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const values = await db.collection('books').distinct(req.params.field);
+      const field = req.params.field;
+      const authorField = AUTHOR_FIELD_MAP[field];
+      const values = authorField
+        ? await db.collection('authors').distinct(authorField)
+        : await db.collection('books').distinct(field);
       res.json({ values: values.map(v => v == null ? '' : String(v)).sort() });
     } catch (err) {
       res.status(500).json({ error: err.message });
