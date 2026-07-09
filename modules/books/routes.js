@@ -61,13 +61,24 @@ function register(app, getDb, authMiddleware) {
         { $project: { _author: 0 } },
         ...(lookupFilterConds.length ? [{ $match: { $and: lookupFilterConds } }] : []),
       ];
-      const countPipeline = [...pipeline, { $count: 'total' }];
       const dataPipeline = [...pipeline, { $skip: skip }, { $limit: parseInt(limit) }];
-      const [countResult, data] = await Promise.all([
-        db.collection('books').aggregate(countPipeline, { allowDiskUse: true }).toArray(),
-        db.collection('books').aggregate(dataPipeline, { allowDiskUse: true }).toArray()
-      ]);
-      const total = countResult[0]?.total || 0;
+      let total, data;
+      if (lookupFilterConds.length) {
+        const countPipeline = [...pipeline, { $count: 'total' }];
+        const [countResult, dataResult] = await Promise.all([
+          db.collection('books').aggregate(countPipeline, { allowDiskUse: true }).toArray(),
+          db.collection('books').aggregate(dataPipeline, { allowDiskUse: true }).toArray()
+        ]);
+        total = countResult[0]?.total || 0;
+        data = dataResult;
+      } else {
+        const [countResult, dataResult] = await Promise.all([
+          db.collection('books').countDocuments(query),
+          db.collection('books').aggregate(dataPipeline, { allowDiskUse: true }).toArray()
+        ]);
+        total = countResult;
+        data = dataResult;
+      }
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
     } catch (err) {
       res.status(500).json({ error: err.message });
