@@ -6,14 +6,19 @@ function register(app, getDb, authMiddleware) {
     authorAeEmail: 'aeEmail',
   };
 
+  // Case/whitespace-tolerant equality: bulk-imported CSV data often has
+  // inconsistent casing or stray whitespace, so exact $in matches can miss
+  // values that look identical in the filter dropdown.
   function buildFilterConditions(f) {
     const conditions = [];
     for (const [field, values] of Object.entries(f)) {
       if (!Array.isArray(values) || !values.length) continue;
       const hasBlank = values.includes('');
-      const nonBlank = values.filter(v => v !== '');
+      const nonBlank = values.filter(v => v !== '').map(v => String(v).trim().toLowerCase());
       const orConds = [];
-      if (nonBlank.length) orConds.push({ [field]: { $in: nonBlank } });
+      if (nonBlank.length) {
+        orConds.push({ $expr: { $in: [{ $toLower: { $trim: { input: { $toString: { $ifNull: ['$' + field, ''] } } } } }, nonBlank] } });
+      }
       if (hasBlank) orConds.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
       conditions.push(orConds.length === 1 ? orConds[0] : { $or: orConds });
     }
@@ -93,7 +98,13 @@ function register(app, getDb, authMiddleware) {
       const values = authorField
         ? await db.collection('authors').distinct(authorField)
         : await db.collection('books').distinct(field);
-      res.json({ values: values.map(v => v == null ? '' : String(v)).sort() });
+      const seen = new Map();
+      for (const v of values) {
+        const str = v == null ? '' : String(v).trim();
+        const key = str.toLowerCase();
+        if (!seen.has(key) || (seen.get(key) === '' && str !== '')) seen.set(key, str);
+      }
+      res.json({ values: [...seen.values()].sort() });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
