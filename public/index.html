@@ -1097,6 +1097,7 @@ const AE_COLS = [
   { field:'email',                  header:'AE Email ID',                                 width:220 },
   { field:'dateAdded',              header:'Date Added',                                  width:120, type:'date' },
   { field:'name',                   header:'AE Name',                                     width:160 },
+  { field:'uid',                    header:'AE UID',                                      width:140 },
   { field:'authorsReg',             header:'No. of Authors Reg.',                         width:170, type:'number' },
   { field:'firstAuthorRegDate',     header:'Reg. Date of First Author',                   width:200, type:'date' },
   { field:'latestAuthorRegDate',    header:'Reg. Date of Latest Author',                  width:200, type:'date' },
@@ -1115,6 +1116,7 @@ const AE_COLS = [
 const AE_IMPORT_COLS = [
   { field:'email', header:'AE Email ID', width:220 },
   { field:'name',  header:'AE Name',     width:160 },
+  { field:'uid',   header:'AE UID',      width:140 },
 ];
 
 // ── Earnings: AE ─────────────────────────────────────────────────
@@ -2357,6 +2359,7 @@ const BOOK_ALIASES = {
 const AE_ALIASES = {
   'ae email id':'email','ae email':'email','email id':'email','email':'email',
   'ae name':'name','name':'name',
+  'ae uid':'uid','uid':'uid',
 };
 
 // ── CSV raw parser (keeps original column names) ───────────────────

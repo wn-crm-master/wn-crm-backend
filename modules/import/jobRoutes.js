@@ -141,7 +141,7 @@ async function processAes(db, records, job) {
   for (const record of records) {
     const email = (record.email || '').trim().toLowerCase();
     if (!email || isBlankOrError(email)) { job.skipped++; continue; }
-    valid.push({ email, name: record.name || '' });
+    valid.push({ email, name: record.name || '', uid: record.uid || '' });
   }
   if (!valid.length) { job.processed = records.length; return; }
 
@@ -155,8 +155,13 @@ async function processAes(db, records, job) {
     job.inserted += newDocs.length;
   }
 
-  const updateOps = valid.filter(v => existingSet.has(v.email) && v.name && !isBlankOrError(v.name))
-    .map(v => ({ updateOne: { filter: { email: v.email }, update: { $set: { name: v.name, updatedAt: new Date() } } } }));
+  const updateOps = valid.filter(v => existingSet.has(v.email) && ((v.name && !isBlankOrError(v.name)) || (v.uid && !isBlankOrError(v.uid))))
+    .map(v => {
+      const set = { updatedAt: new Date() };
+      if (v.name && !isBlankOrError(v.name)) set.name = v.name;
+      if (v.uid && !isBlankOrError(v.uid)) set.uid = v.uid;
+      return { updateOne: { filter: { email: v.email }, update: { $set: set } } };
+    });
   if (updateOps.length) await db.collection('aes').bulkWrite(updateOps, { ordered: false });
   job.updated += valid.filter(v => existingSet.has(v.email)).length;
   job.processed = records.length;
