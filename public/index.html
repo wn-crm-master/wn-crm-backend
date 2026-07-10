@@ -2737,8 +2737,17 @@ async function downloadCSV(entity, btn) {
     let data;
     if (entity === 'authors' || entity === 'books') {
       const filterParam = buildFilterParam(entity);
-      const res = await api(`/api/${entity}?limit=500000${filterParam}`);
-      data = res.data || [];
+      const pageSize = 5000;
+      data = [];
+      let page = 1, pages = 1;
+      do {
+        if (triggerBtn) triggerBtn.textContent = `Preparing… (${data.length.toLocaleString()} loaded)`;
+        const res = await api(`/api/${entity}?limit=${pageSize}&page=${page}${filterParam}`);
+        if (res.error) { alert('Download failed: ' + res.error); return; }
+        data = data.concat(res.data || []);
+        pages = res.pages || 1;
+        page++;
+      } while (page <= pages);
     } else {
       const source = state[entity]?.sortedData || state[entity]?.data || [];
       data = filterRowsForDownload(entity, source);
