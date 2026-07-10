@@ -420,7 +420,7 @@
       <div class="tab-toolbar">
         <div class="title-row"><div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="authors-active-filters"></div></div>
         <div class="import-btns">
-          <button class="btn btn-download" onclick="downloadCSV('authors')">⬇ Download CSV</button>
+          <button class="btn btn-download" onclick="downloadCSV('authors',this)">⬇ Download CSV</button>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
           <button class="btn btn-mass-update" id="authors-mass-update" style="display:none" onclick="openMassUpdate('authors')">Mass Update</button>
@@ -438,7 +438,7 @@
       <div class="tab-toolbar">
         <div class="title-row"><div class="page-title">Books</div><div class="active-filters" id="books-active-filters"></div></div>
         <div class="import-btns">
-          <button class="btn btn-download" onclick="downloadCSV('books')">⬇ Download CSV</button>
+          <button class="btn btn-download" onclick="downloadCSV('books',this)">⬇ Download CSV</button>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
           <button class="btn btn-mass-update" id="books-mass-update" style="display:none" onclick="openMassUpdate('books')">Mass Update</button>
@@ -497,7 +497,7 @@
         <div class="tab-toolbar">
           <div class="title-row"><div class="page-title">AE List <span id="ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
           <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadCSV('aes')">⬇ Download CSV</button>
+            <button class="btn btn-download" onclick="downloadCSV('aes',this)">⬇ Download CSV</button>
             <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','aes')" /></label>
           </div>
         </div>
@@ -2722,21 +2722,42 @@ function resumeActiveImports() {
   }
 }
 
-function downloadCSV(entity) {
+function filterRowsForDownload(entity, rows) {
+  const activeFilters = Object.entries(state[entity].filter || {}).filter(([,v])=>v&&v.size>0);
+  if (!activeFilters.length) return rows;
+  return rows.filter(row => activeFilters.every(([f, vals]) => vals.has(getRowFilterVal(row, f))));
+}
+
+async function downloadCSV(entity, btn) {
   const cols = entity==='authors' ? AUTHOR_COLS : entity==='aes' ? AE_COLS : BOOK_COLS;
-  const data = state[entity]?.sortedData || state[entity]?.data || [];
-  if (!data.length) { alert('No data to download.'); return; }
-  const esc = v => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
-  const header = cols.map(c => esc(c.header)).join(',');
-  const rows = data.map(row => cols.map(c => esc(row[c.field] ?? '')).join(','));
-  const csv = [header, ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = entity + '_' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-  URL.revokeObjectURL(url);
+  const triggerBtn = btn || (window.event && window.event.target);
+  const origLabel = triggerBtn ? triggerBtn.textContent : null;
+  if (triggerBtn) { triggerBtn.disabled = true; triggerBtn.textContent = 'Preparing…'; }
+  try {
+    let data;
+    if (entity === 'authors' || entity === 'books') {
+      const filterParam = buildFilterParam(entity);
+      const res = await api(`/api/${entity}?limit=500000${filterParam}`);
+      data = res.data || [];
+    } else {
+      const source = state[entity]?.sortedData || state[entity]?.data || [];
+      data = filterRowsForDownload(entity, source);
+    }
+    if (!data.length) { alert('No data to download.'); return; }
+    const esc = v => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
+    const header = cols.map(c => esc(c.header)).join(',');
+    const rows = data.map(row => cols.map(c => esc(row[c.field] ?? '')).join(','));
+    const csv = [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = entity + '_' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  } finally {
+    if (triggerBtn) { triggerBtn.disabled = false; triggerBtn.textContent = origLabel; }
+  }
 }
 
 function setMsg(el,type,text){
