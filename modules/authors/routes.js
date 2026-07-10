@@ -1,6 +1,25 @@
 function register(app, getDb, authMiddleware) {
   const { triggerSync } = require('../rollupSync');
 
+  // Case/whitespace-tolerant equality: bulk-imported CSV data often has
+  // inconsistent casing or stray whitespace, so exact $in matches can miss
+  // values that look identical in the filter dropdown.
+  function buildFilterConditions(f) {
+    const conditions = [];
+    for (const [field, values] of Object.entries(f)) {
+      if (!Array.isArray(values) || !values.length) continue;
+      const hasBlank = values.includes('');
+      const nonBlank = values.filter(v => v !== '').map(v => String(v).trim().toLowerCase());
+      const orConds = [];
+      if (nonBlank.length) {
+        orConds.push({ $expr: { $in: [{ $toLower: { $trim: { input: { $toString: { $ifNull: ['$' + field, ''] } } } } }, nonBlank] } });
+      }
+      if (hasBlank) orConds.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
+      conditions.push(orConds.length === 1 ? orConds[0] : { $or: orConds });
+    }
+    return conditions;
+  }
+
   app.get('/api/authors', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
@@ -11,21 +30,14 @@ function register(app, getDb, authMiddleware) {
         { uid: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
+      let filterConds = [];
       if (filters) {
         try {
-          const f = JSON.parse(filters);
-          for (const [field, values] of Object.entries(f)) {
-            if (!Array.isArray(values) || !values.length) continue;
-            const hasBlank = values.includes('');
-            const nonBlank = values.filter(v => v !== '');
-            const conditions = [];
-            if (nonBlank.length) conditions.push({ [field]: { $in: nonBlank } });
-            if (hasBlank) conditions.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
-            if (conditions.length === 1) Object.assign(matchQuery, conditions[0]);
-            else matchQuery.$and = [...(matchQuery.$and || []), { $or: conditions }];
-          }
+          filterConds = buildFilterConditions(JSON.parse(filters));
         } catch (e) {}
       }
+      if (filterConds.length) matchQuery.$and = [...(matchQuery.$and || []), ...filterConds];
+
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const [total, data] = await Promise.all([
         db.collection('authors').countDocuments(matchQuery),
@@ -41,7 +53,13 @@ function register(app, getDb, authMiddleware) {
     try {
       const db = getDb();
       const values = await db.collection('authors').distinct(req.params.field, { uid: { $exists: true, $ne: '' } });
-      res.json({ values: values.map(v => v == null ? '' : String(v)).sort() });
+      const seen = new Map();
+      for (const v of values) {
+        const str = v == null ? '' : String(v).trim();
+        const key = str.toLowerCase();
+        if (!seen.has(key) || (seen.get(key) === '' && str !== '')) seen.set(key, str);
+      }
+      res.json({ values: [...seen.values()].sort() });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
