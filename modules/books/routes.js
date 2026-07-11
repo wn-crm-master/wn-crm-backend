@@ -1,10 +1,5 @@
 function register(app, getDb, authMiddleware) {
   const { triggerSync } = require('../rollupSync');
-  const AUTHOR_FIELD_MAP = {
-    authorPreContract: 'preContractedTag',
-    authorPreContractCompany: 'preContractCompany',
-    authorAeEmail: 'aeEmail',
-  };
 
   // Case/whitespace-tolerant equality: bulk-imported CSV data often has
   // inconsistent casing or stray whitespace, so exact $in matches can miss
@@ -25,65 +20,37 @@ function register(app, getDb, authMiddleware) {
     return conditions;
   }
 
+  function buildBooksQuery(req) {
+    const { search, genre, authorId, filters } = req.query;
+    const query = {};
+    if (search) query.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { authorName: { $regex: search, $options: 'i' } }
+    ];
+    if (genre) query.genre = { $regex: genre, $options: 'i' };
+    if (authorId) query.authorId = authorId;
+    if (filters) {
+      try {
+        const conds = buildFilterConditions(JSON.parse(filters));
+        if (conds.length) query.$and = [...(query.$and || []), ...conds];
+      } catch (e) {}
+    }
+    return query;
+  }
+
+  // Author fields (authorPreContract, authorPreContractCompany, authorAeEmail)
+  // are denormalized onto book documents by rollupSync's syncBookAuthorFields,
+  // so no $lookup join is needed here — a plain find() is fast even at 50K+ rows.
   app.get('/api/books', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const { search, genre, authorId, page = 1, limit = 100, filters } = req.query;
-      const query = {};
-      if (search) query.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { authorName: { $regex: search, $options: 'i' } }
-      ];
-      if (genre) query.genre = { $regex: genre, $options: 'i' };
-      if (authorId) query.authorId = authorId;
-
-      let bookFilterConds = [];
-      let lookupFilterConds = [];
-      if (filters) {
-        try {
-          const f = JSON.parse(filters);
-          const bookFilters = {};
-          const lookupFilters = {};
-          for (const [field, values] of Object.entries(f)) {
-            if (AUTHOR_FIELD_MAP[field]) lookupFilters[field] = values;
-            else bookFilters[field] = values;
-          }
-          bookFilterConds = buildFilterConditions(bookFilters);
-          lookupFilterConds = buildFilterConditions(lookupFilters);
-        } catch (e) {}
-      }
-      if (bookFilterConds.length) query.$and = [...(query.$and || []), ...bookFilterConds];
-
+      const { page = 1, limit = 100 } = req.query;
+      const query = buildBooksQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      const pipeline = [
-        ...(Object.keys(query).length ? [{ $match: query }] : []),
-        { $lookup: { from: 'authors', localField: 'authorId', foreignField: 'uid', as: '_author' } },
-        { $addFields: {
-          authorPreContract: { $ifNull: [{ $arrayElemAt: ['$_author.preContractedTag', 0] }, ''] },
-          authorPreContractCompany: { $ifNull: [{ $arrayElemAt: ['$_author.preContractCompany', 0] }, ''] },
-          authorAeEmail: { $ifNull: [{ $arrayElemAt: ['$_author.aeEmail', 0] }, ''] }
-        } },
-        { $project: { _author: 0 } },
-        ...(lookupFilterConds.length ? [{ $match: { $and: lookupFilterConds } }] : []),
-      ];
-      const dataPipeline = [...pipeline, { $skip: skip }, { $limit: parseInt(limit) }];
-      let total, data;
-      if (lookupFilterConds.length) {
-        const countPipeline = [...pipeline, { $count: 'total' }];
-        const [countResult, dataResult] = await Promise.all([
-          db.collection('books').aggregate(countPipeline, { allowDiskUse: true }).toArray(),
-          db.collection('books').aggregate(dataPipeline, { allowDiskUse: true }).toArray()
-        ]);
-        total = countResult[0]?.total || 0;
-        data = dataResult;
-      } else {
-        const [countResult, dataResult] = await Promise.all([
-          db.collection('books').countDocuments(query),
-          db.collection('books').aggregate(dataPipeline, { allowDiskUse: true }).toArray()
-        ]);
-        total = countResult;
-        data = dataResult;
-      }
+      const [total, data] = await Promise.all([
+        db.collection('books').countDocuments(query),
+        db.collection('books').find(query).skip(skip).limit(parseInt(limit)).toArray()
+      ]);
       res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -93,11 +60,7 @@ function register(app, getDb, authMiddleware) {
   app.get('/api/books/distinct/:field', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const field = req.params.field;
-      const authorField = AUTHOR_FIELD_MAP[field];
-      const values = authorField
-        ? await db.collection('authors').distinct(authorField)
-        : await db.collection('books').distinct(field);
+      const values = await db.collection('books').distinct(req.params.field);
       const seen = new Map();
       for (const v of values) {
         const str = v == null ? '' : String(v).trim();
@@ -107,6 +70,39 @@ function register(app, getDb, authMiddleware) {
       res.json({ values: [...seen.values()].sort() });
     } catch (err) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Streams the full (filtered) result set directly as CSV, without ever
+  // materializing the whole dataset as JSON — avoids the timeout/memory
+  // issues of paginated JSON fetches for 50K+ row exports.
+  app.get('/api/books/export/csv', authMiddleware, async (req, res) => {
+    try {
+      const db = getDb();
+      const query = buildBooksQuery(req);
+      let cols;
+      try { cols = JSON.parse(req.query.cols); } catch (e) { cols = null; }
+      if (!Array.isArray(cols) || !cols.length) return res.status(400).json({ error: 'cols is required' });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="books_${new Date().toISOString().slice(0,10)}.csv"`);
+
+      const esc = v => {
+        const s = String(v ?? '');
+        return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      res.write(cols.map(c => esc(c.header)).join(',') + '\n');
+
+      const projection = {};
+      cols.forEach(c => { projection[c.field] = 1; });
+      const cursor = db.collection('books').find(query, { projection });
+      for await (const row of cursor) {
+        res.write(cols.map(c => esc(row[c.field] ?? '')).join(',') + '\n');
+      }
+      res.end();
+    } catch (err) {
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+      else res.end();
     }
   });
 
