@@ -2734,24 +2734,32 @@ async function downloadCSV(entity, btn) {
   const origLabel = triggerBtn ? triggerBtn.textContent : null;
   if (triggerBtn) { triggerBtn.disabled = true; triggerBtn.textContent = 'Preparing…'; }
   try {
-    let data;
     if (entity === 'authors' || entity === 'books') {
+      // Server streams the CSV directly from a MongoDB cursor — no JSON
+      // round-trip, no client-side row-by-row string building.
       const filterParam = buildFilterParam(entity);
-      const pageSize = 5000;
-      data = [];
-      let page = 1, pages = 1;
-      do {
-        if (triggerBtn) triggerBtn.textContent = `Preparing… (${data.length.toLocaleString()} loaded)`;
-        const res = await api(`/api/${entity}?limit=${pageSize}&page=${page}${filterParam}`);
-        if (res.error) { alert('Download failed: ' + res.error); return; }
-        data = data.concat(res.data || []);
-        pages = res.pages || 1;
-        page++;
-      } while (page <= pages);
-    } else {
-      const source = state[entity]?.sortedData || state[entity]?.data || [];
-      data = filterRowsForDownload(entity, source);
+      const colsParam = '&cols=' + encodeURIComponent(JSON.stringify(cols.map(c => ({ field: c.field, header: c.header }))));
+      const resp = await fetch(BASE + `/api/${entity}/export/csv?${filterParam.replace(/^&/, '')}${colsParam}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!resp.ok) {
+        let msg = 'Server error (' + resp.status + ')';
+        try { const j = await resp.json(); if (j.error) msg = j.error; } catch (e) {}
+        alert('Download failed: ' + msg);
+        return;
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = entity + '_' + new Date().toISOString().slice(0,10) + '.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
     }
+
+    const source = state[entity]?.sortedData || state[entity]?.data || [];
+    const data = filterRowsForDownload(entity, source);
     if (!data.length) { alert('No data to download.'); return; }
     const esc = v => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
     const header = cols.map(c => esc(c.header)).join(',');

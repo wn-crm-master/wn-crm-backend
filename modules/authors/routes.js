@@ -20,24 +20,28 @@ function register(app, getDb, authMiddleware) {
     return conditions;
   }
 
+  function buildAuthorsQuery(req) {
+    const { search, filters } = req.query;
+    const matchQuery = { uid: { $exists: true, $ne: '' } };
+    if (search) matchQuery.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { uid: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } }
+    ];
+    if (filters) {
+      try {
+        const conds = buildFilterConditions(JSON.parse(filters));
+        if (conds.length) matchQuery.$and = [...(matchQuery.$and || []), ...conds];
+      } catch (e) {}
+    }
+    return matchQuery;
+  }
+
   app.get('/api/authors', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const { search, page = 1, limit = 100, filters } = req.query;
-      const matchQuery = { uid: { $exists: true, $ne: '' } };
-      if (search) matchQuery.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { uid: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-      let filterConds = [];
-      if (filters) {
-        try {
-          filterConds = buildFilterConditions(JSON.parse(filters));
-        } catch (e) {}
-      }
-      if (filterConds.length) matchQuery.$and = [...(matchQuery.$and || []), ...filterConds];
-
+      const { page = 1, limit = 100 } = req.query;
+      const matchQuery = buildAuthorsQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const [total, data] = await Promise.all([
         db.collection('authors').countDocuments(matchQuery),
@@ -62,6 +66,38 @@ function register(app, getDb, authMiddleware) {
       res.json({ values: [...seen.values()].sort() });
     } catch (err) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Streams the full (filtered) result set directly as CSV, without ever
+  // materializing the whole dataset as JSON.
+  app.get('/api/authors/export/csv', authMiddleware, async (req, res) => {
+    try {
+      const db = getDb();
+      const matchQuery = buildAuthorsQuery(req);
+      let cols;
+      try { cols = JSON.parse(req.query.cols); } catch (e) { cols = null; }
+      if (!Array.isArray(cols) || !cols.length) return res.status(400).json({ error: 'cols is required' });
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="authors_${new Date().toISOString().slice(0,10)}.csv"`);
+
+      const esc = v => {
+        const s = String(v ?? '');
+        return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      res.write(cols.map(c => esc(c.header)).join(',') + '\n');
+
+      const projection = {};
+      cols.forEach(c => { projection[c.field] = 1; });
+      const cursor = db.collection('authors').find(matchQuery, { projection });
+      for await (const row of cursor) {
+        res.write(cols.map(c => esc(row[c.field] ?? '')).join(',') + '\n');
+      }
+      res.end();
+    } catch (err) {
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+      else res.end();
     }
   });
 

@@ -88,12 +88,47 @@ async function syncRollups(db) {
     if (results.length) await bulk.execute();
     console.log(`Rollup sync complete: ${results.length} authors updated`);
 
-    // ── AE rollups ──────────────────────────────────────────────────
-    await syncAeRollups(db, results);
+    // ── AE rollups & denormalized book author fields ─────────────────
+    await Promise.all([
+      syncAeRollups(db, results),
+      syncBookAuthorFields(db)
+    ]);
   } catch (err) {
     console.error('Rollup sync error:', err);
   } finally {
     syncing = false;
+  }
+}
+
+// Denormalize author fields (pre-contract tag/company, AE email) onto book
+// documents so book queries/exports never need a $lookup join.
+async function syncBookAuthorFields(db) {
+  try {
+    const authors = await db.collection('authors').find({}, {
+      projection: { uid: 1, preContractedTag: 1, preContractCompany: 1, aeEmail: 1 }
+    }).toArray();
+    const authorMap = {};
+    for (const a of authors) authorMap[a.uid] = a;
+
+    const books = await db.collection('books').find(
+      { authorId: { $exists: true, $ne: '' } },
+      { projection: { id: 1, authorId: 1 } }
+    ).toArray();
+    if (!books.length) return;
+
+    const bulk = db.collection('books').initializeUnorderedBulkOp();
+    for (const b of books) {
+      const a = authorMap[b.authorId] || {};
+      bulk.find({ id: b.id }).updateOne({ $set: {
+        authorPreContract: a.preContractedTag || '',
+        authorPreContractCompany: a.preContractCompany || '',
+        authorAeEmail: a.aeEmail || ''
+      }});
+    }
+    await bulk.execute();
+    console.log(`Book author-field sync complete: ${books.length} books updated`);
+  } catch (err) {
+    console.error('Book author-field sync error:', err);
   }
 }
 
