@@ -91,15 +91,14 @@ function register(app, getDb, authMiddleware) {
         const s = String(v ?? '');
         return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
       };
-      res.write(cols.map(c => esc(c.header)).join(',') + '\n');
-
       const projection = {};
       cols.forEach(c => { projection[c.field] = 1; });
-      const cursor = db.collection('books').find(query, { projection });
-      for await (const row of cursor) {
-        res.write(cols.map(c => esc(row[c.field] ?? '')).join(',') + '\n');
+      const rows = await db.collection('books').find(query, { projection }).toArray();
+      const lines = [cols.map(c => esc(c.header)).join(',')];
+      for (const row of rows) {
+        lines.push(cols.map(c => esc(row[c.field] ?? '')).join(','));
       }
-      res.end();
+      res.end(lines.join('\n') + '\n');
     } catch (err) {
       if (!res.headersSent) res.status(500).json({ error: err.message });
       else res.end();
