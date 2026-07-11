@@ -86,14 +86,17 @@ function register(app, getDb, authMiddleware) {
         const s = String(v ?? '');
         return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g, '""') + '"' : s;
       };
-      const projection = {};
+      const projection = { _id: 0 };
       cols.forEach(c => { projection[c.field] = 1; });
-      const rows = await db.collection('authors').find(matchQuery, { projection }).toArray();
-      const lines = [cols.map(c => esc(c.header)).join(',')];
-      for (const row of rows) {
-        lines.push(cols.map(c => esc(row[c.field] ?? '')).join(','));
+      const cursor = db.collection('authors').find(matchQuery, { projection, batchSize: 5000 });
+      res.write(cols.map(c => esc(c.header)).join(',') + '\n');
+      let buf = [];
+      for await (const row of cursor) {
+        buf.push(cols.map(c => esc(row[c.field] ?? '')).join(','));
+        if (buf.length >= 500) { res.write(buf.join('\n') + '\n'); buf = []; }
       }
-      res.end(lines.join('\n') + '\n');
+      if (buf.length) res.write(buf.join('\n') + '\n');
+      res.end();
     } catch (err) {
       if (!res.headersSent) res.status(500).json({ error: err.message });
       else res.end();
