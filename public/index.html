@@ -627,9 +627,9 @@ const AUTHOR_COLS = [
 ];
 const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
-  { field:'_createMonth',         header:'Create Month',         width:100, noControls:true },
-  { field:'_stage',               header:'Stage',                width:220, noControls:true },
-  { field:'_daysInStage',         header:'Days in Stage',        width:100, noControls:true },
+  { field:'_createMonth',         header:'Create Month',         width:100 },
+  { field:'_stage',               header:'Stage',                width:220 },
+  { field:'_daysInStage',         header:'Days in Stage',        width:100 },
   { field:'id',                   header:'Book ID',              width:140 },
   { field:'authorId',             header:'Author ID',            width:160 },
   { field:'authorPreContract',   header:'Author Pre-Contract',   width:180, type:'text', readOnly:true },
@@ -1430,7 +1430,8 @@ function renderTable(entity) {
   let sorted = [...s.data];
   if (s.sort.field) {
     const sf=s.sort.field, dir=s.sort.dir;
-    sorted.sort((a,b)=>{ const av=a[sf]??'',bv=b[sf]??''; const ns=String(av).replace(/,/g,''),ms=String(bv).replace(/,/g,''); const n=Number(ns),m=Number(ms); const cmp=(ns!==''&&ms!==''&&!isNaN(n)&&!isNaN(m))?n-m:String(av).localeCompare(String(bv),undefined,{numeric:true}); return dir==='asc'?cmp:-cmp; });
+    const isVirtual = sf.startsWith('_');
+    sorted.sort((a,b)=>{ const av=isVirtual?getRowFilterVal(a,sf):(a[sf]??''),bv=isVirtual?getRowFilterVal(b,sf):(b[sf]??''); const ns=String(av).replace(/,/g,''),ms=String(bv).replace(/,/g,''); const n=Number(ns),m=Number(ms); const cmp=(ns!==''&&ms!==''&&!isNaN(n)&&!isNaN(m))?n-m:String(av).localeCompare(String(bv),undefined,{numeric:true}); return dir==='asc'?cmp:-cmp; });
   }
   s.sortedData = sorted;
 
@@ -1818,6 +1819,8 @@ async function openFD(event, entity, field, btn) {
     dataVals = new Set(s.data.map(r => getBookStage(r).stage));
   } else if (field === '_createMonth') {
     dataVals = new Set(s.data.map(r => formatCreateMonth(r)));
+  } else if (field === '_daysInStage') {
+    dataVals = new Set(s.data.map(r => getRowFilterVal(r, '_daysInStage')));
   } else {
     dataVals = new Set(s.data.map(r => String(r[field]??'')));
   }
