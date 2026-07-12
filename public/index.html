@@ -126,6 +126,9 @@
     td.next-step-cell, th.next-step-cell { position: sticky; right: 0; z-index: 5; background: #f5e0e0; box-shadow: -2px 0 5px rgba(0,0,0,0.06); min-width: 180px; width: 180px; }
     th.next-step-cell { z-index: 22; background: #fdf2f2; }
     tfoot td.next-step-cell { background: #f5e0e0; }
+    td.days-in-step-cell, th.days-in-step-cell { position: sticky; right: -180px; z-index: 5; background: #f5e0e0; box-shadow: -2px 0 5px rgba(0,0,0,0.06); min-width: 80px; width: 80px; text-align: center; font-size: 0.82rem; font-weight: 600; }
+    th.days-in-step-cell { z-index: 22; background: #fdf2f2; }
+    tfoot td.days-in-step-cell { background: #f5e0e0; }
     .next-step-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
     .step-awaiting { background: #fff3e0; color: #e65100; }
     .step-done { background: #e8f5e9; color: #2e7d32; }
@@ -740,64 +743,77 @@ function daysAgo(dateVal) {
   return Math.floor((new Date() - d) / (1000*60*60*24));
 }
 
-function getForm2Step(row) {
+function getForm2Step(row, sinceField) {
   if (!isBlankish(row.form2RecdDate)) {
-    if (isTruthy(row.sentForReview) || !isBlankish(row.dateAddedForReview)) return { label: 'Awaiting Editorial Score', css: 'step-awaiting', alarm: 'pending' };
-    return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
+    if (isTruthy(row.sentForReview) || !isBlankish(row.dateAddedForReview)) return { label: 'Awaiting Editorial Score', css: 'step-awaiting', alarm: 'pending', sinceDate: row.dateAddedForReview || row.form2RecdDate };
+    return { label: 'Send for Review', css: 'step-action', alarm: 'pending', sinceDate: row.form2RecdDate };
   }
   const fu2Days = daysAgo(row.form2FollowUp2Date);
   if (fu2Days >= 0) {
-    if (fu2Days >= 4) return { label: 'Awaiting Form 2 Response or 50k Words', css: 'step-awaiting', alarm: 'pending' };
-    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
+    if (fu2Days >= 4) return { label: 'Awaiting Form 2 Response or 50k Words', css: 'step-awaiting', alarm: 'pending', sinceDate: row.form2FollowUp2Date };
+    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending', sinceDate: row.form2FollowUp2Date };
   }
   const fu1Days = daysAgo(row.form2FollowUp1Date);
   if (fu1Days >= 0) {
-    if (fu1Days >= 3) return { label: 'Send Form 2 Follow Up 2', css: 'step-action', alarm: 'urgent' };
-    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
+    if (fu1Days >= 3) return { label: 'Send Form 2 Follow Up 2', css: 'step-action', alarm: 'urgent', sinceDate: row.form2FollowUp1Date };
+    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending', sinceDate: row.form2FollowUp1Date };
   }
   const sentDays = daysAgo(row.form2SentDate);
   if (sentDays >= 0) {
-    if (sentDays >= 2) return { label: 'Send Form 2 Follow Up 1', css: 'step-action', alarm: 'urgent' };
-    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
+    if (sentDays >= 2) return { label: 'Send Form 2 Follow Up 1', css: 'step-action', alarm: 'urgent', sinceDate: row.form2SentDate };
+    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending', sinceDate: row.form2SentDate };
   }
-  return { label: 'Send Form 2', css: 'step-action', alarm: 'pending' };
+  return { label: 'Send Form 2', css: 'step-action', alarm: 'pending', sinceDate: sinceField || row.moderationPassedDate };
 }
 
 function getBookNextStep(row) {
   const bookStatus = String(row.status||'').trim().toLowerCase();
   if (bookStatus && bookStatus !== 'approved' && bookStatus !== 'published' && bookStatus !== 'draft') {
-    return { label: 'Dead — Book ' + (row.status||''), css: 'step-dead', alarm: 'dead' };
+    return { label: 'Dead — Book ' + (row.status||''), css: 'step-dead', alarm: 'dead', sinceDate: null };
   }
   const showStatus = String(row.showStatus||'').trim().toLowerCase();
   if (showStatus && showStatus !== 'active' && showStatus !== 'published') {
-    return { label: 'Dead — Show ' + (row.showStatus||''), css: 'step-dead', alarm: 'dead' };
+    return { label: 'Dead — Show ' + (row.showStatus||''), css: 'step-dead', alarm: 'dead', sinceDate: null };
   }
   const ppv = String(row.ppvTag||'').trim().toLowerCase();
   if (ppv === 'bad' || ppv === 'average') {
-    return { label: 'Dead — PPV ' + (row.ppvTag||''), css: 'step-dead', alarm: 'dead' };
+    return { label: 'Check Retention — PPV ' + (row.ppvTag||''), css: 'step-action', alarm: 'urgent', sinceDate: row.ppvTagDate };
   }
-  if (!isChp1Published(row)) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
-  if (!isTruthy(row.words10kCompleted)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
-  const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
-  if (['passed','moderation passed','moderation_passed'].includes(modStatus)) {
-    const edScore = Number(row.editorScore);
+
+  const pc = String(row.authorPreContract||'').trim().toLowerCase();
+  const isFlowA = pc && pc!=='no' && pc!=='false';
+
+  if (!isChp1Published(row)) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending', sinceDate: row.createDate };
+  if (isBlankish(row.words10kDate)) {
     const wc = typeof row.pubWC==='number'?row.pubWC:parseInt(String(row.pubWC||'').replace(/,/g,''),10);
-    if (edScore===10 && !isNaN(wc) && wc>10000) {
-      const pc = String(row.authorPreContract||'').trim().toLowerCase();
-      if (pc && pc!=='no' && pc!=='false') {
-        if (!isNaN(wc) && wc>=38000) {
-          if (isTruthy(row.sentForReview) || !isBlankish(row.dateAddedForReview)) return { label: 'Awaiting Editorial Score', css: 'step-awaiting', alarm: 'pending' };
-          return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
-        }
-        const form2 = getForm2Step(row);
-        if (form2) return form2;
-      }
-      return { label: 'Awaiting 50k Words', css: 'step-awaiting', alarm: 'pending' };
-    }
-    return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
+    if (isNaN(wc) || wc < 10000) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending', sinceDate: row.chp1PublishedDate };
   }
-  if (['failed','moderation failed','moderation_failed'].includes(modStatus)) return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent' };
-  return { label: 'Awaiting Moderation', css: 'step-awaiting', alarm: 'pending' };
+  const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
+  if (['failed','moderation failed','moderation_failed'].includes(modStatus)) return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent', sinceDate: row.moderationPassedDate || row.words10kDate };
+  if (!['passed','moderation passed','moderation_passed'].includes(modStatus)) return { label: 'Awaiting Moderation', css: 'step-awaiting', alarm: 'pending', sinceDate: row.words10kDate };
+
+  const edScore = Number(row.editorScore);
+  const wc = typeof row.pubWC==='number'?row.pubWC:parseInt(String(row.pubWC||'').replace(/,/g,''),10);
+
+  if (!isNaN(wc) && wc < 10000) return { label: 'Mod Passed — WC < 10k', css: 'step-failed', alarm: 'urgent', sinceDate: row.moderationPassedDate };
+  if (edScore !== 10) return { label: 'Editor Score ≠ 10 — Check Required', css: 'step-failed', alarm: 'urgent', sinceDate: row.moderationPassedDate };
+
+  if (edScore === 10 && !isNaN(wc) && wc > 10000) {
+    if (isFlowA) {
+      const llm1hr = String(row.llmScore1hr||'').trim();
+      if (!llm1hr) return { label: 'Raise for 1hr LLM', css: 'step-action', alarm: 'pending', sinceDate: row.moderationPassedDate };
+      if (!isNaN(wc) && wc >= 38000) {
+        if (isTruthy(row.sentForReview) || !isBlankish(row.dateAddedForReview)) return { label: 'Awaiting Editorial Score', css: 'step-awaiting', alarm: 'pending', sinceDate: row.dateAddedForReview };
+        return { label: 'Send for Review', css: 'step-action', alarm: 'pending', sinceDate: row.moderationPassedDate };
+      }
+      const form2 = getForm2Step(row, row.moderationPassedDate);
+      if (form2) return form2;
+      return { label: 'Awaiting 50k Words', css: 'step-awaiting', alarm: 'pending', sinceDate: row.moderationPassedDate };
+    } else {
+      return { label: 'Awaiting 50k Words', css: 'step-awaiting', alarm: 'pending', sinceDate: row.moderationPassedDate };
+    }
+  }
+  return { label: 'Mod Passed', css: 'step-done', alarm: null, sinceDate: row.moderationPassedDate };
 }
 
 function formatNumber(val) {
@@ -1459,6 +1475,7 @@ function renderTable(entity) {
     const nsHasFilter = nsFilter.size > 0;
     const nsLabel = nsHasFilter ? nsFilter.size+' selected' : 'All';
     html += `<th class="next-step-cell ${nsHasFilter?'has-active-filter':''}"><div class="th-inner"><div class="th-top"><span class="th-label">Next Step</span></div><div class="th-filter"><button class="filter-btn ${nsHasFilter?'has-filter':''}" id="fbtn-${entity}-_nextStep" onclick="openFD(event,'${entity}','_nextStep',this)"><span class="filter-btn-text">${nsLabel}</span><span class="filter-btn-arrow">▾</span></button></div></div></th>`;
+    html += '<th class="days-in-step-cell"><div class="th-inner"><div class="th-top"><span class="th-label">Days in Step</span></div></div></th>';
   }
   html += '</tr></thead><tbody>';
 
@@ -1567,6 +1584,8 @@ function renderTable(entity) {
       } else {
         html += `<td class="next-step-cell"><span class="next-step-tag ${step.css}">${step.label}</span></td>`;
       }
+      const daysIn = step.sinceDate ? daysAgo(step.sinceDate) : -1;
+      html += `<td class="days-in-step-cell">${daysIn >= 0 ? daysIn + 'd' : '—'}</td>`;
     }
     html += '</tr>';
   });
@@ -1594,7 +1613,7 @@ function renderTable(entity) {
     }
   }
   if (!isAeEntity) html += '<td class="del-cell"></td>';
-  if (entity==='books') html += '<td class="next-step-cell"></td>';
+  if (entity==='books') { html += '<td class="next-step-cell"></td>'; html += '<td class="days-in-step-cell"></td>'; }
   html += '</tr></tfoot>';
 
   html += '</table>';
