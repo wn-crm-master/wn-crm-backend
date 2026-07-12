@@ -1463,7 +1463,7 @@ function renderTable(entity) {
     const critLabel = critHasFilter ? critFilter.size+' sel' : 'All';
     html += `<th class="crit-cell">
       <div class="th-inner">
-        <div class="th-top"><span class="th-label">Crit.</span></div>
+        <div class="th-top"><span class="th-label">IMP</span></div>
         <div class="th-filter">
           <button class="filter-btn ${critHasFilter?'has-filter':''}" id="fbtn-${entity}-_criticality" onclick="openFD(event,'${entity}','_criticality',this)">
             <span class="filter-btn-text">${critLabel}</span>
@@ -1477,7 +1477,7 @@ function renderTable(entity) {
     const agingLabel = agingHasFilter ? agingFilter.size+' sel' : 'All';
     html += `<th class="aging-cell">
       <div class="th-inner">
-        <div class="th-top"><span class="th-label">Aging</span></div>
+        <div class="th-top"><span class="th-label">URG</span></div>
         <div class="th-filter">
           <button class="filter-btn ${agingHasFilter?'has-filter':''}" id="fbtn-${entity}-_aging" onclick="openFD(event,'${entity}','_aging',this)">
             <span class="filter-btn-text">${agingLabel}</span>
@@ -1704,7 +1704,7 @@ function renderFilterTags(entity) {
   let html = '';
   activeFilters.forEach(([field, vals]) => {
     const col = cols.find(c=>c.field===field);
-    const label = field==='_nextStep'?'Next Step':field==='_criticality'?'Criticality':field==='_aging'?'Aging':field==='_createMonth'?'Create Month':field==='_stage'?'Stage':col ? col.header : field;
+    const label = field==='_nextStep'?'Next Step':field==='_criticality'?'IMP':field==='_aging'?'URG':field==='_createMonth'?'Create Month':field==='_stage'?'Stage':col ? col.header : field;
     const valArr = [...vals];
     const display = valArr.length <= 2
       ? valArr.map(v=>v||'(blank)').join(', ')
