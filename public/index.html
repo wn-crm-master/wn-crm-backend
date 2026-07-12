@@ -123,26 +123,21 @@
     tfoot td.sel-cell { background: #f5e0e0; }
 
     /* Next Step column (books only) */
-    td.next-step-cell, th.next-step-cell { position: sticky; right: 0; z-index: 5; background: #f5e0e0; box-shadow: -2px 0 5px rgba(0,0,0,0.06); min-width: 180px; width: 180px; }
-    th.next-step-cell { z-index: 22; background: #fdf2f2; }
-    tfoot td.next-step-cell { background: #f5e0e0; }
-    .next-step-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
-    .step-awaiting { background: #fff3e0; color: #e65100; }
-    .step-done { background: #e8f5e9; color: #2e7d32; }
-    .step-failed { background: #fdecea; color: #c62828; }
-    .step-action { background: #e3f2fd; color: #1565c0; }
-    .btn-send-form2 { background: #c0272d; color: #fff; border: none; border-radius: 14px; padding: 5px 16px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
-    .btn-send-form2:hover { background: #a32126; }
-    .step-dead { background: #f5f5f5; color: #9e9e9e; }
+    .stage-tag { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
 
     /* Alarm column (books only) */
-    td.alarm-cell, th.alarm-cell { text-align: center; width: 44px; min-width: 44px; position: sticky; left: 36px; z-index: 3; background: #f5e0e0; }
-    th.alarm-cell { background: #fdf2f2; z-index: 4; }
+    td.crit-cell, th.crit-cell { text-align: center; width: 50px; min-width: 50px; position: sticky; left: 36px; z-index: 3; background: #f5e0e0; font-size: 0.75rem; font-weight: 700; }
+    th.crit-cell { background: #fdf2f2; z-index: 4; }
+    td.aging-cell, th.aging-cell { text-align: center; width: 50px; min-width: 50px; position: sticky; left: 86px; z-index: 3; background: #f5e0e0; font-size: 0.75rem; font-weight: 700; }
+    th.aging-cell { background: #fdf2f2; z-index: 4; }
+    .risk-high { color: #fff; background: #d32f2f !important; border-radius: 4px; padding: 2px 6px; }
+    .risk-medium { color: #000; background: #fbc02d !important; border-radius: 4px; padding: 2px 6px; }
+    .risk-low { color: #fff; background: #388e3c !important; border-radius: 4px; padding: 2px 6px; }
     .alarm-icon { font-size: 0.95rem; cursor: default; }
     .alarm-urgent { color: #e74c3c; }
     .alarm-pending { color: #f39c12; }
     .alarm-none { color: #d5d5d5; }
-    tr.row-selected td.alarm-cell { background: #f5dada !important; }
+    tr.row-selected td.crit-cell, tr.row-selected td.aging-cell { background: #f5dada !important; }
 
     .th-inner { display: flex; flex-direction: column; }
     .th-top { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; }
@@ -631,6 +626,9 @@ const AUTHOR_COLS = [
 ];
 const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
+  { field:'_createMonth',         header:'Create Month',         width:100, noControls:true },
+  { field:'_stage',               header:'Stage',                width:220, noControls:true },
+  { field:'_daysInStage',         header:'Days in Stage',        width:100, noControls:true },
   { field:'id',                   header:'Book ID',              width:140 },
   { field:'authorId',             header:'Author ID',            width:160 },
   { field:'authorPreContract',   header:'Author Pre-Contract',   width:180, type:'text', readOnly:true },
@@ -653,8 +651,10 @@ const BOOK_COLS = [
   { field:'moderationStatus',     header:'Moderation Status',    width:150, type:'dropdown', options:['','Passed','Failed'] },
   { field:'moderationPassedDate', header:'Mod Check Date',      width:150, type:'date' },
   { field:'editorScore',          header:'Book Editor Score',    width:130, type:'number' },
+  { field:'llmSentDate1hr',       header:'1hr LLM Sent Date',    width:160, type:'date' },
+  { field:'llmRecdDate1hr',       header:'1hr LLM Recd Date',    width:160, type:'date' },
   { field:'llmScore1hr',          header:'1hr LLM Score',        width:120, type:'decimal' },
-  { field:'llmDecision1hr',       header:'1hr LLM Decision',     width:150, type:'text' },
+  { field:'llmDecision1hr',       header:'1hr LLM Decision',     width:150, type:'dropdown', options:['','Pass','Reject'] },
   { field:'words50kCompleted',    header:'50k Words Completed',  width:150, type:'checkbox' },
   { field:'words50kDate',         header:'50k Words Date',       width:140, type:'date' },
   { field:'llmScore5hr',          header:'5hr LLM Score',        width:120, type:'decimal' },
@@ -685,6 +685,10 @@ const BOOK_COLS = [
   { field:'ppvTag',               header:'PPV Current State',    width:160, type:'dropdown', options:['','Average','Bad','PPV','Testing P1','Testing P2','Testing P3','Untested','Action Needed','P3 Failed'] },
   { field:'ppvPrevState',         header:'PPV Prev State',       width:160 },
   { field:'ppvTagDate',           header:'PPV Tag Date',         width:130, type:'date' },
+  { field:'ppvBadDate',           header:'PPV Bad Date',         width:130, type:'date' },
+  { field:'ppvAvgDate',           header:'PPV Average Date',     width:150, type:'date' },
+  { field:'ppvManualCheck',       header:'PPV Manual Check',     width:160, type:'dropdown', options:['','Checked & Retained','Checked & Changed'] },
+  { field:'ppvManualCheckDate',   header:'PPV Manual Check Date', width:170, type:'date' },
   { field:'ldaus',                header:'LDAUs',                width:100, type:'number' },
   { field:'h1EligibleLdau',       header:'H1 Eligible LDAU',     width:140, type:'number' },
   { field:'h1Ret',                header:'H1 Ret%',              width:90,  type:'percent' },
@@ -697,7 +701,7 @@ const BOOK_COLS = [
 ];
 
 const SPECIAL_AUTHORS = new Set(['name','regnDate','locale','email','phone','bucketTag','contestTag','sourceTag','authorTypeTag','preContractedTag','preContractCompany']);
-const SPECIAL_BOOKS   = new Set(['authorId','title','showId','showTitle','createDate','status']);
+const SPECIAL_BOOKS   = new Set(['authorId','title','_createMonth','_stage','_daysInStage','showId','showTitle','createDate','status']);
 
 // ── State ──────────────────────────────────────────────────────────
 const BASE = '';
@@ -705,7 +709,7 @@ let token = localStorage.getItem('crm_token') || '';
 
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
-  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  books:   { data: [], sortedData: [], pinned: new Set(['title','_createMonth','_stage','_daysInStage']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
   aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -740,64 +744,98 @@ function daysAgo(dateVal) {
   return Math.floor((new Date() - d) / (1000*60*60*24));
 }
 
-function getForm2Step(row) {
-  if (!isBlankish(row.form2RecdDate)) {
-    if (isTruthy(row.sentForReview) || !isBlankish(row.dateAddedForReview)) return { label: 'Awaiting Editorial Score', css: 'step-awaiting', alarm: 'pending' };
-    return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
-  }
-  const fu2Days = daysAgo(row.form2FollowUp2Date);
-  if (fu2Days >= 0) {
-    if (fu2Days >= 4) return { label: 'Awaiting Form 2 Response or 50k Words', css: 'step-awaiting', alarm: 'pending' };
-    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
-  }
-  const fu1Days = daysAgo(row.form2FollowUp1Date);
-  if (fu1Days >= 0) {
-    if (fu1Days >= 3) return { label: 'Send Form 2 Follow Up 2', css: 'step-action', alarm: 'urgent' };
-    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
-  }
-  const sentDays = daysAgo(row.form2SentDate);
-  if (sentDays >= 0) {
-    if (sentDays >= 2) return { label: 'Send Form 2 Follow Up 1', css: 'step-action', alarm: 'urgent' };
-    return { label: 'Awaiting Form 2 Response', css: 'step-awaiting', alarm: 'pending' };
-  }
-  return { label: 'Send Form 2', css: 'step-action', alarm: 'pending' };
-}
-
-function getBookNextStep(row) {
+function getBookStage(row) {
+  // Dead flow: book/show status not approved/published/blank
   const bookStatus = String(row.status||'').trim().toLowerCase();
-  if (bookStatus && bookStatus !== 'approved' && bookStatus !== 'published' && bookStatus !== 'draft') {
-    return { label: 'Dead — Book ' + (row.status||''), css: 'step-dead', alarm: 'dead' };
+  if (bookStatus && bookStatus !== 'approved' && bookStatus !== 'published' && bookStatus !== '') {
+    return { stage: 'Dead — Book ' + (row.status||''), sinceDate: row.updatedAt, imp: 'high' };
   }
   const showStatus = String(row.showStatus||'').trim().toLowerCase();
-  if (showStatus && showStatus !== 'active' && showStatus !== 'published') {
-    return { label: 'Dead — Show ' + (row.showStatus||''), css: 'step-dead', alarm: 'dead' };
+  if (showStatus && showStatus !== 'active' && showStatus !== 'published' && showStatus !== '') {
+    return { stage: 'Dead — Show ' + (row.showStatus||''), sinceDate: row.updatedAt, imp: 'high' };
   }
+
+  // PPV Bad flow
   const ppv = String(row.ppvTag||'').trim().toLowerCase();
   if (ppv === 'bad' || ppv === 'average') {
-    return { label: 'Dead — PPV ' + (row.ppvTag||''), css: 'step-dead', alarm: 'dead' };
-  }
-  if (!isChp1Published(row)) return { label: 'Awaiting Chp 1', css: 'step-awaiting', alarm: 'pending' };
-  if (!isTruthy(row.words10kCompleted)) return { label: 'Awaiting 10k Words', css: 'step-awaiting', alarm: 'pending' };
-  const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
-  if (['passed','moderation passed','moderation_passed'].includes(modStatus)) {
-    const edScore = Number(row.editorScore);
-    const wc = typeof row.pubWC==='number'?row.pubWC:parseInt(String(row.pubWC||'').replace(/,/g,''),10);
-    if (edScore===10 && !isNaN(wc) && wc>10000) {
-      const pc = String(row.authorPreContract||'').trim().toLowerCase();
-      if (pc && pc!=='no' && pc!=='false') {
-        if (!isNaN(wc) && wc>=38000) {
-          if (isTruthy(row.sentForReview) || !isBlankish(row.dateAddedForReview)) return { label: 'Awaiting Editorial Score', css: 'step-awaiting', alarm: 'pending' };
-          return { label: 'Send for Review', css: 'step-action', alarm: 'pending' };
-        }
-        const form2 = getForm2Step(row);
-        if (form2) return form2;
-      }
-      return { label: 'Awaiting 50k Words', css: 'step-awaiting', alarm: 'pending' };
+    const manualCheck = String(row.ppvManualCheck||'').trim().toLowerCase();
+    if (!manualCheck) {
+      return { stage: 'Verify PPV ' + (row.ppvTag||''), sinceDate: ppv === 'bad' ? row.ppvBadDate : row.ppvAvgDate, imp: 'high' };
     }
-    return { label: 'Mod Passed ✓', css: 'step-done', alarm: null };
+    if (manualCheck.startsWith('checked')) {
+      return { stage: 'Validated PPV ' + (row.ppvTag||''), sinceDate: row.ppvManualCheckDate, imp: 'medium' };
+    }
   }
-  if (['failed','moderation failed','moderation_failed'].includes(modStatus)) return { label: 'Mod Failed', css: 'step-failed', alarm: 'urgent' };
-  return { label: 'Awaiting Moderation', css: 'step-awaiting', alarm: 'pending' };
+
+  // Determine Flow A or B
+  const pc = String(row.authorPreContract||'').trim().toLowerCase();
+  const isFlowA = pc && pc !== 'uncontracted' && pc !== '' && pc !== 'no' && pc !== 'false';
+
+  // Common steps
+  if (isBlankish(row.chp1PublishedDate)) {
+    return { stage: 'Awaiting Chp 1', sinceDate: row.createDate, imp: 'low' };
+  }
+
+  const wc = typeof row.pubWC==='number'?row.pubWC:parseInt(String(row.pubWC||'').replace(/,/g,''),10);
+  if (isNaN(wc) || wc < 10000) {
+    return { stage: 'Awaiting 10k', sinceDate: row.chp1PublishedDate, imp: 'low' };
+  }
+
+  const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
+  if (!modStatus || modStatus === 'pending') {
+    return { stage: 'Awaiting Moderation', sinceDate: row.words10kDate, imp: 'medium' };
+  }
+  if (['failed','moderation failed','moderation_failed'].includes(modStatus)) {
+    return { stage: 'Mod Failed', sinceDate: row.moderationPassedDate || row.words10kDate, imp: 'high' };
+  }
+
+  if (!['passed','moderation passed','moderation_passed'].includes(modStatus)) {
+    return { stage: 'Awaiting Moderation', sinceDate: row.words10kDate, imp: 'medium' };
+  }
+
+  // Mod passed — Flow A
+  if (isFlowA) {
+    const edScore = Number(row.editorScore);
+    if (edScore !== 10) return { stage: 'Check — BES ≠ 10', sinceDate: row.moderationPassedDate, imp: 'high' };
+    if (!isNaN(wc) && wc < 10000) return { stage: 'Check — Mod Passed Pub WC < 10k', sinceDate: row.moderationPassedDate, imp: 'high' };
+    if (isBlankish(row.llmSentDate1hr)) return { stage: 'Send for 1hr LLM', sinceDate: row.moderationPassedDate, imp: 'medium' };
+    if (isBlankish(row.llmRecdDate1hr)) return { stage: '1hr LLM Pending', sinceDate: row.llmSentDate1hr, imp: 'medium' };
+    const llmDec = String(row.llmDecision1hr||'').trim().toLowerCase();
+    if (!llmDec) return { stage: 'Check — 1hr LLM Decision Blank', sinceDate: row.llmRecdDate1hr, imp: 'high' };
+    if (llmDec === 'reject') return { stage: 'Check — 1hr LLM Failed', sinceDate: row.llmRecdDate1hr, imp: 'high' };
+    if (llmDec === 'pass') return { stage: '1hr LLM Pass', sinceDate: row.llmRecdDate1hr, imp: 'low' };
+    return { stage: '1hr LLM Pass', sinceDate: row.llmRecdDate1hr, imp: 'low' };
+  }
+
+  // Mod passed — Flow B (placeholder until you share further steps)
+  return { stage: 'Mod Passed (Flow B)', sinceDate: row.moderationPassedDate, imp: 'low' };
+}
+
+function getBookImp(stageObj) {
+  return stageObj.imp || 'low';
+}
+
+function getBookUrg(stageObj) {
+  const days = stageObj.sinceDate ? daysAgo(stageObj.sinceDate) : -1;
+  if (days < 0) return 'low';
+  const s = stageObj.stage;
+  if (s.startsWith('Dead')) return days > 3 ? 'high' : days > 1 ? 'medium' : 'low';
+  if (s.includes('Verify PPV') || s.includes('Validated PPV')) return days > 3 ? 'high' : days > 1 ? 'medium' : 'low';
+  if (s.includes('Chp 1')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
+  if (s.includes('10k')) return days > 30 ? 'high' : days > 14 ? 'medium' : 'low';
+  if (s.includes('Moderation') || s.includes('Mod Failed')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
+  if (s.includes('BES') || s.includes('WC < 10k')) return days > 3 ? 'high' : days > 1 ? 'medium' : 'low';
+  if (s.includes('LLM')) return days > 7 ? 'high' : days > 3 ? 'medium' : 'low';
+  return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
+}
+
+function formatCreateMonth(row) {
+  const d = row.createDate;
+  if (isBlankish(d)) return '';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[dt.getMonth()] + " '" + String(dt.getFullYear()).slice(-2);
 }
 
 function formatNumber(val) {
@@ -1362,7 +1400,7 @@ function handleAeSubImport(event, subTab) {
 // ── Table rendering ────────────────────────────────────────────────
 function getStickyOffsets(cols, pinned, entity) {
   let left = 36; // 36px for selection checkbox
-  if (entity==='books') left += 44; // 44px for alarm column
+  if (entity==='books') left += 100; // 50+50px for criticality+aging columns
   const o={};
   for (const col of cols) { if (pinned.has(col.field)) { o[col.field]=left; left+=col.width; } }
   return o;
@@ -1404,15 +1442,29 @@ function renderTable(entity) {
   // Select-all checkbox column
   html += `<th class="sel-cell"><input type="checkbox" class="row-cb" title="Select all" onchange="toggleSelectAll('${entity}',this)"></th>`;
   if (entity==='books') {
-    const alarmFilter = s.filter['_alarm'] || new Set();
-    const alarmHasFilter = alarmFilter.size > 0;
-    const alarmLabel = alarmHasFilter ? alarmFilter.size+' selected' : 'All';
-    html += `<th class="alarm-cell">
+    const critFilter = s.filter['_criticality'] || new Set();
+    const critHasFilter = critFilter.size > 0;
+    const critLabel = critHasFilter ? critFilter.size+' sel' : 'All';
+    html += `<th class="crit-cell">
       <div class="th-inner">
-        <div class="th-top"><span class="th-label">🔔</span></div>
+        <div class="th-top"><span class="th-label">IMP</span></div>
         <div class="th-filter">
-          <button class="filter-btn ${alarmHasFilter?'has-filter':''}" id="fbtn-${entity}-_alarm" onclick="openFD(event,'${entity}','_alarm',this)">
-            <span class="filter-btn-text">${alarmLabel}</span>
+          <button class="filter-btn ${critHasFilter?'has-filter':''}" id="fbtn-${entity}-_criticality" onclick="openFD(event,'${entity}','_criticality',this)">
+            <span class="filter-btn-text">${critLabel}</span>
+            <span class="filter-btn-arrow">▾</span>
+          </button>
+        </div>
+      </div>
+    </th>`;
+    const agingFilter = s.filter['_aging'] || new Set();
+    const agingHasFilter = agingFilter.size > 0;
+    const agingLabel = agingHasFilter ? agingFilter.size+' sel' : 'All';
+    html += `<th class="aging-cell">
+      <div class="th-inner">
+        <div class="th-top"><span class="th-label">URG</span></div>
+        <div class="th-filter">
+          <button class="filter-btn ${agingHasFilter?'has-filter':''}" id="fbtn-${entity}-_aging" onclick="openFD(event,'${entity}','_aging',this)">
+            <span class="filter-btn-text">${agingLabel}</span>
             <span class="filter-btn-arrow">▾</span>
           </button>
         </div>
@@ -1454,12 +1506,6 @@ function renderTable(entity) {
     }
   }
   if (!isAeEntity) html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
-  if (entity==='books') {
-    const nsFilter = s.filter['_nextStep'] || new Set();
-    const nsHasFilter = nsFilter.size > 0;
-    const nsLabel = nsHasFilter ? nsFilter.size+' selected' : 'All';
-    html += `<th class="next-step-cell ${nsHasFilter?'has-active-filter':''}"><div class="th-inner"><div class="th-top"><span class="th-label">Next Step</span></div><div class="th-filter"><button class="filter-btn ${nsHasFilter?'has-filter':''}" id="fbtn-${entity}-_nextStep" onclick="openFD(event,'${entity}','_nextStep',this)"><span class="filter-btn-text">${nsLabel}</span><span class="filter-btn-arrow">▾</span></button></div></div></th>`;
-  }
   html += '</tr></thead><tbody>';
 
   sorted.forEach((row, idx) => {
@@ -1477,9 +1523,9 @@ function renderTable(entity) {
     }
     const rowId = String(row[idField]||'');
     const isSelected = s.selected.has(rowId);
-    const step = entity==='books' ? getBookNextStep(row) : null;
+    const step = entity==='books' ? getBookStage(row) : null;
     if (entity==='books') {
-      const isDead = step && step.alarm === 'dead';
+      const isDead = step && step.stage && step.stage.startsWith('Dead');
       const modS = String(row.moderationStatus||'').trim().toLowerCase();
       const modPassed = ['passed','moderation passed','moderation_passed'].includes(modS);
       const pc = String(row.authorPreContract||'').trim().toLowerCase();
@@ -1494,9 +1540,10 @@ function renderTable(entity) {
     html += `<tr data-idx="${idx}" data-id="${escAttr(rowId)}" class="${isSelected?'row-selected':''}">`;
     html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)"></td>`;
     if (entity==='books') {
-      const alarmVal = step.alarm || 'none';
-      const icon = step.alarm==='dead' ? '⚫' : step.alarm==='urgent' ? '🔴' : step.alarm==='pending' ? '🟠' : '—';
-      html += `<td class="alarm-cell" data-alarm="${alarmVal}" title="${step.label}"><span class="alarm-icon alarm-${alarmVal}">${icon}</span></td>`;
+      const imp = getBookImp(step);
+      html += `<td class="crit-cell"><span class="risk-${imp}">${imp[0].toUpperCase()}</span></td>`;
+      const urg = getBookUrg(step);
+      html += `<td class="aging-cell"><span class="risk-${urg}">${urg[0].toUpperCase()}</span></td>`;
     }
     for (const col of cols) {
       const isSticky = s.pinned.has(col.field);
@@ -1513,6 +1560,22 @@ function renderTable(entity) {
       let tdClass = (isSticky?'is-sticky ':'')+( isPinned?'is-pinned ':'');
       let tdClick = '';
       let tdContent = '';
+
+      if (col.field === '_createMonth') {
+        tdContent = escHtml(formatCreateMonth(row));
+        html += `<td class="${tdClass.trim()}" style="${stStyle}">${tdContent}</td>`;
+        continue;
+      }
+      if (col.field === '_stage') {
+        const stageLabel = step ? step.stage : '';
+        html += `<td class="${tdClass.trim()}" style="${stStyle}" title="${escAttr(stageLabel)}"><span class="stage-tag">${escHtml(stageLabel)}</span></td>`;
+        continue;
+      }
+      if (col.field === '_daysInStage') {
+        const daysVal = step && step.sinceDate ? daysAgo(step.sinceDate) : -1;
+        html += `<td class="${tdClass.trim()}" style="${stStyle}" title="${daysVal >= 0 ? daysVal + ' days' : ''}">${daysVal >= 0 ? daysVal + 'd' : '—'}</td>`;
+        continue;
+      }
 
       if (isAeEntity) {
         if (ctype === 'status') { tdContent = rawVal === 'active' ? '<span style="color:#2e7d32;font-size:1.1rem;">&#9679;</span>' : '<span style="color:#f9a825;font-size:1.1rem;">&#9679;</span>'; }
@@ -1561,13 +1624,6 @@ function renderTable(entity) {
       html += `<td ${tdClick} class="${tdClass.trim()}" style="${stStyle}" title="${escAttr(String(rawVal))}">${tdContent}</td>`;
     }
     if (!isAeEntity) html += `<td class="del-cell"><button class="row-del-btn" title="Delete row" onclick="deleteRow('${entity}','${escAttr(rowId)}',this)">✕</button></td>`;
-    if (entity==='books') {
-      if (step.label.startsWith('Send ')) {
-        html += `<td class="next-step-cell"><button class="btn-send-form2" onclick="sendForm2('${escAttr(rowId)}','${escAttr(step.label)}')">${step.label}</button></td>`;
-      } else {
-        html += `<td class="next-step-cell"><span class="next-step-tag ${step.css}">${step.label}</span></td>`;
-      }
-    }
     html += '</tr>';
   });
 
@@ -1576,7 +1632,7 @@ function renderTable(entity) {
   // Totals footer
   html += '<tfoot><tr>';
   html += '<td class="sel-cell" id="'+entity+'-totals-count" style="font-size:0.75rem;text-align:center"></td>';
-  if (entity==='books') html += '<td class="alarm-cell"></td>';
+  if (entity==='books') { html += '<td class="crit-cell"></td>'; html += '<td class="aging-cell"></td>'; }
   for (const col of cols) {
     const isSticky = s.pinned.has(col.field);
     const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
@@ -1594,7 +1650,6 @@ function renderTable(entity) {
     }
   }
   if (!isAeEntity) html += '<td class="del-cell"></td>';
-  if (entity==='books') html += '<td class="next-step-cell"></td>';
   html += '</tr></tfoot>';
 
   html += '</table>';
@@ -1603,8 +1658,12 @@ function renderTable(entity) {
 }
 
 function getRowFilterVal(row, field) {
-  if (field === '_alarm') return getBookNextStep(row).alarm || 'none';
-  if (field === '_nextStep') return getBookNextStep(row).label;
+  if (field === '_criticality') return getBookImp(getBookStage(row));
+  if (field === '_aging') return getBookUrg(getBookStage(row));
+  if (field === '_stage') return getBookStage(row).stage;
+  if (field === '_daysInStage') { const st = getBookStage(row); return st.sinceDate ? String(daysAgo(st.sinceDate)) : ''; }
+  if (field === '_createMonth') return formatCreateMonth(row);
+  if (field === '_stage') return '';
   return String(row[field]??'');
 }
 
@@ -1619,7 +1678,7 @@ function renderFilterTags(entity) {
   let html = '';
   activeFilters.forEach(([field, vals]) => {
     const col = cols.find(c=>c.field===field);
-    const label = field==='_nextStep'?'Next Step':field==='_alarm'?'Alarm':col ? col.header : field;
+    const label = field==='_criticality'?'IMP':field==='_aging'?'URG':field==='_createMonth'?'Create Month':field==='_stage'?'Stage':col ? col.header : field;
     const valArr = [...vals];
     const display = valArr.length <= 2
       ? valArr.map(v=>v||'(blank)').join(', ')
@@ -1742,18 +1801,22 @@ async function openFD(event, entity, field, btn) {
 
   // Fetch distinct values from server for books/authors, use local data for others
   let dataVals;
-  if ((entity === 'books' || entity === 'authors') && field !== '_alarm' && field !== '_nextStep') {
+  const virtualFields = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+  if ((entity === 'books' || entity === 'authors') && !virtualFields.has(field)) {
     try {
       const r = await api(`/api/${entity}/distinct/${field}`);
       dataVals = new Set((r.values || []).map(v => String(v ?? '')));
     } catch (e) {
       dataVals = new Set(s.data.map(r => String(r[field]??'')));
     }
-  } else if (field === '_alarm') {
-    dataVals = new Set(s.data.map(r => getBookNextStep(r).alarm || 'none'));
-    ['dead','urgent','pending','none'].forEach(v => dataVals.add(v));
-  } else if (field === '_nextStep') {
-    dataVals = new Set(s.data.map(r => getBookNextStep(r).label));
+  } else if (field === '_criticality') {
+    dataVals = new Set(['high','medium','low']);
+  } else if (field === '_aging') {
+    dataVals = new Set(['high','medium','low']);
+  } else if (field === '_stage') {
+    dataVals = new Set(s.data.map(r => getBookStage(r).stage));
+  } else if (field === '_createMonth') {
+    dataVals = new Set(s.data.map(r => formatCreateMonth(r)));
   } else {
     dataVals = new Set(s.data.map(r => String(r[field]??'')));
   }
@@ -1782,10 +1845,19 @@ async function openFD(event, entity, field, btn) {
 function closeFD() {
   if (fdCtx) {
     const entity = fdCtx.entity;
-    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity)) {
+    const virtualFields = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+    const hasServerFilters = Object.entries(state[entity].filter).some(([k, v]) => v && v.size > 0 && !virtualFields.has(k));
+    if ((entity === 'authors' || entity === 'books') && hasServerFilters) {
       document.getElementById('filter-dropdown').classList.remove('open');
       fdCtx = null;
       if (entity === 'authors') loadAuthors(1); else loadBooks(1);
+      return;
+    }
+    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity)) {
+      document.getElementById('filter-dropdown').classList.remove('open');
+      fdCtx = null;
+      applyRowFilters(entity);
+      renderFilterTags(entity);
       return;
     }
   }
@@ -1793,13 +1865,13 @@ function closeFD() {
   fdCtx = null;
 }
 
-const ALARM_LABELS = { dead: '⚫ Dead', urgent: '🔴 Urgent (Failed)', pending: '🟠 Action Needed', none: '— No Alert' };
+const RISK_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
 
 function renderFDOptions(vals, selected, search) {
   const container = document.getElementById('fd-options');
-  const isAlarmFilter = fdCtx && fdCtx.field === '_alarm';
+  const isRiskFilter = fdCtx && (fdCtx.field === '_criticality' || fdCtx.field === '_aging');
   const filtered = search ? vals.filter(v => {
-    const display = v==='' ? '(blank)' : (isAlarmFilter ? (ALARM_LABELS[v]||v) : v);
+    const display = v==='' ? '(blank)' : (isRiskFilter ? (RISK_LABELS[v]||v) : v);
     return display.toLowerCase().includes(search.toLowerCase());
   }) : vals;
   if (!filtered.length) { container.innerHTML = '<div class="fd-empty">No values found</div>'; return; }
@@ -1807,7 +1879,7 @@ function renderFDOptions(vals, selected, search) {
     const checked = selected.has(v) ? 'checked' : '';
     let label;
     if (v === '') label = '<em style="color:#aaa">(blank)</em>';
-    else if (isAlarmFilter) label = ALARM_LABELS[v] || escHtml(v);
+    else if (isRiskFilter) label = RISK_LABELS[v] || escHtml(v);
     else label = escHtml(v);
     return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle('${escAttr(v)}',this.checked)"><span class="fd-option-label" title="${v===''?'(blank)':escAttr(v)}">${label}</span></label>`;
   }).join('');
@@ -2214,9 +2286,10 @@ function hasActiveFilters(entity) {
 
 function buildFilterParam(entity) {
   const f = state[entity].filter;
+  const virtualFields = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
   const active = {};
   for (const [k, v] of Object.entries(f)) {
-    if (v && v.size > 0) active[k] = [...v];
+    if (v && v.size > 0 && !virtualFields.has(k)) active[k] = [...v];
   }
   return Object.keys(active).length ? '&filters=' + encodeURIComponent(JSON.stringify(active)) : '';
 }
@@ -2346,6 +2419,8 @@ const BOOK_ALIASES = {
   'form 2 recd date':'form2RecdDate','form 2 received date':'form2RecdDate',
   '50k words completed?':'words50kCompleted','50k words completed':'words50kCompleted',
   '50k words completed date?':'words50kDate','50k words date':'words50kDate',
+  '1hr llm sent date':'llmSentDate1hr','1 hr llm sent date':'llmSentDate1hr',
+  '1hr llm recd date':'llmRecdDate1hr','1 hr llm recd date':'llmRecdDate1hr','1hr llm recd. date':'llmRecdDate1hr',
   '1 hr llm score':'llmScore1hr','1hr llm score':'llmScore1hr',
   '1 hr llm decision':'llmDecision1hr','1hr llm decision':'llmDecision1hr',
   '5 hr llm score':'llmScore5hr','5hr llm score':'llmScore5hr',
@@ -2369,6 +2444,8 @@ const BOOK_ALIASES = {
   'ppv tag':'ppvTag','ppvtag':'ppvTag','ppv current state':'ppvTag',
   'ppv prev state':'ppvPrevState','ppv previous state':'ppvPrevState',
   'ppv tag date':'ppvTagDate',
+  'ppv bad date':'ppvBadDate','ppv average date':'ppvAvgDate',
+  'ppv manual check':'ppvManualCheck','ppv manual check date':'ppvManualCheckDate',
   'ldaus':'ldaus',
   'h1 eligible ldau':'h1EligibleLdau','h1 ret%':'h1Ret',
   'h5 eligible ldau':'h5EligibleLdau','h5 ret%':'h5Ret',
@@ -2738,7 +2815,8 @@ async function downloadCSV(entity, btn) {
       // Server streams the CSV directly from a MongoDB cursor — no JSON
       // round-trip, no client-side row-by-row string building.
       const filterParam = buildFilterParam(entity);
-      const colsParam = '&cols=' + encodeURIComponent(JSON.stringify(cols.map(c => ({ field: c.field, header: c.header }))));
+      const exportCols = cols.filter(c => !c.field.startsWith('_'));
+      const colsParam = '&cols=' + encodeURIComponent(JSON.stringify(exportCols.map(c => ({ field: c.field, header: c.header }))));
       const resp = await fetch(BASE + `/api/${entity}/export/csv?${filterParam.replace(/^&/, '')}${colsParam}`, {
         headers: { 'Authorization': 'Bearer ' + token }
       });
