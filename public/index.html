@@ -291,6 +291,7 @@
     td.del-cell, th.del-cell { text-align: center; width: 36px; min-width: 36px; }
     .row-del-btn { background: none; border: none; cursor: pointer; color: #ddd; font-size: 0.9rem; padding: 2px 4px; border-radius: 4px; line-height: 1; }
     .row-del-btn:hover { color: #e74c3c; background: #fdecea; }
+    .mini-cell-label { font-size: 0.62rem; font-weight: 700; color: #555; line-height: 1.1; margin-bottom: 2px; }
     td.sel-cell, th.sel-cell { text-align: center; width: 36px; min-width: 36px; position: sticky; left: 0; z-index: 3; background: #f5e0e0; padding: 6px 0; }
     th.sel-cell { background: #fdf2f2; z-index: 4; padding: 8px 0; }
     tr.row-selected td { background: #fce8e8 !important; }
@@ -1440,7 +1441,7 @@ function renderTable(entity) {
 
   let html = '<table class="wide"><thead><tr>';
   // Select-all checkbox column
-  html += `<th class="sel-cell"><input type="checkbox" class="row-cb" title="Select all" onchange="toggleSelectAll('${entity}',this)"></th>`;
+  html += `<th class="sel-cell"><div class="mini-cell-label">Sel</div><input type="checkbox" class="row-cb" title="Select all" onchange="toggleSelectAll('${entity}',this)"></th>`;
   if (entity==='books') {
     const critFilter = s.filter['_criticality'] || new Set();
     const critHasFilter = critFilter.size > 0;
@@ -1505,7 +1506,7 @@ function renderTable(entity) {
     </th>`;
     }
   }
-  if (!isAeEntity) html += '<th class="del-cell"><div class="th-inner"><div class="th-top"></div></div></th>';
+  if (!isAeEntity) html += '<th class="del-cell"><div class="mini-cell-label">Del</div></th>';
   html += '</tr></thead><tbody>';
 
   sorted.forEach((row, idx) => {
