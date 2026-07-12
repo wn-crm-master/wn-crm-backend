@@ -139,13 +139,18 @@
     .step-dead { background: #f5f5f5; color: #9e9e9e; }
 
     /* Alarm column (books only) */
-    td.alarm-cell, th.alarm-cell { text-align: center; width: 44px; min-width: 44px; position: sticky; left: 36px; z-index: 3; background: #f5e0e0; }
-    th.alarm-cell { background: #fdf2f2; z-index: 4; }
+    td.crit-cell, th.crit-cell { text-align: center; width: 50px; min-width: 50px; position: sticky; left: 36px; z-index: 3; background: #f5e0e0; font-size: 0.75rem; font-weight: 700; }
+    th.crit-cell { background: #fdf2f2; z-index: 4; }
+    td.aging-cell, th.aging-cell { text-align: center; width: 50px; min-width: 50px; position: sticky; left: 86px; z-index: 3; background: #f5e0e0; font-size: 0.75rem; font-weight: 700; }
+    th.aging-cell { background: #fdf2f2; z-index: 4; }
+    .risk-high { color: #fff; background: #d32f2f !important; border-radius: 4px; padding: 2px 6px; }
+    .risk-medium { color: #000; background: #fbc02d !important; border-radius: 4px; padding: 2px 6px; }
+    .risk-low { color: #fff; background: #388e3c !important; border-radius: 4px; padding: 2px 6px; }
     .alarm-icon { font-size: 0.95rem; cursor: default; }
     .alarm-urgent { color: #e74c3c; }
     .alarm-pending { color: #f39c12; }
     .alarm-none { color: #d5d5d5; }
-    tr.row-selected td.alarm-cell { background: #f5dada !important; }
+    tr.row-selected td.crit-cell, tr.row-selected td.aging-cell { background: #f5dada !important; }
 
     .th-inner { display: flex; flex-direction: column; }
     .th-top { display: flex; align-items: center; gap: 4px; padding: 8px 10px 4px; }
@@ -634,6 +639,8 @@ const AUTHOR_COLS = [
 ];
 const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
+  { field:'_createMonth',         header:'Create Month',         width:100, noControls:true },
+  { field:'_stage',               header:'Stage',                width:120, noControls:true },
   { field:'id',                   header:'Book ID',              width:140 },
   { field:'authorId',             header:'Author ID',            width:160 },
   { field:'authorPreContract',   header:'Author Pre-Contract',   width:180, type:'text', readOnly:true },
@@ -700,7 +707,7 @@ const BOOK_COLS = [
 ];
 
 const SPECIAL_AUTHORS = new Set(['name','regnDate','locale','email','phone','bucketTag','contestTag','sourceTag','authorTypeTag','preContractedTag','preContractCompany']);
-const SPECIAL_BOOKS   = new Set(['authorId','title','showId','showTitle','createDate','status']);
+const SPECIAL_BOOKS   = new Set(['authorId','title','_createMonth','_stage','showId','showTitle','createDate','status']);
 
 // ── State ──────────────────────────────────────────────────────────
 const BASE = '';
@@ -708,7 +715,7 @@ let token = localStorage.getItem('crm_token') || '';
 
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
-  books:   { data: [], sortedData: [], pinned: new Set(['title']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  books:   { data: [], sortedData: [], pinned: new Set(['title','_createMonth','_stage']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
   aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -814,6 +821,37 @@ function getBookNextStep(row) {
     }
   }
   return { label: 'Mod Passed', css: 'step-done', alarm: null, sinceDate: row.moderationPassedDate };
+}
+
+function getBookCriticality(step) {
+  if (step.alarm === 'dead') return 'high';
+  if (step.alarm === 'urgent') return 'high';
+  if (step.alarm === 'pending') return 'medium';
+  return 'low';
+}
+
+function getBookAging(step) {
+  const days = step.sinceDate ? daysAgo(step.sinceDate) : -1;
+  if (days < 0) return 'low';
+  if (step.label.startsWith('Dead') || step.label.startsWith('Check Retention')) return days > 3 ? 'high' : days > 1 ? 'medium' : 'low';
+  if (step.label.includes('Chp 1')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
+  if (step.label.includes('10k Words')) return days > 30 ? 'high' : days > 14 ? 'medium' : 'low';
+  if (step.label.includes('Moderation')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
+  if (step.label.includes('Editor Score') || step.label.includes('WC < 10k')) return days > 3 ? 'high' : days > 1 ? 'medium' : 'low';
+  if (step.label.includes('LLM')) return days > 7 ? 'high' : days > 3 ? 'medium' : 'low';
+  if (step.label.includes('Form 2')) return days > 7 ? 'high' : days > 3 ? 'medium' : 'low';
+  if (step.label.includes('Review') || step.label.includes('Editorial')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
+  if (step.label.includes('50k')) return days > 45 ? 'high' : days > 21 ? 'medium' : 'low';
+  return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
+}
+
+function formatCreateMonth(row) {
+  const d = row.createDate;
+  if (isBlankish(d)) return '';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[dt.getMonth()] + " '" + String(dt.getFullYear()).slice(-2);
 }
 
 function formatNumber(val) {
@@ -1378,7 +1416,7 @@ function handleAeSubImport(event, subTab) {
 // ── Table rendering ────────────────────────────────────────────────
 function getStickyOffsets(cols, pinned, entity) {
   let left = 36; // 36px for selection checkbox
-  if (entity==='books') left += 44; // 44px for alarm column
+  if (entity==='books') left += 100; // 50+50px for criticality+aging columns
   const o={};
   for (const col of cols) { if (pinned.has(col.field)) { o[col.field]=left; left+=col.width; } }
   return o;
@@ -1420,15 +1458,29 @@ function renderTable(entity) {
   // Select-all checkbox column
   html += `<th class="sel-cell"><input type="checkbox" class="row-cb" title="Select all" onchange="toggleSelectAll('${entity}',this)"></th>`;
   if (entity==='books') {
-    const alarmFilter = s.filter['_alarm'] || new Set();
-    const alarmHasFilter = alarmFilter.size > 0;
-    const alarmLabel = alarmHasFilter ? alarmFilter.size+' selected' : 'All';
-    html += `<th class="alarm-cell">
+    const critFilter = s.filter['_criticality'] || new Set();
+    const critHasFilter = critFilter.size > 0;
+    const critLabel = critHasFilter ? critFilter.size+' sel' : 'All';
+    html += `<th class="crit-cell">
       <div class="th-inner">
-        <div class="th-top"><span class="th-label">🔔</span></div>
+        <div class="th-top"><span class="th-label">Crit.</span></div>
         <div class="th-filter">
-          <button class="filter-btn ${alarmHasFilter?'has-filter':''}" id="fbtn-${entity}-_alarm" onclick="openFD(event,'${entity}','_alarm',this)">
-            <span class="filter-btn-text">${alarmLabel}</span>
+          <button class="filter-btn ${critHasFilter?'has-filter':''}" id="fbtn-${entity}-_criticality" onclick="openFD(event,'${entity}','_criticality',this)">
+            <span class="filter-btn-text">${critLabel}</span>
+            <span class="filter-btn-arrow">▾</span>
+          </button>
+        </div>
+      </div>
+    </th>`;
+    const agingFilter = s.filter['_aging'] || new Set();
+    const agingHasFilter = agingFilter.size > 0;
+    const agingLabel = agingHasFilter ? agingFilter.size+' sel' : 'All';
+    html += `<th class="aging-cell">
+      <div class="th-inner">
+        <div class="th-top"><span class="th-label">Aging</span></div>
+        <div class="th-filter">
+          <button class="filter-btn ${agingHasFilter?'has-filter':''}" id="fbtn-${entity}-_aging" onclick="openFD(event,'${entity}','_aging',this)">
+            <span class="filter-btn-text">${agingLabel}</span>
             <span class="filter-btn-arrow">▾</span>
           </button>
         </div>
@@ -1511,9 +1563,10 @@ function renderTable(entity) {
     html += `<tr data-idx="${idx}" data-id="${escAttr(rowId)}" class="${isSelected?'row-selected':''}">`;
     html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)"></td>`;
     if (entity==='books') {
-      const alarmVal = step.alarm || 'none';
-      const icon = step.alarm==='dead' ? '⚫' : step.alarm==='urgent' ? '🔴' : step.alarm==='pending' ? '🟠' : '—';
-      html += `<td class="alarm-cell" data-alarm="${alarmVal}" title="${step.label}"><span class="alarm-icon alarm-${alarmVal}">${icon}</span></td>`;
+      const crit = getBookCriticality(step);
+      html += `<td class="crit-cell"><span class="risk-${crit}">${crit[0].toUpperCase()}</span></td>`;
+      const aging = getBookAging(step);
+      html += `<td class="aging-cell"><span class="risk-${aging}">${aging[0].toUpperCase()}</span></td>`;
     }
     for (const col of cols) {
       const isSticky = s.pinned.has(col.field);
@@ -1530,6 +1583,16 @@ function renderTable(entity) {
       let tdClass = (isSticky?'is-sticky ':'')+( isPinned?'is-pinned ':'');
       let tdClick = '';
       let tdContent = '';
+
+      if (col.field === '_createMonth') {
+        tdContent = escHtml(formatCreateMonth(row));
+        html += `<td class="${tdClass.trim()}" style="${stStyle}">${tdContent}</td>`;
+        continue;
+      }
+      if (col.field === '_stage') {
+        html += `<td class="${tdClass.trim()}" style="${stStyle}"></td>`;
+        continue;
+      }
 
       if (isAeEntity) {
         if (ctype === 'status') { tdContent = rawVal === 'active' ? '<span style="color:#2e7d32;font-size:1.1rem;">&#9679;</span>' : '<span style="color:#f9a825;font-size:1.1rem;">&#9679;</span>'; }
@@ -1595,7 +1658,7 @@ function renderTable(entity) {
   // Totals footer
   html += '<tfoot><tr>';
   html += '<td class="sel-cell" id="'+entity+'-totals-count" style="font-size:0.75rem;text-align:center"></td>';
-  if (entity==='books') html += '<td class="alarm-cell"></td>';
+  if (entity==='books') { html += '<td class="crit-cell"></td>'; html += '<td class="aging-cell"></td>'; }
   for (const col of cols) {
     const isSticky = s.pinned.has(col.field);
     const stStyle = isSticky ? `position:sticky;left:${offsets[col.field]}px;` : '';
@@ -1622,8 +1685,11 @@ function renderTable(entity) {
 }
 
 function getRowFilterVal(row, field) {
-  if (field === '_alarm') return getBookNextStep(row).alarm || 'none';
+  if (field === '_criticality') return getBookCriticality(getBookNextStep(row));
+  if (field === '_aging') return getBookAging(getBookNextStep(row));
   if (field === '_nextStep') return getBookNextStep(row).label;
+  if (field === '_createMonth') return formatCreateMonth(row);
+  if (field === '_stage') return '';
   return String(row[field]??'');
 }
 
@@ -1638,7 +1704,7 @@ function renderFilterTags(entity) {
   let html = '';
   activeFilters.forEach(([field, vals]) => {
     const col = cols.find(c=>c.field===field);
-    const label = field==='_nextStep'?'Next Step':field==='_alarm'?'Alarm':col ? col.header : field;
+    const label = field==='_nextStep'?'Next Step':field==='_criticality'?'Criticality':field==='_aging'?'Aging':field==='_createMonth'?'Create Month':field==='_stage'?'Stage':col ? col.header : field;
     const valArr = [...vals];
     const display = valArr.length <= 2
       ? valArr.map(v=>v||'(blank)').join(', ')
@@ -1761,18 +1827,22 @@ async function openFD(event, entity, field, btn) {
 
   // Fetch distinct values from server for books/authors, use local data for others
   let dataVals;
-  if ((entity === 'books' || entity === 'authors') && field !== '_alarm' && field !== '_nextStep') {
+  const virtualFields = new Set(['_criticality','_aging','_nextStep','_createMonth','_stage']);
+  if ((entity === 'books' || entity === 'authors') && !virtualFields.has(field)) {
     try {
       const r = await api(`/api/${entity}/distinct/${field}`);
       dataVals = new Set((r.values || []).map(v => String(v ?? '')));
     } catch (e) {
       dataVals = new Set(s.data.map(r => String(r[field]??'')));
     }
-  } else if (field === '_alarm') {
-    dataVals = new Set(s.data.map(r => getBookNextStep(r).alarm || 'none'));
-    ['dead','urgent','pending','none'].forEach(v => dataVals.add(v));
+  } else if (field === '_criticality') {
+    dataVals = new Set(['high','medium','low']);
+  } else if (field === '_aging') {
+    dataVals = new Set(['high','medium','low']);
   } else if (field === '_nextStep') {
     dataVals = new Set(s.data.map(r => getBookNextStep(r).label));
+  } else if (field === '_createMonth') {
+    dataVals = new Set(s.data.map(r => formatCreateMonth(r)));
   } else {
     dataVals = new Set(s.data.map(r => String(r[field]??'')));
   }
@@ -1801,10 +1871,19 @@ async function openFD(event, entity, field, btn) {
 function closeFD() {
   if (fdCtx) {
     const entity = fdCtx.entity;
-    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity)) {
+    const virtualFields = new Set(['_criticality','_aging','_nextStep','_createMonth','_stage']);
+    const hasServerFilters = Object.entries(state[entity].filter).some(([k, v]) => v && v.size > 0 && !virtualFields.has(k));
+    if ((entity === 'authors' || entity === 'books') && hasServerFilters) {
       document.getElementById('filter-dropdown').classList.remove('open');
       fdCtx = null;
       if (entity === 'authors') loadAuthors(1); else loadBooks(1);
+      return;
+    }
+    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity)) {
+      document.getElementById('filter-dropdown').classList.remove('open');
+      fdCtx = null;
+      applyRowFilters(entity);
+      renderFilterTags(entity);
       return;
     }
   }
@@ -1812,13 +1891,13 @@ function closeFD() {
   fdCtx = null;
 }
 
-const ALARM_LABELS = { dead: '⚫ Dead', urgent: '🔴 Urgent (Failed)', pending: '🟠 Action Needed', none: '— No Alert' };
+const RISK_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
 
 function renderFDOptions(vals, selected, search) {
   const container = document.getElementById('fd-options');
-  const isAlarmFilter = fdCtx && fdCtx.field === '_alarm';
+  const isRiskFilter = fdCtx && (fdCtx.field === '_criticality' || fdCtx.field === '_aging');
   const filtered = search ? vals.filter(v => {
-    const display = v==='' ? '(blank)' : (isAlarmFilter ? (ALARM_LABELS[v]||v) : v);
+    const display = v==='' ? '(blank)' : (isRiskFilter ? (RISK_LABELS[v]||v) : v);
     return display.toLowerCase().includes(search.toLowerCase());
   }) : vals;
   if (!filtered.length) { container.innerHTML = '<div class="fd-empty">No values found</div>'; return; }
@@ -1826,7 +1905,7 @@ function renderFDOptions(vals, selected, search) {
     const checked = selected.has(v) ? 'checked' : '';
     let label;
     if (v === '') label = '<em style="color:#aaa">(blank)</em>';
-    else if (isAlarmFilter) label = ALARM_LABELS[v] || escHtml(v);
+    else if (isRiskFilter) label = RISK_LABELS[v] || escHtml(v);
     else label = escHtml(v);
     return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle('${escAttr(v)}',this.checked)"><span class="fd-option-label" title="${v===''?'(blank)':escAttr(v)}">${label}</span></label>`;
   }).join('');
@@ -2233,9 +2312,10 @@ function hasActiveFilters(entity) {
 
 function buildFilterParam(entity) {
   const f = state[entity].filter;
+  const virtualFields = new Set(['_criticality','_aging','_nextStep','_createMonth','_stage']);
   const active = {};
   for (const [k, v] of Object.entries(f)) {
-    if (v && v.size > 0) active[k] = [...v];
+    if (v && v.size > 0 && !virtualFields.has(k)) active[k] = [...v];
   }
   return Object.keys(active).length ? '&filters=' + encodeURIComponent(JSON.stringify(active)) : '';
 }
@@ -2757,7 +2837,8 @@ async function downloadCSV(entity, btn) {
       // Server streams the CSV directly from a MongoDB cursor — no JSON
       // round-trip, no client-side row-by-row string building.
       const filterParam = buildFilterParam(entity);
-      const colsParam = '&cols=' + encodeURIComponent(JSON.stringify(cols.map(c => ({ field: c.field, header: c.header }))));
+      const exportCols = cols.filter(c => !c.field.startsWith('_'));
+      const colsParam = '&cols=' + encodeURIComponent(JSON.stringify(exportCols.map(c => ({ field: c.field, header: c.header }))));
       const resp = await fetch(BASE + `/api/${entity}/export/csv?${filterParam.replace(/^&/, '')}${colsParam}`, {
         headers: { 'Authorization': 'Bearer ' + token }
       });
