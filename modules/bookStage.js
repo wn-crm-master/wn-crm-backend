@@ -15,10 +15,32 @@ function inList(val, csv) {
   return csv.split(',').map(s => s.trim().toLowerCase()).includes(v);
 }
 
+// Dates in this app come from two sources: ISO (YYYY-MM-DD, from <input
+// type=date>) and DD/MM/YYYY (raw strings from CSV import). JS's Date
+// constructor treats slash-separated dates as MM/DD/YYYY, so any imported
+// date with day > 12 (e.g. 13/07/2026) silently fails to parse. Mirror the
+// client's formatDate() dual-format handling here so Create Month and
+// days-in-stage calculations don't go blank/wrong for imported dates.
+function parseFlexibleDate(val) {
+  if (isBlankish(val)) return null;
+  const s = String(val).trim();
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    const d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmy) {
+    const d = new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function daysAgo(dateVal, now) {
-  if (isBlankish(dateVal)) return -1;
-  const d = new Date(dateVal);
-  if (isNaN(d.getTime())) return -1;
+  const d = parseFlexibleDate(dateVal);
+  if (!d) return -1;
   return Math.floor((now - d) / (1000 * 60 * 60 * 24));
 }
 
@@ -175,9 +197,8 @@ function computeBookUrg(stageObj, now) {
 }
 
 function computeCreateMonth(createDate) {
-  if (isBlankish(createDate)) return '';
-  const dt = new Date(createDate);
-  if (isNaN(dt.getTime())) return '';
+  const dt = parseFlexibleDate(createDate);
+  if (!dt) return '';
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return months[dt.getMonth()] + " '" + String(dt.getFullYear()).slice(-2);
 }
@@ -216,4 +237,4 @@ const STAGE_ORDER = [
   'Mod Passed',
 ];
 
-module.exports = { isBlankish, inList, daysAgo, computeBookStage, computeBookUrg, computeCreateMonth, STAGE_ORDER };
+module.exports = { isBlankish, inList, daysAgo, parseFlexibleDate, computeBookStage, computeBookUrg, computeCreateMonth, STAGE_ORDER };
