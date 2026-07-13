@@ -628,8 +628,8 @@ const AUTHOR_COLS = [
 ];
 const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
-  { field:'_createMonth',         header:'Create Month',         width:100 },
-  { field:'_stage',               header:'Stage',                width:220 },
+  { field:'createMonth',          header:'Create Month',         width:100, type:'text', readOnly:true },
+  { field:'stage',                header:'Stage',                width:220, type:'text', readOnly:true },
   { field:'_daysInStage',         header:'Days in Stage',        width:100 },
   { field:'id',                   header:'Book ID',              width:140 },
   { field:'authorId',             header:'Author ID',            width:160 },
@@ -706,7 +706,7 @@ const BOOK_COLS = [
 ];
 
 const SPECIAL_AUTHORS = new Set(['name','regnDate','locale','email','phone','bucketTag','contestTag','sourceTag','authorTypeTag','preContractedTag','preContractCompany']);
-const SPECIAL_BOOKS   = new Set(['authorId','title','_createMonth','_stage','_daysInStage','showId','showTitle','createDate','status']);
+const SPECIAL_BOOKS   = new Set(['authorId','title','createMonth','stage','_daysInStage','showId','showTitle','createDate','status']);
 
 // ── State ──────────────────────────────────────────────────────────
 const BASE = '';
@@ -714,7 +714,7 @@ let token = localStorage.getItem('crm_token') || '';
 
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
-  books:   { data: [], sortedData: [], pinned: new Set(['title','_createMonth','_stage','_daysInStage']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  books:   { data: [], sortedData: [], pinned: new Set(['title','createMonth','stage','_daysInStage']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
   aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -749,147 +749,10 @@ function daysAgo(dateVal) {
   return Math.floor((new Date() - d) / (1000*60*60*24));
 }
 
-function inList(val, csv) {
-  const v = String(val||'').trim().toLowerCase();
-  return csv.split(',').map(s=>s.trim().toLowerCase()).includes(v);
-}
-
-function getBookStage(row) {
-  const updDate = row.updatedAt || row.createDate;
-
-  // ── Step 1-2: Dead flow (highest priority, supersedes all else) ──
-  const bookStatus = String(row.status||'').trim().toLowerCase();
-  if (inList(bookStatus, 'disabled, draft, pending, unpublished, user_deleted')) {
-    return { stage: 'Dead - Book Status = ' + (row.status||''), sinceDate: updDate, imp: 'high' };
-  }
-  const showStatus = String(row.showStatus||'').trim().toLowerCase();
-  if (inList(showStatus, 'disabled, draft, pending, unpublished, user_deleted')) {
-    return { stage: 'Dead - Show Status = ' + (row.showStatus||''), sinceDate: updDate, imp: 'high' };
-  }
-
-  // ── Step 3-6: PPV Failed flow (second priority) ──
-  const ppv = String(row.ppvTag||'').trim().toLowerCase();
-  const manualCheck = String(row.ppvManualCheck||'').trim();
-  if (ppv === 'bad') {
-    if (isBlankish(manualCheck)) return { stage: 'Check - PPV Bad', sinceDate: row.ppvBadDate, imp: 'high' };
-    if (manualCheck.toLowerCase() === 'retained bad') return { stage: 'PPV Bad', sinceDate: row.ppvManualCheckDate, imp: 'medium' };
-  }
-  if (ppv === 'average') {
-    if (isBlankish(manualCheck)) return { stage: 'Check - PPV Average', sinceDate: row.ppvAvgDate, imp: 'high' };
-    if (manualCheck.toLowerCase() === 'retained average') return { stage: 'PPV Avg', sinceDate: row.ppvManualCheckDate, imp: 'medium' };
-  }
-
-  // ── Step 7-8: Flow A / Flow B determination ──
-  const pc = String(row.authorPreContract||'').trim().toLowerCase();
-  const isFlowA = inList(pc, 'pre-contracted, pre-contracted (w/ other proof)');
-
-  const wcRaw = typeof row.pubWC==='number'?row.pubWC:parseInt(String(row.pubWC||'').replace(/,/g,''),10);
-  const wc = isNaN(wcRaw) ? 0 : wcRaw;
-
-  // ── Step 9: Awaiting Chp 1 ──
-  if (isBlankish(row.chp1PublishedDate)) {
-    return { stage: 'Awaiting Chp 1', sinceDate: row.createDate, imp: 'low' };
-  }
-  // ── Step 10: Awaiting 10k ──
-  if (wc < 10000) {
-    return { stage: 'Awaiting 10k', sinceDate: row.chp1PublishedDate, imp: 'low' };
-  }
-
-  const modStatus = String(row.moderationStatus||'').trim().toLowerCase();
-  const modPending = isBlankish(modStatus) || inList(modStatus, 'in progress, moderation_pending_or_missing, null, pending');
-  const modFailed = inList(modStatus, 'failed, moderation_failed');
-  const modPassed = inList(modStatus, 'moderation_passed, passed');
-
-  // ── Step 11: Awaiting Moderation ──
-  if (wc >= 10000 && modPending) {
-    return { stage: 'Awaiting Moderation', sinceDate: row.words10kDate, imp: 'medium' };
-  }
-  // ── Step 12: Mod Failed ──
-  if (wc >= 10000 && modFailed) {
-    return { stage: 'Mod Failed', sinceDate: row.moderationPassedDate, imp: 'high' };
-  }
-
-  const edScore = Number(row.editorScore);
-  // ── Step 13: Check BES <> 10 (wc>=10k) ──
-  if (wc >= 10000 && modPassed && edScore !== 10) {
-    return { stage: 'Check BES <> 10', sinceDate: row.moderationPassedDate, imp: 'high' };
-  }
-  // ── Step 14: Check Mod Passed Pub WC <10k ──
-  if (wc < 10000 && modPassed) {
-    return { stage: 'Check Mod Passed Pub WC <10k', sinceDate: row.moderationPassedDate, imp: 'high' };
-  }
-  if (!modPassed) {
-    // Anything not clearly pending/failed/passed defaults to awaiting moderation
-    return { stage: 'Awaiting Moderation', sinceDate: row.words10kDate, imp: 'medium' };
-  }
-
-  // ── Step 15: from here Flow A & Flow B differ (10k<=wc<50k) ──
-  if (wc >= 10000 && wc < 50000) {
-    if (isFlowA) {
-      const llmSent1 = row.llmSentDate1hr, llmRecd1 = row.llmRecdDate1hr;
-      const llmDec1 = String(row.llmDecision1hr||'').trim().toLowerCase();
-      // Step 16: Send For 1 Hr LLM Score
-      if (isBlankish(llmSent1)) return { stage: 'Send For 1 Hr LLM Score', sinceDate: row.moderationPassedDate, imp: 'medium' };
-      // Step 17: Awaiting 1 Hr LLM
-      if (isBlankish(llmRecd1)) return { stage: 'Awaiting 1 Hr LLM', sinceDate: llmSent1, imp: 'medium' };
-      // Step 18: Check - 1 Hr LLM Failed
-      if (llmDec1 === 'reject') return { stage: 'Check - 1 Hr LLM Failed', sinceDate: llmRecd1, imp: 'high' };
-      // Step 19: Send Addn Details Form
-      if (isBlankish(row.form2SentDate)) return { stage: 'Send Addn Details Form', sinceDate: llmRecd1, imp: 'medium' };
-      // Step 20-22: Awaiting Addn Details
-      if (isBlankish(row.form2FollowUp1Date)) return { stage: 'Awaiting Addn Details', sinceDate: row.form2SentDate, imp: 'medium' };
-      if (isBlankish(row.form2FollowUp2Date)) return { stage: 'Awaiting Addn Details', sinceDate: row.form2FollowUp1Date, imp: 'medium' };
-      if (isBlankish(row.form2RecdDate)) return { stage: 'Awaiting Addn Details', sinceDate: row.form2FollowUp2Date, imp: 'medium' };
-      // Step 23: Send For Review
-      if (isBlankish(row.dateAddedForReview)) return { stage: 'Send For Review', sinceDate: row.form2RecdDate, imp: 'medium' };
-      // Step 24: Awaiting Review
-      if (isBlankish(row.reviewCompDate)) return { stage: 'Awaiting Review', sinceDate: row.dateAddedForReview, imp: 'medium' };
-      const contractingDecision = String(row.contractingDecision||'').trim().toLowerCase();
-      // Step 25: Send for Contracting
-      if (contractingDecision === 'yes' && isBlankish(row.sentForContractingDate)) {
-        return { stage: 'Send for Contracting', sinceDate: row.reviewCompDate, imp: 'medium' };
-      }
-      const wbpStatus = String(row.wbpStatus||'').trim().toLowerCase();
-      // Step 26: Awaiting Program ID
-      if (!isBlankish(row.sentForContractingDate) && wbpStatus !== 'ongoing') {
-        return { stage: 'Awaiting Program ID', sinceDate: row.sentForContractingDate, imp: 'medium' };
-      }
-      const wbpSub = String(row.wbpSubStatus||'').trim().toLowerCase();
-      // Step 27: Signing Pending
-      if (wbpStatus === 'ongoing' && wbpSub === 'signing_pending') {
-        return { stage: 'Signing Pending', sinceDate: row.contractOfferedDate, imp: 'medium' };
-      }
-      // Step 28: OFW
-      if (wbpStatus === 'ongoing' && inList(wbpSub, 'open_for_withdrawal, open_for_wsigithdrawal')) {
-        return { stage: 'OFW', sinceDate: row.contractSigningDate, imp: 'low' };
-      }
-      return { stage: 'Awaiting Review', sinceDate: row.dateAddedForReview, imp: 'medium' };
-    } else {
-      // ── Step 29: Awaiting 50k (Flow B) ──
-      return { stage: 'Awaiting 50k', sinceDate: row.words10kDate, imp: 'low' };
-    }
-  }
-
-  // ── Step 30-33: wc >= 50000, Flow A & B merge again ──
-  if (wc >= 50000) {
-    if (isBlankish(row.llmScore5hr)) return { stage: 'Awaiting 5 hr LLM', sinceDate: row.words50kDate, imp: 'medium' };
-    const dec5 = String(row.llmDecision5hr||'').trim().toLowerCase();
-    if (!isBlankish(row.llmDate5hr) && dec5 === 'reject') {
-      return { stage: '5 Hr LLM Rejected', sinceDate: row.llmDate5hr, imp: 'high' };
-    }
-    if (!isBlankish(row.llmDate5hr) && dec5 === 'pass') {
-      const ppvState = String(row.ppvTag||'').trim().toLowerCase();
-      if (isBlankish(ppvState) || ppvState === 'untested') {
-        return { stage: 'Send for PPV Testing', sinceDate: row.llmDate5hr, imp: 'medium' };
-      }
-      return { stage: 'Awaiting Testing Results', sinceDate: row.ppvTagDate, imp: 'low' };
-    }
-    return { stage: 'Awaiting 5 hr LLM', sinceDate: row.words50kDate, imp: 'medium' };
-  }
-
-  return { stage: 'Mod Passed', sinceDate: row.moderationPassedDate, imp: 'low' };
-}
-
+// Stage/IMP/URG/Create Month are now computed and stored server-side
+// (modules/bookStage.js, run by rollupSync) so filtering/sorting/pagination
+// on them works exactly like any other Mongo-indexed column. The client only
+// needs to know the display order for the Stage filter dropdown.
 // Matches the step order of the Stage decision table (Dead > PPV Failed > Flow A/B).
 const STAGE_ORDER = [
   'Dead - Book Status =',
@@ -925,36 +788,6 @@ const STAGE_ORDER = [
 function stageSortIndex(stage) {
   const i = STAGE_ORDER.findIndex(s => stage === s || stage.startsWith(s));
   return i === -1 ? STAGE_ORDER.length : i;
-}
-
-function getBookImp(stageObj) {
-  return stageObj.imp || 'low';
-}
-
-function getBookUrg(stageObj) {
-  const days = stageObj.sinceDate ? daysAgo(stageObj.sinceDate) : -1;
-  if (days < 0) return 'low';
-  const s = stageObj.stage;
-  if (s.startsWith('Dead')) return days > 3 ? 'high' : days > 1 ? 'medium' : 'low';
-  if (s.includes('PPV')) return days > 3 ? 'high' : days > 1 ? 'medium' : 'low';
-  if (s.includes('Chp 1')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
-  if (s.includes('10k') || s.includes('50k')) return days > 30 ? 'high' : days > 14 ? 'medium' : 'low';
-  if (s.includes('Moderation') || s.includes('Mod Failed') || s.includes('Mod Passed')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
-  if (s.includes('BES') || s.includes('WC <10k')) return days > 3 ? 'high' : days > 1 ? 'medium' : 'low';
-  if (s.includes('LLM')) return days > 7 ? 'high' : days > 3 ? 'medium' : 'low';
-  if (s.includes('Addn Details') || s.includes('Review')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
-  if (s.includes('Contracting') || s.includes('Program ID') || s.includes('Signing Pending') || s === 'OFW') return days > 21 ? 'high' : days > 10 ? 'medium' : 'low';
-  if (s.includes('PPV Testing') || s.includes('Testing Results')) return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
-  return days > 14 ? 'high' : days > 7 ? 'medium' : 'low';
-}
-
-function formatCreateMonth(row) {
-  const d = row.createDate;
-  if (isBlankish(d)) return '';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return '';
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return months[dt.getMonth()] + " '" + String(dt.getFullYear()).slice(-2);
 }
 
 function formatNumber(val) {
@@ -1562,28 +1395,28 @@ function renderTable(entity) {
   // Select-all checkbox column
   html += `<th class="sel-cell"><div class="mini-cell-label">Sel</div><input type="checkbox" class="row-cb" title="Select all" onchange="toggleSelectAll('${entity}',this)"></th>`;
   if (entity==='books') {
-    const critFilter = s.filter['_criticality'] || new Set();
+    const critFilter = s.filter['stageImp'] || new Set();
     const critHasFilter = critFilter.size > 0;
     const critLabel = critHasFilter ? critFilter.size+' sel' : 'All';
     html += `<th class="crit-cell">
       <div class="th-inner">
         <div class="th-top"><span class="th-label">IMP</span></div>
         <div class="th-filter">
-          <button class="filter-btn ${critHasFilter?'has-filter':''}" id="fbtn-${entity}-_criticality" onclick="openFD(event,'${entity}','_criticality',this)">
+          <button class="filter-btn ${critHasFilter?'has-filter':''}" id="fbtn-${entity}-stageImp" onclick="openFD(event,'${entity}','stageImp',this)">
             <span class="filter-btn-text">${critLabel}</span>
             <span class="filter-btn-arrow">▾</span>
           </button>
         </div>
       </div>
     </th>`;
-    const agingFilter = s.filter['_aging'] || new Set();
+    const agingFilter = s.filter['stageUrg'] || new Set();
     const agingHasFilter = agingFilter.size > 0;
     const agingLabel = agingHasFilter ? agingFilter.size+' sel' : 'All';
     html += `<th class="aging-cell">
       <div class="th-inner">
         <div class="th-top"><span class="th-label">URG</span></div>
         <div class="th-filter">
-          <button class="filter-btn ${agingHasFilter?'has-filter':''}" id="fbtn-${entity}-_aging" onclick="openFD(event,'${entity}','_aging',this)">
+          <button class="filter-btn ${agingHasFilter?'has-filter':''}" id="fbtn-${entity}-stageUrg" onclick="openFD(event,'${entity}','stageUrg',this)">
             <span class="filter-btn-text">${agingLabel}</span>
             <span class="filter-btn-arrow">▾</span>
           </button>
@@ -1643,9 +1476,8 @@ function renderTable(entity) {
     }
     const rowId = String(row[idField]||'');
     const isSelected = s.selected.has(rowId);
-    const step = entity==='books' ? getBookStage(row) : null;
     if (entity==='books') {
-      const isDead = step && step.stage && step.stage.startsWith('Dead');
+      const isDead = row.stage && String(row.stage).startsWith('Dead');
       const modS = String(row.moderationStatus||'').trim().toLowerCase();
       const modPassed = ['passed','moderation passed','moderation_passed'].includes(modS);
       const pc = String(row.authorPreContract||'').trim().toLowerCase();
@@ -1660,9 +1492,9 @@ function renderTable(entity) {
     html += `<tr data-idx="${idx}" data-id="${escAttr(rowId)}" class="${isSelected?'row-selected':''}">`;
     html += `<td class="sel-cell"><input type="checkbox" class="row-cb" ${isSelected?'checked':''} onchange="toggleRowSelect('${entity}','${escAttr(rowId)}',this)"></td>`;
     if (entity==='books') {
-      const imp = getBookImp(step);
+      const imp = row.stageImp || 'low';
       html += `<td class="crit-cell"><span class="risk-${imp}">${imp[0].toUpperCase()}</span></td>`;
-      const urg = getBookUrg(step);
+      const urg = row.stageUrg || 'low';
       html += `<td class="aging-cell"><span class="risk-${urg}">${urg[0].toUpperCase()}</span></td>`;
     }
     for (const col of cols) {
@@ -1681,18 +1513,13 @@ function renderTable(entity) {
       let tdClick = '';
       let tdContent = '';
 
-      if (col.field === '_createMonth') {
-        tdContent = escHtml(formatCreateMonth(row));
-        html += `<td class="${tdClass.trim()}" style="${stStyle}">${tdContent}</td>`;
-        continue;
-      }
-      if (col.field === '_stage') {
-        const stageLabel = step ? step.stage : '';
+      if (col.field === 'stage') {
+        const stageLabel = row.stage || '';
         html += `<td class="${tdClass.trim()}" style="${stStyle}" title="${escAttr(stageLabel)}"><span class="stage-tag">${escHtml(stageLabel)}</span></td>`;
         continue;
       }
       if (col.field === '_daysInStage') {
-        const daysVal = step && step.sinceDate ? daysAgo(step.sinceDate) : -1;
+        const daysVal = row.stageSince ? daysAgo(row.stageSince) : -1;
         html += `<td class="${tdClass.trim()}" style="${stStyle}" title="${daysVal >= 0 ? daysVal + ' days' : ''}">${daysVal >= 0 ? daysVal + 'd' : '—'}</td>`;
         continue;
       }
@@ -1778,12 +1605,7 @@ function renderTable(entity) {
 }
 
 function getRowFilterVal(row, field) {
-  if (field === '_criticality') return getBookImp(getBookStage(row));
-  if (field === '_aging') return getBookUrg(getBookStage(row));
-  if (field === '_stage') return getBookStage(row).stage;
-  if (field === '_daysInStage') { const st = getBookStage(row); return st.sinceDate ? String(daysAgo(st.sinceDate)) : ''; }
-  if (field === '_createMonth') return formatCreateMonth(row);
-  if (field === '_stage') return '';
+  if (field === '_daysInStage') return row.stageSince ? String(daysAgo(row.stageSince)) : '';
   return String(row[field]??'');
 }
 
@@ -1798,7 +1620,7 @@ function renderFilterTags(entity) {
   let html = '';
   activeFilters.forEach(([field, vals]) => {
     const col = cols.find(c=>c.field===field);
-    const label = field==='_criticality'?'IMP':field==='_aging'?'URG':field==='_createMonth'?'Create Month':field==='_stage'?'Stage':col ? col.header : field;
+    const label = field==='stageImp'?'IMP':field==='stageUrg'?'URG':col ? col.header : field;
     const valArr = [...vals];
     const display = valArr.length <= 2
       ? valArr.map(v=>v||'(blank)').join(', ')
@@ -1857,7 +1679,7 @@ function updateTotals(entity, visibleRows) {
   const sourceRows = sel.size > 0 ? visibleRows.filter(r => sel.has(String(r[idField]||''))) : visibleRows;
 
   const serverTotal = state[entity].total;
-  const virtualFieldSet = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+  const virtualFieldSet = new Set(['_daysInStage']);
   const activeFilterKeys = Object.keys(state[entity].filter).filter(k => state[entity].filter[k] && state[entity].filter[k].size > 0);
   const hasVirtualFilters = activeFilterKeys.some(k => virtualFieldSet.has(k));
   const hasServerFilters = activeFilterKeys.some(k => !virtualFieldSet.has(k));
@@ -1930,7 +1752,7 @@ async function openFD(event, entity, field, btn) {
 
   // Fetch distinct values from server for books/authors, use local data for others
   let dataVals;
-  const virtualFields = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+  const virtualFields = new Set(['_daysInStage']);
   if ((entity === 'books' || entity === 'authors') && !virtualFields.has(field)) {
     try {
       const r = await api(`/api/${entity}/distinct/${field}`);
@@ -1938,14 +1760,6 @@ async function openFD(event, entity, field, btn) {
     } catch (e) {
       dataVals = new Set(s.data.map(r => String(r[field]??'')));
     }
-  } else if (field === '_criticality') {
-    dataVals = new Set(['high','medium','low']);
-  } else if (field === '_aging') {
-    dataVals = new Set(['high','medium','low']);
-  } else if (field === '_stage') {
-    dataVals = new Set(s.data.map(r => getBookStage(r).stage));
-  } else if (field === '_createMonth') {
-    dataVals = new Set(s.data.map(r => formatCreateMonth(r)));
   } else if (field === '_daysInStage') {
     dataVals = new Set(s.data.map(r => getRowFilterVal(r, '_daysInStage')));
   } else {
@@ -1954,7 +1768,7 @@ async function openFD(event, entity, field, btn) {
   if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
 
   let nonBlank;
-  if (field === '_stage') {
+  if (field === 'stage') {
     nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b) => stageSortIndex(a) - stageSortIndex(b));
   } else {
     nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b)=>{
@@ -1981,7 +1795,7 @@ async function openFD(event, entity, field, btn) {
 function closeFD() {
   if (fdCtx) {
     const entity = fdCtx.entity;
-    const virtualFields = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+    const virtualFields = new Set(['_daysInStage']);
     const hasServerFilters = Object.entries(state[entity].filter).some(([k, v]) => v && v.size > 0 && !virtualFields.has(k));
     if ((entity === 'authors' || entity === 'books') && hasServerFilters) {
       document.getElementById('filter-dropdown').classList.remove('open');
@@ -2005,7 +1819,7 @@ const RISK_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
 
 function renderFDOptions(vals, selected, search) {
   const container = document.getElementById('fd-options');
-  const isRiskFilter = fdCtx && (fdCtx.field === '_criticality' || fdCtx.field === '_aging');
+  const isRiskFilter = fdCtx && (fdCtx.field === 'stageImp' || fdCtx.field === 'stageUrg');
   const filtered = search ? vals.filter(v => {
     const display = v==='' ? '(blank)' : (isRiskFilter ? (RISK_LABELS[v]||v) : v);
     return display.toLowerCase().includes(search.toLowerCase());
@@ -2422,7 +2236,7 @@ function hasActiveFilters(entity) {
 
 function buildFilterParam(entity) {
   const f = state[entity].filter;
-  const virtualFields = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+  const virtualFields = new Set(['_daysInStage']);
   const active = {};
   for (const [k, v] of Object.entries(f)) {
     if (v && v.size > 0 && !virtualFields.has(k)) active[k] = [...v];
@@ -2463,7 +2277,7 @@ function renderPager(entity) {
   const el = document.getElementById(`${entity}-pager`);
   if (!el) return;
   const s = state[entity];
-  const virtualFieldSet = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+  const virtualFieldSet = new Set(['_daysInStage']);
   const hasVirtualFilters = Object.entries(s.filter).some(([k,v]) => v && v.size > 0 && virtualFieldSet.has(k));
   const virtualNote = hasVirtualFilters ? ' <span class="pager-note" title="Stage/IMP/URG/Create Month/Days in Stage filters only narrow rows on the currently loaded page — they do not reduce this count.">(Stage/IMP/URG filters apply per page)</span>' : '';
   if (s.pages <= 1) { el.innerHTML = `<span class="pager-info">${s.total.toLocaleString()} records</span>${virtualNote}`; return; }

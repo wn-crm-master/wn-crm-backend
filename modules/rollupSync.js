@@ -1,3 +1,5 @@
+const { computeBookStage, computeBookUrg, computeCreateMonth } = require('./bookStage');
+
 const TRUTHY_VALS = [true, 1, 'true', 'TRUE', 'True', 'yes', 'YES', 'Yes', 'y', 'Y', '1'];
 
 let syncing = false;
@@ -93,6 +95,9 @@ async function syncRollups(db) {
       syncAeRollups(db, results),
       syncBookAuthorFields(db)
     ]);
+    // Stage depends on the just-denormalized authorPreContract field, so it
+    // must run after syncBookAuthorFields completes.
+    await syncBookStages(db);
   } catch (err) {
     console.error('Rollup sync error:', err);
   } finally {
@@ -129,6 +134,47 @@ async function syncBookAuthorFields(db) {
     console.log(`Book author-field sync complete: ${books.length} books updated`);
   } catch (err) {
     console.error('Book author-field sync error:', err);
+  }
+}
+
+// Computes Stage/IMP/URG/Create Month once per book and stores them as real
+// fields, so the Books list can filter/sort/paginate/count on them exactly
+// like any other Mongo-indexed column instead of only within whatever page
+// happens to be loaded client-side.
+async function syncBookStages(db) {
+  try {
+    const books = await db.collection('books').find({}, {
+      projection: {
+        id: 1, status: 1, showStatus: 1, ppvTag: 1, ppvManualCheck: 1, ppvBadDate: 1, ppvAvgDate: 1,
+        ppvManualCheckDate: 1, ppvTagDate: 1, authorPreContract: 1, chp1PublishedDate: 1, pubWC: 1,
+        createDate: 1, moderationStatus: 1, moderationPassedDate: 1, editorScore: 1,
+        llmSentDate1hr: 1, llmRecdDate1hr: 1, llmDecision1hr: 1, words10kDate: 1, words50kDate: 1,
+        form2SentDate: 1, form2FollowUp1Date: 1, form2FollowUp2Date: 1, form2RecdDate: 1,
+        dateAddedForReview: 1, reviewCompDate: 1, contractingDecision: 1, sentForContractingDate: 1,
+        wbpStatus: 1, wbpSubStatus: 1, contractOfferedDate: 1, contractSigningDate: 1,
+        llmScore5hr: 1, llmDecision5hr: 1, llmDate5hr: 1, updatedAt: 1
+      }
+    }).toArray();
+    if (!books.length) return;
+
+    const now = new Date();
+    const bulk = db.collection('books').initializeUnorderedBulkOp();
+    for (const b of books) {
+      const stageObj = computeBookStage(b);
+      const urg = computeBookUrg(stageObj, now);
+      const createMonth = computeCreateMonth(b.createDate);
+      bulk.find({ id: b.id }).updateOne({ $set: {
+        stage: stageObj.stage,
+        stageSince: stageObj.sinceDate || null,
+        stageImp: stageObj.imp || 'low',
+        stageUrg: urg,
+        createMonth
+      }});
+    }
+    await bulk.execute();
+    console.log(`Book stage sync complete: ${books.length} books updated`);
+  } catch (err) {
+    console.error('Book stage sync error:', err);
   }
 }
 
