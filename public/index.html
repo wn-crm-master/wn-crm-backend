@@ -1716,6 +1716,7 @@ function updateTotals(entity, visibleRows) {
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s) { return s.replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+function escJs(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 // ── Sort & Pin ─────────────────────────────────────────────────────
 function setSort(entity, field, dir) {
@@ -1832,7 +1833,7 @@ function renderFDOptions(vals, selected, search) {
     if (v === '') label = '<em style="color:#aaa">(blank)</em>';
     else if (isRiskFilter) label = RISK_LABELS[v] || escHtml(v);
     else label = escHtml(v);
-    return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle('${escAttr(v)}',this.checked)"><span class="fd-option-label" title="${v===''?'(blank)':escAttr(v)}">${label}</span></label>`;
+    return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle('${escJs(v)}',this.checked)"><span class="fd-option-label" title="${v===''?'(blank)':escAttr(v)}">${label}</span></label>`;
   }).join('');
 }
 
