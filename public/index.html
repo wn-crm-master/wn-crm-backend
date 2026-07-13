@@ -889,6 +889,43 @@ function getBookStage(row) {
   return { stage: 'Mod Passed', sinceDate: row.moderationPassedDate, imp: 'low' };
 }
 
+// Matches the step order of the Stage decision table (Dead > PPV Failed > Flow A/B).
+const STAGE_ORDER = [
+  'Dead - Book Status =',
+  'Dead - Show Status =',
+  'Check - PPV Bad',
+  'Check - PPV Average',
+  'PPV Bad',
+  'PPV Avg',
+  'Awaiting Chp 1',
+  'Awaiting 10k',
+  'Awaiting Moderation',
+  'Mod Failed',
+  'Check BES <> 10',
+  'Check Mod Passed Pub WC <10k',
+  'Send For 1 Hr LLM Score',
+  'Awaiting 1 Hr LLM',
+  'Check - 1 Hr LLM Failed',
+  'Send Addn Details Form',
+  'Awaiting Addn Details',
+  'Send For Review',
+  'Awaiting Review',
+  'Send for Contracting',
+  'Awaiting Program ID',
+  'Signing Pending',
+  'OFW',
+  'Awaiting 50k',
+  'Awaiting 5 hr LLM',
+  '5 Hr LLM Rejected',
+  'Send for PPV Testing',
+  'Awaiting Testing Results',
+  'Mod Passed',
+];
+function stageSortIndex(stage) {
+  const i = STAGE_ORDER.findIndex(s => stage === s || stage.startsWith(s));
+  return i === -1 ? STAGE_ORDER.length : i;
+}
+
 function getBookImp(stageObj) {
   return stageObj.imp || 'low';
 }
@@ -1906,9 +1943,14 @@ async function openFD(event, entity, field, btn) {
   }
   if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
 
-  const nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b)=>{
-    const n=Number(a),m=Number(b); return (!isNaN(n)&&!isNaN(m))?n-m:a.localeCompare(b,undefined,{numeric:true});
-  });
+  let nonBlank;
+  if (field === '_stage') {
+    nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b) => stageSortIndex(a) - stageSortIndex(b));
+  } else {
+    nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b)=>{
+      const n=Number(a),m=Number(b); return (!isNaN(n)&&!isNaN(m))?n-m:a.localeCompare(b,undefined,{numeric:true});
+    });
+  }
   const allVals = dataVals.has('') ? ['', ...nonBlank] : nonBlank;
 
   fdCtx.allVals = allVals;
