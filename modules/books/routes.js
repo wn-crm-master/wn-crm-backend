@@ -124,7 +124,8 @@ function register(app, getDb, authMiddleware) {
       const db = getDb();
       const { ids = [], field, value } = req.body;
       if (!Array.isArray(ids) || ids.length === 0 || !field) return res.status(400).json({ error: 'ids array and field are required' });
-      if (field === '_id' || field === 'id') return res.status(400).json({ error: 'Cannot update id fields' });
+      const computedFields = new Set(['_id', 'id', 'stage', 'stageSince', 'stageImp', 'stageUrg', 'createMonth']);
+      if (computedFields.has(field)) return res.status(400).json({ error: 'Cannot update id/computed fields' });
       const result = await db.collection('books').updateMany(
         { id: { $in: ids } },
         { $set: { [field]: value, updatedAt: new Date() } }
@@ -141,9 +142,10 @@ function register(app, getDb, authMiddleware) {
       const db = getDb();
       const existing = await db.collection('books').findOne({ id: req.params.id });
       if (!existing) return res.status(404).json({ error: 'Book not found' });
+      const computedFields = new Set(['_id', 'id', 'stage', 'stageSince', 'stageImp', 'stageUrg', 'createMonth']);
       const updates = {};
       for (const [key, val] of Object.entries(req.body)) {
-        if (key === '_id' || key === 'id') continue;
+        if (computedFields.has(key)) continue;
         updates[key] = val;
       }
       if (Object.keys(updates).length === 0) return res.json({ success: true, message: 'Nothing to update' });

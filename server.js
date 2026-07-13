@@ -40,6 +40,10 @@ MongoClient.connect(MONGO_URI)
     db.collection('authors').dropIndex('id_1').catch(() => {});
     db.collection('books').createIndex({ id: 1 }, { unique: true }).catch(() => {});
     db.collection('books').createIndex({ authorId: 1 }).catch(() => {});
+    db.collection('books').createIndex({ stage: 1 }).catch(() => {});
+    db.collection('books').createIndex({ stageImp: 1 }).catch(() => {});
+    db.collection('books').createIndex({ stageUrg: 1 }).catch(() => {});
+    db.collection('books').createIndex({ createMonth: 1 }).catch(() => {});
     db.collection('users').createIndex({ email: 1 }, { unique: true }).catch(() => {});
     db.collection('authors_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
     db.collection('books_backups').createIndex({ backedUpAt: 1 }, { expireAfterSeconds: 86400 }).catch(() => {});
