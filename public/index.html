@@ -55,6 +55,7 @@
     .pager button.active { background:#c0272d; color:#fff; border-color:#c0272d; }
     .pager select { padding:4px 8px; border:1px solid #ddd; border-radius:5px; font-size:0.85rem; }
     .pager .pager-info { color:#888; font-size:0.8rem; }
+    .pager-note { color:#e65100; font-size:0.72rem; font-style:italic; }
 
     /* Tabs */
     .tab { display: none; }
@@ -1856,14 +1857,23 @@ function updateTotals(entity, visibleRows) {
   const sourceRows = sel.size > 0 ? visibleRows.filter(r => sel.has(String(r[idField]||''))) : visibleRows;
 
   const serverTotal = state[entity].total;
-  const hasFilters = Object.keys(state[entity].filter).some(k => state[entity].filter[k] && state[entity].filter[k].size > 0);
-  const displayCount = sel.size > 0 ? sourceRows.length : (hasFilters ? sourceRows.length : (serverTotal || sourceRows.length));
+  const virtualFieldSet = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+  const activeFilterKeys = Object.keys(state[entity].filter).filter(k => state[entity].filter[k] && state[entity].filter[k].size > 0);
+  const hasVirtualFilters = activeFilterKeys.some(k => virtualFieldSet.has(k));
+  const hasServerFilters = activeFilterKeys.some(k => !virtualFieldSet.has(k));
+  // Server-side filters already narrow serverTotal correctly across every page.
+  // Virtual (client-computed) filters can only be evaluated on rows that are
+  // currently loaded, so their count only reflects the current page.
+  const displayCount = sel.size > 0
+    ? sourceRows.length
+    : (hasVirtualFilters ? sourceRows.length : (hasServerFilters ? serverTotal : (serverTotal || sourceRows.length)));
 
   const countEl = document.getElementById(entity+'-totals-count');
   if (countEl) countEl.textContent = displayCount;
 
   const labelEl = document.getElementById(entity+'-totals-label');
-  if (labelEl) labelEl.textContent = sel.size > 0 ? `Selected (${sourceRows.length})` : `Total (${displayCount.toLocaleString()})`;
+  const totalLabel = hasVirtualFilters ? `Total (${displayCount.toLocaleString()} on this page)` : `Total (${displayCount.toLocaleString()})`;
+  if (labelEl) labelEl.textContent = sel.size > 0 ? `Selected (${sourceRows.length})` : totalLabel;
 
   for (const col of cols) {
     const el = document.getElementById('tot-'+entity+'-'+col.field);
@@ -2453,10 +2463,13 @@ function renderPager(entity) {
   const el = document.getElementById(`${entity}-pager`);
   if (!el) return;
   const s = state[entity];
-  if (s.pages <= 1) { el.innerHTML = `<span class="pager-info">${s.total.toLocaleString()} records</span>`; return; }
+  const virtualFieldSet = new Set(['_criticality','_aging','_createMonth','_stage','_daysInStage']);
+  const hasVirtualFilters = Object.entries(s.filter).some(([k,v]) => v && v.size > 0 && virtualFieldSet.has(k));
+  const virtualNote = hasVirtualFilters ? ' <span class="pager-note" title="Stage/IMP/URG/Create Month/Days in Stage filters only narrow rows on the currently loaded page — they do not reduce this count.">(Stage/IMP/URG filters apply per page)</span>' : '';
+  if (s.pages <= 1) { el.innerHTML = `<span class="pager-info">${s.total.toLocaleString()} records</span>${virtualNote}`; return; }
   const start = (s.page - 1) * PAGE_SIZE + 1;
   const end = Math.min(s.page * PAGE_SIZE, s.total);
-  let html = `<span class="pager-info">${start.toLocaleString()}–${end.toLocaleString()} of ${s.total.toLocaleString()}</span>`;
+  let html = `<span class="pager-info">${start.toLocaleString()}–${end.toLocaleString()} of ${s.total.toLocaleString()}</span>${virtualNote}`;
   html += `<button ${s.page<=1?'disabled':''} onclick="goPage('${entity}',1)">⟨⟨</button>`;
   html += `<button ${s.page<=1?'disabled':''} onclick="goPage('${entity}',${s.page-1})">⟨</button>`;
   const maxBtns = 7;
