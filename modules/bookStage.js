@@ -71,8 +71,8 @@ function computeBookStage(row) {
   const wcRaw = typeof row.pubWC === 'number' ? row.pubWC : parseInt(String(row.pubWC || '').replace(/,/g, ''), 10);
   const wc = isNaN(wcRaw) ? 0 : wcRaw;
 
-  // Step 9: Awaiting Chp 1
-  if (isBlankish(row.chp1PublishedDate)) {
+  // Step 9: Awaiting Chp 1 (Pub WC = 0/blank AND Chp 1 Published Date blank)
+  if (wc === 0 && isBlankish(row.chp1PublishedDate)) {
     return { stage: 'Awaiting Chp 1', sinceDate: row.createDate, imp: 'low' };
   }
   // Step 10: Awaiting 10k
