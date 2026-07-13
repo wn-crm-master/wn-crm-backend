@@ -47,6 +47,18 @@ function computeBookStage(row) {
     if (manualCheck.toLowerCase() === 'retained average') return { stage: 'PPV Avg', sinceDate: row.ppvManualCheckDate, imp: 'medium' };
   }
 
+  // Step 27-28: WBP contracting status (Flow A/B, independent of word-count
+  // bucket — once contracting is underway it takes priority over whatever
+  // stage the word count would otherwise imply).
+  const wbpStatusEarly = String(row.wbpStatus || '').trim().toLowerCase();
+  const wbpSubEarly = String(row.wbpSubStatus || '').trim().toLowerCase();
+  if (wbpStatusEarly === 'ongoing' && wbpSubEarly === 'signing_pending') {
+    return { stage: 'Signing Pending', sinceDate: row.contractOfferedDate, imp: 'medium' };
+  }
+  if (wbpStatusEarly === 'ongoing' && inList(wbpSubEarly, 'open_for_withdrawal, open_for_wsigithdrawal')) {
+    return { stage: 'OFW', sinceDate: row.contractSigningDate, imp: 'low' };
+  }
+
   // Step 7-8: Flow A / Flow B determination
   const pc = String(row.authorPreContract || '').trim().toLowerCase();
   const isFlowA = inList(pc, 'pre-contracted, pre-contracted (w/ other proof)');
@@ -108,16 +120,10 @@ function computeBookStage(row) {
       if (contractingDecision === 'yes' && isBlankish(row.sentForContractingDate)) {
         return { stage: 'Send for Contracting', sinceDate: row.reviewCompDate, imp: 'medium' };
       }
-      const wbpStatus = String(row.wbpStatus || '').trim().toLowerCase();
-      if (!isBlankish(row.sentForContractingDate) && wbpStatus !== 'ongoing') {
+      // wbpStatusEarly/wbpSubEarly above already handled the 'ongoing' case
+      // (Signing Pending / OFW), so reaching here means WBP isn't ongoing yet.
+      if (!isBlankish(row.sentForContractingDate)) {
         return { stage: 'Awaiting Program ID', sinceDate: row.sentForContractingDate, imp: 'medium' };
-      }
-      const wbpSub = String(row.wbpSubStatus || '').trim().toLowerCase();
-      if (wbpStatus === 'ongoing' && wbpSub === 'signing_pending') {
-        return { stage: 'Signing Pending', sinceDate: row.contractOfferedDate, imp: 'medium' };
-      }
-      if (wbpStatus === 'ongoing' && inList(wbpSub, 'open_for_withdrawal, open_for_wsigithdrawal')) {
-        return { stage: 'OFW', sinceDate: row.contractSigningDate, imp: 'low' };
       }
       return { stage: 'Awaiting Review', sinceDate: row.dateAddedForReview, imp: 'medium' };
     } else {
