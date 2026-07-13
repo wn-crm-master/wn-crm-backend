@@ -52,11 +52,16 @@ function computeBookStage(row) {
   // stage the word count would otherwise imply).
   const wbpStatusEarly = String(row.wbpStatus || '').trim().toLowerCase();
   const wbpSubEarly = String(row.wbpSubStatus || '').trim().toLowerCase();
-  if (wbpStatusEarly === 'ongoing' && wbpSubEarly === 'signing_pending') {
-    return { stage: 'Signing Pending', sinceDate: row.contractOfferedDate, imp: 'medium' };
-  }
-  if (wbpStatusEarly === 'ongoing' && inList(wbpSubEarly, 'open_for_withdrawal, open_for_wsigithdrawal')) {
-    return { stage: 'OFW', sinceDate: row.contractSigningDate, imp: 'low' };
+  if (wbpStatusEarly === 'ongoing') {
+    if (wbpSubEarly === 'signing_pending') {
+      return { stage: 'Signing Pending', sinceDate: row.contractOfferedDate, imp: 'medium' };
+    }
+    if (inList(wbpSubEarly, 'open_for_withdrawal, open_for_wsigithdrawal')) {
+      return { stage: 'OFW', sinceDate: row.contractSigningDate, imp: 'low' };
+    }
+    // WBP is ongoing but under some other/blank sub-status — still must not
+    // fall through to word-count-driven stages (e.g. Awaiting 5 hr LLM).
+    return { stage: 'WBP Ongoing', sinceDate: row.contractOfferedDate, imp: 'medium' };
   }
 
   // Step 7-8: Flow A / Flow B determination
@@ -202,6 +207,7 @@ const STAGE_ORDER = [
   'Awaiting Program ID',
   'Signing Pending',
   'OFW',
+  'WBP Ongoing',
   'Awaiting 50k',
   'Awaiting 5 hr LLM',
   '5 Hr LLM Rejected',
