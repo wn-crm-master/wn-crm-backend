@@ -151,7 +151,7 @@ async function syncBookStages(db) {
         llmSentDate1hr: 1, llmRecdDate1hr: 1, llmDecision1hr: 1, words10kDate: 1, words50kDate: 1,
         form2SentDate: 1, form2FollowUp1Date: 1, form2FollowUp2Date: 1, form2RecdDate: 1,
         dateAddedForReview: 1, reviewCompDate: 1, contractingDecision: 1, sentForContractingDate: 1,
-        wbpStatus: 1, wbpSubStatus: 1, contractOfferedDate: 1, contractSigningDate: 1,
+        wbpStatus: 1, wbpSubStatus: 1, contractOfferedDate: 1, contractSigningDate: 1, wbpOngoingDate: 1, ofwDate: 1, wbpRejectedDate: 1,
         llmScore5hr: 1, llmDecision5hr: 1, llmDate5hr: 1, updatedAt: 1
       }
     }).toArray();
