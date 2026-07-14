@@ -1717,7 +1717,7 @@ function updateTotals(entity, visibleRows) {
 
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s) { return s.replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
-function escJs(s) { return s.replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+function escJsAttr(s) { return escAttr(JSON.stringify(s)); }
 
 // ── Sort & Pin ─────────────────────────────────────────────────────
 function setSort(entity, field, dir) {
@@ -1834,7 +1834,7 @@ function renderFDOptions(vals, selected, search) {
     if (v === '') label = '<em style="color:#aaa">(blank)</em>';
     else if (isRiskFilter) label = RISK_LABELS[v] || escHtml(v);
     else label = escHtml(v);
-    return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle('${escJs(v)}',this.checked)"><span class="fd-option-label" title="${v===''?'(blank)':escAttr(v)}">${label}</span></label>`;
+    return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle(${escJsAttr(v)},this.checked)"><span class="fd-option-label" title="${v===''?'(blank)':escAttr(v)}">${label}</span></label>`;
   }).join('');
 }
 
@@ -2251,6 +2251,7 @@ async function loadAuthors(page) {
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
   const filterParam = buildFilterParam('authors');
   const res = await api(`/api/authors?limit=${PAGE_SIZE}&page=${p}${filterParam}`);
+  if (res.error) { document.getElementById('authors-body').innerHTML=`<div class="empty">Error: ${escHtml(res.error)}</div>`; return; }
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
   state.authors.page = res.page || p;
   state.authors.pages = res.pages || 1;
@@ -2266,6 +2267,7 @@ async function loadBooks(page) {
   document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
   const filterParam = buildFilterParam('books');
   const res = await api(`/api/books?limit=${PAGE_SIZE}&page=${p}${filterParam}`);
+  if (res.error) { document.getElementById('books-body').innerHTML=`<div class="empty">Error: ${escHtml(res.error)}</div>`; return; }
   state.books.data = res.data||(Array.isArray(res)?res:[]);
   state.books.page = res.page || p;
   state.books.pages = res.pages || 1;
