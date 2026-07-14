@@ -1035,11 +1035,11 @@ async function loadEarnAe() {
 let _allAuthors = null, _allBooks = null;
 async function ensureAuthorsAndBooksLoaded() {
   const promises = [];
-  if (!_allAuthors || !_allAuthors.length) promises.push(api('/api/authors?limit=50000').then(r => {
+  if (!_allAuthors || !_allAuthors.length) promises.push(api('/api/authors/query?limit=50000', { method: 'POST', body: '{}' }).then(r => {
     if (r.error) { console.error('Failed to load authors:', r.error); _allAuthors = null; return; }
     _allAuthors = r.data || (Array.isArray(r) ? r : []);
   }));
-  if (!_allBooks || !_allBooks.length) promises.push(api('/api/books?limit=50000').then(r => {
+  if (!_allBooks || !_allBooks.length) promises.push(api('/api/books/query?limit=50000', { method: 'POST', body: '{}' }).then(r => {
     if (r.error) { console.error('Failed to load books:', r.error); _allBooks = null; return; }
     _allBooks = r.data || (Array.isArray(r) ? r : []);
   }));
