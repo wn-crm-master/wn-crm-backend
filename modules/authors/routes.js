@@ -33,7 +33,8 @@ function register(app, getDb, authMiddleware) {
   }
 
   function buildAuthorsQuery(req) {
-    const { search, filters } = req.query;
+    const search = req.body?.search || req.query.search;
+    const filters = req.body?.filters || (req.query.filters ? JSON.parse(req.query.filters) : null);
     const matchQuery = { uid: { $exists: true, $ne: '' } };
     if (search) matchQuery.$or = [
       { name: { $regex: search, $options: 'i' } },
@@ -42,7 +43,7 @@ function register(app, getDb, authMiddleware) {
     ];
     if (filters) {
       try {
-        const conds = buildFilterConditions(JSON.parse(filters));
+        const conds = buildFilterConditions(typeof filters === 'string' ? JSON.parse(filters) : filters);
         if (conds.length) matchQuery.$and = [...(matchQuery.$and || []), ...conds];
       } catch (e) {}
     }
@@ -53,8 +54,6 @@ function register(app, getDb, authMiddleware) {
     try {
       const db = getDb();
       const { page = 1, limit = 100 } = req.query;
-      req.query.filters = req.body.filters ? JSON.stringify(req.body.filters) : req.query.filters;
-      req.query.search = req.body.search || req.query.search;
       const matchQuery = buildAuthorsQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const [total, data] = await Promise.all([
@@ -104,8 +103,6 @@ function register(app, getDb, authMiddleware) {
   app.post('/api/authors/export/csv', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      if (req.body.filters) req.query.filters = JSON.stringify(req.body.filters);
-      if (req.body.search) req.query.search = req.body.search;
       const matchQuery = buildAuthorsQuery(req);
       let cols = req.body.cols || null;
       if (!cols) try { cols = JSON.parse(req.query.cols); } catch (e) { cols = null; }

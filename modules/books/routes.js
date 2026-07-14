@@ -33,7 +33,10 @@ function register(app, getDb, authMiddleware) {
   }
 
   function buildBooksQuery(req) {
-    const { search, genre, authorId, filters } = req.query;
+    const search = req.body?.search || req.query.search;
+    const genre = req.query.genre;
+    const authorId = req.query.authorId;
+    const filters = req.body?.filters || (req.query.filters ? JSON.parse(req.query.filters) : null);
     const query = {};
     if (search) query.$or = [
       { title: { $regex: search, $options: 'i' } },
@@ -43,7 +46,7 @@ function register(app, getDb, authMiddleware) {
     if (authorId) query.authorId = authorId;
     if (filters) {
       try {
-        const conds = buildFilterConditions(JSON.parse(filters));
+        const conds = buildFilterConditions(typeof filters === 'string' ? JSON.parse(filters) : filters);
         if (conds.length) query.$and = [...(query.$and || []), ...conds];
       } catch (e) {}
     }
@@ -57,8 +60,6 @@ function register(app, getDb, authMiddleware) {
     try {
       const db = getDb();
       const { page = 1, limit = 100 } = req.query;
-      req.query.filters = req.body.filters ? JSON.stringify(req.body.filters) : req.query.filters;
-      req.query.search = req.body.search || req.query.search;
       const query = buildBooksQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const [total, data] = await Promise.all([
@@ -109,8 +110,6 @@ function register(app, getDb, authMiddleware) {
   app.post('/api/books/export/csv', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      if (req.body.filters) req.query.filters = JSON.stringify(req.body.filters);
-      if (req.body.search) req.query.search = req.body.search;
       const query = buildBooksQuery(req);
       let cols = req.body.cols || null;
       if (!cols) try { cols = JSON.parse(req.query.cols); } catch (e) { cols = null; }
