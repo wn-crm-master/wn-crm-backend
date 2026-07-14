@@ -1718,6 +1718,7 @@ function updateTotals(entity, visibleRows) {
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s) { return s.replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
 function escJsAttr(s) { return escAttr(JSON.stringify(s)); }
+function escJsAttr(s) { return escAttr(JSON.stringify(s)); }
 
 // ── Sort & Pin ─────────────────────────────────────────────────────
 function setSort(entity, field, dir) {
@@ -1769,6 +1770,7 @@ async function openFD(event, entity, field, btn) {
     dataVals = new Set(s.data.map(r => String(r[field]??'')));
   }
   if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
+  dataVals.add('');
 
   let nonBlank;
   if (field === 'stage') {

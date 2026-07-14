@@ -1,18 +1,30 @@
 function register(app, getDb, authMiddleware) {
   const { triggerSync } = require('../rollupSync');
 
-  // Case/whitespace-tolerant equality: bulk-imported CSV data often has
-  // inconsistent casing or stray whitespace, so exact $in matches can miss
-  // values that look identical in the filter dropdown.
+  function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
   function buildFilterConditions(f) {
     const conditions = [];
     for (const [field, values] of Object.entries(f)) {
       if (!Array.isArray(values) || !values.length) continue;
       const hasBlank = values.includes('');
-      const nonBlank = values.filter(v => v !== '').map(v => String(v).trim().toLowerCase());
+      const nonBlank = values.filter(v => v !== '');
       const orConds = [];
       if (nonBlank.length) {
-        orConds.push({ $expr: { $in: [{ $toLower: { $trim: { input: { $convert: { input: { $ifNull: ['$' + field, ''] }, to: 'string', onError: '', onNull: '' } } } } }, nonBlank] } });
+        const inVals = [];
+        for (const v of nonBlank) {
+          const t = v.trim();
+          inVals.push(t);
+          const n = Number(t);
+          if (t !== '' && !isNaN(n)) inVals.push(n);
+          if (t.toLowerCase() === 'true') inVals.push(true);
+          if (t.toLowerCase() === 'false') inVals.push(false);
+        }
+        const pattern = '^(' + nonBlank.map(v => escapeRegex(v.trim())).join('|') + ')$';
+        orConds.push({ $or: [
+          { [field]: { $in: inVals } },
+          { [field]: { $regex: pattern, $options: 'i' } }
+        ]});
       }
       if (hasBlank) orConds.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
       conditions.push(orConds.length === 1 ? orConds[0] : { $or: orConds });
