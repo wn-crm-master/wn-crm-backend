@@ -2248,11 +2248,22 @@ function buildFilterParam(entity) {
   }
   return Object.keys(active).length ? '&filters=' + encodeURIComponent(JSON.stringify(active)) : '';
 }
+function buildFilterBody(entity) {
+  const f = state[entity].filter;
+  const virtualFields = new Set(['_daysInStage']);
+  const active = {};
+  for (const [k, v] of Object.entries(f)) {
+    if (v && v.size > 0 && !virtualFields.has(k)) active[k] = [...v];
+  }
+  const body = {};
+  if (Object.keys(active).length) body.filters = active;
+  return body;
+}
 async function loadAuthors(page) {
   const p = page || state.authors.page || 1;
   document.getElementById('authors-body').innerHTML='<div class="loading">Loading…</div>';
-  const filterParam = buildFilterParam('authors');
-  const res = await api(`/api/authors?limit=${PAGE_SIZE}&page=${p}${filterParam}`);
+  const filters = buildFilterBody('authors');
+  const res = await api(`/api/authors/query?limit=${PAGE_SIZE}&page=${p}`, { method: 'POST', body: JSON.stringify(filters) });
   if (res.error) { document.getElementById('authors-body').innerHTML=`<div class="empty">Error: ${escHtml(res.error)}</div>`; return; }
   state.authors.data = res.data||(Array.isArray(res)?res:[]);
   state.authors.page = res.page || p;
@@ -2267,8 +2278,8 @@ async function loadAuthors(page) {
 async function loadBooks(page) {
   const p = page || state.books.page || 1;
   document.getElementById('books-body').innerHTML='<div class="loading">Loading…</div>';
-  const filterParam = buildFilterParam('books');
-  const res = await api(`/api/books?limit=${PAGE_SIZE}&page=${p}${filterParam}`);
+  const filters = buildFilterBody('books');
+  const res = await api(`/api/books/query?limit=${PAGE_SIZE}&page=${p}`, { method: 'POST', body: JSON.stringify(filters) });
   if (res.error) { document.getElementById('books-body').innerHTML=`<div class="empty">Error: ${escHtml(res.error)}</div>`; return; }
   state.books.data = res.data||(Array.isArray(res)?res:[]);
   state.books.page = res.page || p;
@@ -2777,11 +2788,13 @@ async function downloadCSV(entity, btn) {
     if (entity === 'authors' || entity === 'books') {
       // Server streams the CSV directly from a MongoDB cursor — no JSON
       // round-trip, no client-side row-by-row string building.
-      const filterParam = buildFilterParam(entity);
       const exportCols = cols.filter(c => !c.field.startsWith('_'));
-      const colsParam = '&cols=' + encodeURIComponent(JSON.stringify(exportCols.map(c => ({ field: c.field, header: c.header }))));
-      const resp = await fetch(BASE + `/api/${entity}/export/csv?${filterParam.replace(/^&/, '')}${colsParam}`, {
-        headers: { 'Authorization': 'Bearer ' + token }
+      const filterBody = buildFilterBody(entity);
+      filterBody.cols = exportCols.map(c => ({ field: c.field, header: c.header }));
+      const resp = await fetch(BASE + `/api/${entity}/export/csv`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(filterBody)
       });
       if (!resp.ok) {
         let msg = 'Server error (' + resp.status + ')';

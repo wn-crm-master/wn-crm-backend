@@ -49,6 +49,24 @@ function register(app, getDb, authMiddleware) {
     return matchQuery;
   }
 
+  app.post('/api/authors/query', authMiddleware, async (req, res) => {
+    try {
+      const db = getDb();
+      const { page = 1, limit = 100 } = req.query;
+      req.query.filters = req.body.filters ? JSON.stringify(req.body.filters) : req.query.filters;
+      req.query.search = req.body.search || req.query.search;
+      const matchQuery = buildAuthorsQuery(req);
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      const [total, data] = await Promise.all([
+        db.collection('authors').countDocuments(matchQuery),
+        db.collection('authors').find(matchQuery).skip(skip).limit(parseInt(limit)).toArray()
+      ]);
+      res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/api/authors', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
@@ -83,12 +101,14 @@ function register(app, getDb, authMiddleware) {
 
   // Streams the full (filtered) result set directly as CSV, without ever
   // materializing the whole dataset as JSON.
-  app.get('/api/authors/export/csv', authMiddleware, async (req, res) => {
+  app.post('/api/authors/export/csv', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
+      if (req.body.filters) req.query.filters = JSON.stringify(req.body.filters);
+      if (req.body.search) req.query.search = req.body.search;
       const matchQuery = buildAuthorsQuery(req);
-      let cols;
-      try { cols = JSON.parse(req.query.cols); } catch (e) { cols = null; }
+      let cols = req.body.cols || null;
+      if (!cols) try { cols = JSON.parse(req.query.cols); } catch (e) { cols = null; }
       if (!Array.isArray(cols) || !cols.length) return res.status(400).json({ error: 'cols is required' });
 
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
