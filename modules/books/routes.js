@@ -88,6 +88,19 @@ function register(app, getDb, authMiddleware) {
     }
   });
 
+  app.post('/api/books/slim', authMiddleware, async (req, res) => {
+    try {
+      const db = getDb();
+      const fields = req.body.fields || ['id', 'authorId', 'title'];
+      const projection = { _id: 0 };
+      fields.forEach(f => { projection[f] = 1; });
+      const data = await db.collection('books').find({}, { projection, batchSize: 10000 }).toArray();
+      res.json({ data });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/api/books/distinct/:field', authMiddleware, async (req, res) => {
     try {
       const db = getDb();

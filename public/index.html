@@ -1036,13 +1036,19 @@ let _allAuthors = null, _allBooks = null, _bulkLoadError = null;
 async function ensureAuthorsAndBooksLoaded() {
   _bulkLoadError = null;
   const promises = [];
-  if (!_allAuthors || !_allAuthors.length) promises.push(api('/api/authors/query?limit=50000', { method: 'POST', body: '{}' }).then(r => {
+  if (!_allAuthors || !_allAuthors.length) promises.push(api('/api/authors/slim', {
+    method: 'POST',
+    body: JSON.stringify({ fields: ['uid','aeEmail','name','email','regnDate','preContractedTag','firstContractDate','firstContractBookId','first300kWordDate','first300kWordBookId'] })
+  }).then(r => {
     if (r.error) { _bulkLoadError = 'Authors: ' + r.error; _allAuthors = null; return; }
-    _allAuthors = r.data || (Array.isArray(r) ? r : []);
+    _allAuthors = r.data || [];
   }));
-  if (!_allBooks || !_allBooks.length) promises.push(api('/api/books/query?limit=50000', { method: 'POST', body: '{}' }).then(r => {
+  if (!_allBooks || !_allBooks.length) promises.push(api('/api/books/slim', {
+    method: 'POST',
+    body: JSON.stringify({ fields: ['id','authorId','title'] })
+  }).then(r => {
     if (r.error) { _bulkLoadError = (_bulkLoadError ? _bulkLoadError + '; ' : '') + 'Books: ' + r.error; _allBooks = null; return; }
-    _allBooks = r.data || (Array.isArray(r) ? r : []);
+    _allBooks = r.data || [];
   }));
   if (promises.length) await Promise.all(promises);
 }
