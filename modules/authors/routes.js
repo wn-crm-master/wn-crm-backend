@@ -132,6 +132,22 @@ function register(app, getDb, authMiddleware) {
     }
   });
 
+  app.post('/api/authors/slim', authMiddleware, async (req, res) => {
+    try {
+      const db = getDb();
+      const fields = req.body.fields || ['uid', 'aeEmail', 'name', 'email'];
+      const projection = { _id: 0 };
+      fields.forEach(f => { projection[f] = 1; });
+      const data = await db.collection('authors').find(
+        { uid: { $exists: true, $ne: '' } },
+        { projection, batchSize: 10000 }
+      ).toArray();
+      res.json({ data });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get('/api/authors/:id', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
