@@ -981,7 +981,7 @@ async function loadEarnAe() {
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
     await ensureAuthorsAndBooksLoaded();
-    if (!_allAuthors || !_allAuthors.length) { container.innerHTML = '<div class="empty">Could not load authors data. Try refreshing.</div>'; return; }
+    if (!_allAuthors || !_allAuthors.length) { container.innerHTML = '<div class="empty">Could not load authors data. Please refresh the page (Ctrl+Shift+R).</div>'; return; }
 
     const monthRanges = [...earnAeSelected].map(v => {
       const [yStr, mStr] = v.split('-');
@@ -1035,8 +1035,14 @@ async function loadEarnAe() {
 let _allAuthors = null, _allBooks = null;
 async function ensureAuthorsAndBooksLoaded() {
   const promises = [];
-  if (!_allAuthors || !_allAuthors.length) promises.push(api('/api/authors?limit=50000').then(r => { _allAuthors = r.data||(Array.isArray(r)?r:[]); }));
-  if (!_allBooks || !_allBooks.length) promises.push(api('/api/books?limit=50000').then(r => { _allBooks = r.data||(Array.isArray(r)?r:[]); }));
+  if (!_allAuthors || !_allAuthors.length) promises.push(api('/api/authors?limit=50000').then(r => {
+    if (r.error) { console.error('Failed to load authors:', r.error); _allAuthors = null; return; }
+    _allAuthors = r.data || (Array.isArray(r) ? r : []);
+  }));
+  if (!_allBooks || !_allBooks.length) promises.push(api('/api/books?limit=50000').then(r => {
+    if (r.error) { console.error('Failed to load books:', r.error); _allBooks = null; return; }
+    _allBooks = r.data || (Array.isArray(r) ? r : []);
+  }));
   if (promises.length) await Promise.all(promises);
 }
 
