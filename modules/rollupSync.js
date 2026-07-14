@@ -90,6 +90,8 @@ async function syncRollups(db) {
     if (results.length) await bulk.execute();
     console.log(`Rollup sync complete: ${results.length} authors updated`);
 
+    // ── Stub AEs for any aeEmail not yet in the aes collection ───────
+    await ensureAeStubs(db);
     // ── AE rollups & denormalized book author fields ─────────────────
     await Promise.all([
       syncAeRollups(db, results),
@@ -151,7 +153,7 @@ async function syncBookStages(db) {
         llmSentDate1hr: 1, llmRecdDate1hr: 1, llmDecision1hr: 1, words10kDate: 1, words50kDate: 1,
         form2SentDate: 1, form2FollowUp1Date: 1, form2FollowUp2Date: 1, form2RecdDate: 1,
         dateAddedForReview: 1, reviewCompDate: 1, contractingDecision: 1, sentForContractingDate: 1,
-        wbpStatus: 1, wbpSubStatus: 1, contractOfferedDate: 1, contractSigningDate: 1,
+        wbpStatus: 1, wbpSubStatus: 1, contractOfferedDate: 1, contractSigningDate: 1, wbpOngoingDate: 1, ofwDate: 1, wbpRejectedDate: 1,
         llmScore5hr: 1, llmDecision5hr: 1, llmDate5hr: 1, updatedAt: 1
       }
     }).toArray();
@@ -175,6 +177,28 @@ async function syncBookStages(db) {
     console.log(`Book stage sync complete: ${books.length} books updated`);
   } catch (err) {
     console.error('Book stage sync error:', err);
+  }
+}
+
+async function ensureAeStubs(db) {
+  try {
+    const authors = await db.collection('authors').find(
+      { aeEmail: { $exists: true, $ne: '' } },
+      { projection: { aeEmail: 1 } }
+    ).toArray();
+    const emails = [...new Set(authors.map(a => (a.aeEmail || '').trim().toLowerCase()).filter(e => e))];
+    if (!emails.length) return;
+    const existing = await db.collection('aes').find({ email: { $in: emails } }, { projection: { email: 1 } }).toArray();
+    const existingSet = new Set(existing.map(a => a.email));
+    const stubs = emails.filter(e => !existingSet.has(e)).map(email => ({
+      email, _stub: true, dateAdded: new Date().toISOString().slice(0, 10), createdAt: new Date(), updatedAt: new Date()
+    }));
+    if (stubs.length) {
+      await db.collection('aes').insertMany(stubs, { ordered: false }).catch(() => {});
+      console.log(`AE stub sync: ${stubs.length} new AEs created`);
+    }
+  } catch (err) {
+    console.error('AE stub sync error:', err);
   }
 }
 

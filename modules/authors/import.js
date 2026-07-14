@@ -28,9 +28,23 @@ function register(app, getDb, authMiddleware) {
         if (a.incentiveFlag === '1' || a.incentiveFlag === 1) a.incentiveFlag = 'On';
       });
 
+      const aeEmails = [...new Set(cleaned.map(a => (a.aeEmail || '').trim().toLowerCase()).filter(e => e))];
+      let stubAesCreated = 0;
+      if (aeEmails.length) {
+        const existingAes = await db.collection('aes').find({ email: { $in: aeEmails } }, { projection: { email: 1 } }).toArray();
+        const existingSet = new Set(existingAes.map(a => a.email));
+        const stubs = aeEmails.filter(e => !existingSet.has(e)).map(email => ({
+          email, _stub: true, dateAdded: new Date().toISOString().slice(0, 10), createdAt: new Date(), updatedAt: new Date()
+        }));
+        if (stubs.length) {
+          await db.collection('aes').insertMany(stubs, { ordered: false }).catch(() => {});
+          stubAesCreated = stubs.length;
+        }
+      }
+
       const result = await importRecords(db, 'authors', 'authors_backups', cleaned, 'uid', SPECIAL_FIELDS);
       triggerSync(db);
-      res.json({ success: true, ...result });
+      res.json({ success: true, ...result, stubAesCreated });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

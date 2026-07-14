@@ -76,14 +76,16 @@ function computeBookStage(row) {
   const wbpSubEarly = String(row.wbpSubStatus || '').trim().toLowerCase();
   if (wbpStatusEarly === 'ongoing') {
     if (wbpSubEarly === 'signing_pending') {
-      return { stage: 'Signing Pending', sinceDate: row.contractOfferedDate, imp: 'medium' };
+      return { stage: 'Signing Pending', sinceDate: row.wbpOngoingDate, imp: 'medium' };
     }
     if (inList(wbpSubEarly, 'open_for_withdrawal, open_for_wsigithdrawal')) {
-      return { stage: 'OFW', sinceDate: row.contractSigningDate, imp: 'low' };
+      return { stage: 'OFW', sinceDate: row.ofwDate, imp: 'low' };
     }
-    // WBP is ongoing but under some other/blank sub-status — still must not
-    // fall through to word-count-driven stages (e.g. Awaiting 5 hr LLM).
-    return { stage: 'WBP Ongoing', sinceDate: row.contractOfferedDate, imp: 'medium' };
+    return { stage: 'WBP Ongoing', sinceDate: row.wbpOngoingDate, imp: 'medium' };
+  }
+  // Step 34: Contract Rejected
+  if (wbpStatusEarly === 'rejected') {
+    return { stage: 'Contract Rejected', sinceDate: row.wbpRejectedDate, imp: 'high' };
   }
 
   // Step 7-8: Flow A / Flow B determination
@@ -229,6 +231,7 @@ const STAGE_ORDER = [
   'Signing Pending',
   'OFW',
   'WBP Ongoing',
+  'Contract Rejected',
   'Awaiting 50k',
   'Awaiting 5 hr LLM',
   '5 Hr LLM Rejected',

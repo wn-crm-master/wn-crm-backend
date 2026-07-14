@@ -12,7 +12,7 @@ function register(app, getDb, authMiddleware) {
       const nonBlank = values.filter(v => v !== '').map(v => String(v).trim().toLowerCase());
       const orConds = [];
       if (nonBlank.length) {
-        orConds.push({ $expr: { $in: [{ $toLower: { $trim: { input: { $toString: { $ifNull: ['$' + field, ''] } } } } }, nonBlank] } });
+        orConds.push({ $expr: { $in: [{ $toLower: { $trim: { input: { $convert: { input: { $ifNull: ['$' + field, ''] }, to: 'string', onError: '', onNull: '' } } } } }, nonBlank] } });
       }
       if (hasBlank) orConds.push({ $or: [{ [field]: { $exists: false } }, { [field]: null }, { [field]: '' }] });
       conditions.push(orConds.length === 1 ? orConds[0] : { $or: orConds });
