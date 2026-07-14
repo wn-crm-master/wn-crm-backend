@@ -981,7 +981,7 @@ async function loadEarnAe() {
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
     await ensureAuthorsAndBooksLoaded();
-    if (!_allAuthors || !_allAuthors.length) { container.innerHTML = '<div class="empty">Could not load authors data. Please refresh the page (Ctrl+Shift+R).</div>'; return; }
+    if (!_allAuthors || !_allAuthors.length) { container.innerHTML = '<div class="empty">Could not load authors data. ' + (_bulkLoadError ? escHtml(_bulkLoadError) : 'Please refresh the page.') + '</div>'; return; }
 
     const monthRanges = [...earnAeSelected].map(v => {
       const [yStr, mStr] = v.split('-');
@@ -1032,15 +1032,16 @@ async function loadEarnAe() {
   }
 }
 
-let _allAuthors = null, _allBooks = null;
+let _allAuthors = null, _allBooks = null, _bulkLoadError = null;
 async function ensureAuthorsAndBooksLoaded() {
+  _bulkLoadError = null;
   const promises = [];
   if (!_allAuthors || !_allAuthors.length) promises.push(api('/api/authors/query?limit=50000', { method: 'POST', body: '{}' }).then(r => {
-    if (r.error) { console.error('Failed to load authors:', r.error); _allAuthors = null; return; }
+    if (r.error) { _bulkLoadError = 'Authors: ' + r.error; _allAuthors = null; return; }
     _allAuthors = r.data || (Array.isArray(r) ? r : []);
   }));
   if (!_allBooks || !_allBooks.length) promises.push(api('/api/books/query?limit=50000', { method: 'POST', body: '{}' }).then(r => {
-    if (r.error) { console.error('Failed to load books:', r.error); _allBooks = null; return; }
+    if (r.error) { _bulkLoadError = (_bulkLoadError ? _bulkLoadError + '; ' : '') + 'Books: ' + r.error; _allBooks = null; return; }
     _allBooks = r.data || (Array.isArray(r) ? r : []);
   }));
   if (promises.length) await Promise.all(promises);
