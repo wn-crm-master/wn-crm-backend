@@ -59,7 +59,7 @@ function register(app, getDb, authMiddleware) {
   app.post('/api/books/query', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const { page = 1, limit = 100 } = req.query;
+      const { page = 1, limit = 1000 } = req.query;
       const query = buildBooksQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const [total, data] = await Promise.all([
@@ -75,7 +75,7 @@ function register(app, getDb, authMiddleware) {
   app.get('/api/books', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const { page = 1, limit = 100 } = req.query;
+      const { page = 1, limit = 1000 } = req.query;
       const query = buildBooksQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const [total, data] = await Promise.all([
