@@ -457,80 +457,16 @@
     </div>
 
     <div id="tab-ae" class="tab">
-      <div class="ae-sub-tabs">
-        <div class="ae-sub-tab active" onclick="showAeSubTab('ae-list')">AE List</div>
-        <div class="ae-sub-tab" onclick="showAeSubTab('ae-authors')">Authors List</div>
-        <div class="ae-sub-tab" onclick="showAeSubTab('ae-books')">Books Data</div>
-        <div class="ae-sub-tab" onclick="showAeSubTab('ae-payments')">Payments Data</div>
-        <div class="ae-sub-tab" onclick="showAeSubTab('ae-report')">Report</div>
-        <button class="btn-stages" onclick="document.getElementById('stages-modal').classList.add('open')">&#9432; Stages</button>
-      </div>
-
-      <div id="stages-modal" class="stages-overlay" onclick="if(event.target===this)this.classList.remove('open')">
-        <div class="stages-box">
-          <button class="close-btn" onclick="document.getElementById('stages-modal').classList.remove('open')">&times;</button>
-          <h3>AE Reward Stages</h3>
-          <div class="stages-period">Before 1 Jul' 26</div>
-          <table>
-            <thead><tr><th>Stage</th><th>Criteria</th><th>Reward</th></tr></thead>
-            <tbody>
-              <tr><td>Stage 1</td><td>Contracted</td><td>$50</td></tr>
-              <tr><td>Stage 2</td><td>&gt;30 hrs</td><td>$200</td></tr>
-              <tr><td>Stage 3</td><td>&gt;10 Authors Contracted</td><td>$100</td></tr>
-            </tbody>
-          </table>
-          <div class="stages-period">After 1 Jul' 26</div>
-          <table>
-            <thead><tr><th>Stage</th><th>Criteria</th><th>Reward</th></tr></thead>
-            <tbody>
-              <tr><td>Stage 1</td><td>Contracted</td><td>$50</td></tr>
-              <tr><td>Stage 2</td><td>&gt;400k words</td><td>$150</td></tr>
-              <tr><td>Stage 3</td><td>&gt;700k words</td><td>$300</td></tr>
-            </tbody>
-          </table>
+      <div class="tab-toolbar">
+        <div class="title-row"><div class="page-title">AE List <span id="ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
+        <div class="import-btns">
+          <button class="btn btn-download" onclick="downloadCSV('aes',this)">⬇ Download CSV</button>
+          <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','aes')" /></label>
         </div>
       </div>
-      <div id="ae-sub-ae-list" class="ae-sub-content active">
-        <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">AE List <span id="ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
-          <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadCSV('aes',this)">⬇ Download CSV</button>
-            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','aes')" /></label>
-          </div>
-        </div>
-        <div id="aes-import-msg" class="inline-msg"></div>
-        <div id="aes-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
-        <div class="table-card"><div class="table-scroll"><div id="ae-list-body"><div class="empty">No data yet. Use Import above.</div></div></div></div>
-      </div>
-      <div id="ae-sub-ae-authors" class="ae-sub-content">
-        <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Authors List <span id="ae-authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="ae_authors-active-filters"></div></div>
-          <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-authors')">⬇ Download CSV</button>
-          </div>
-        </div>
-        <div class="table-card"><div class="table-scroll"><div id="ae-authors-body"></div></div></div>
-      </div>
-      <div id="ae-sub-ae-books" class="ae-sub-content">
-        <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Books Data <span id="ae-books-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="ae_books-active-filters"></div></div>
-          <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-books')">⬇ Download CSV</button>
-          </div>
-        </div>
-        <div class="table-card"><div class="table-scroll"><div id="ae-books-body"></div></div></div>
-      </div>
-      <div id="ae-sub-ae-payments" class="ae-sub-content">
-        <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Payments Data</div></div>
-          <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-payments')">⬇ Download CSV</button>
-            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-payments')" /></label>
-          </div>
-        </div>
-        <div class="table-card"><div class="table-scroll"><div id="ae-payments-body"></div></div></div>
-      </div>
-      <div id="ae-sub-ae-report" class="ae-sub-content"><div class="empty">Coming soon</div></div>
+      <div id="aes-import-msg" class="inline-msg"></div>
+      <div id="aes-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
+      <div class="table-card"><div class="table-scroll"><div id="ae-list-body"><div class="empty">No data yet. Use Import above.</div></div></div></div>
     </div>
 
     <div id="tab-earnings" class="tab">
