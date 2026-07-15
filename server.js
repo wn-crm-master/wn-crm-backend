@@ -16,6 +16,7 @@ const { register: registerSheetSync, startScheduledSync } = require('./modules/s
 const { register: registerImportJobs } = require('./modules/import/jobRoutes');
 const { register: registerAeRoutes } = require('./modules/aes/routes');
 const { register: registerAeImport } = require('./modules/aes/import');
+const { register: registerEarningsRoutes } = require('./modules/earnings/routes');
 const { register: registerAeSubRoutes } = require('./modules/aes/subRoutes');
 const { syncRollups } = require('./modules/rollupSync');
 
@@ -92,6 +93,7 @@ registerImportJobs(app, getDb, authMiddleware);
 registerAeImport(app, getDb, authMiddleware);
 registerAeRoutes(app, getDb, authMiddleware);
 registerAeSubRoutes(app, getDb, authMiddleware);
+registerEarningsRoutes(app, getDb, authMiddleware);
 
 // Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));

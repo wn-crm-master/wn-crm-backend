@@ -981,50 +981,13 @@ async function loadEarnAe() {
   if (earnAeSelected.size === 0) { container.innerHTML = '<div class="empty">Select a month to view earnings</div>'; return; }
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
-    await ensureAuthorsAndBooksLoaded();
-    if (!_allAuthors || !_allAuthors.length) { container.innerHTML = '<div class="empty">Could not load authors data. ' + (_bulkLoadError ? escHtml(_bulkLoadError) : 'Please refresh the page.') + '</div>'; return; }
-
-    const monthRanges = [...earnAeSelected].map(v => {
-      const [yStr, mStr] = v.split('-');
-      const year = parseInt(yStr), month = parseInt(mStr) - 1;
-      return {
-        key: v,
-        start: new Date(year, month, 1).toISOString().slice(0, 10),
-        end: new Date(year, month + 1, 0).toISOString().slice(0, 10),
-        nextStart: new Date(year, month + 1, 1).toISOString().slice(0, 10),
-      };
+    const r = await api('/api/earnings/ae', {
+      method: 'POST',
+      body: JSON.stringify({ months: [...earnAeSelected] })
     });
+    if (r.error) { container.innerHTML = '<div class="empty">Error: ' + escHtml(r.error) + '</div>'; return; }
 
-    function isInAnyMonth(dateStr) {
-      if (!dateStr) return false;
-      const d = String(dateStr).slice(0, 10);
-      return monthRanges.some(r => d >= r.start && d <= r.end);
-    }
-    const latestNextStart = monthRanges.reduce((max, r) => r.nextStart > max ? r.nextStart : max, '');
-    const earliestStart = monthRanges.reduce((min, r) => r.start < min ? r.start : min, monthRanges[0].start);
-
-    const authorMap = {};
-    for (const a of _allAuthors) if (a.uid) authorMap[a.uid] = a;
-
-    const aeMap = {};
-    for (const a of _allAuthors) {
-      const ae = (a.aeEmail || '').trim().toLowerCase();
-      if (!ae || !a.uid) continue;
-      if (!aeMap[ae]) aeMap[ae] = [];
-      aeMap[ae].push(a.uid);
-    }
-
-    const rows = [];
-    for (const [aeEmail, uids] of Object.entries(aeMap)) {
-      const authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < earliestStart; }).length;
-      const s1 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.firstContractDate)).length;
-      const s2 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.first300kWordDate)).length;
-      const s3 = Math.floor((authorsContracted + s1) / 10) - Math.floor(authorsContracted / 10);
-      const earnings = s1 * 50 + s2 * 200 + s3 * 100;
-      rows.push({ aeEmail, authorsContracted, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
-    }
-
-    state.earn_ae.data = rows;
+    state.earn_ae.data = r.data || [];
     state.earn_ae.filter = {};
     state.earn_ae.sort = { field: null, dir: 'asc' };
     renderTable('earn_ae');
