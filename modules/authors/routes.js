@@ -138,13 +138,23 @@ function register(app, getDb, authMiddleware) {
       const fields = req.body.fields || ['uid', 'aeEmail', 'name', 'email'];
       const projection = { _id: 0 };
       fields.forEach(f => { projection[f] = 1; });
-      const data = await db.collection('authors').find(
+      const cursor = db.collection('authors').find(
         { uid: { $exists: true, $ne: '' } },
-        { projection, batchSize: 10000 }
-      ).toArray();
-      res.json({ data });
+        { projection, batchSize: 5000 }
+      );
+      res.setHeader('Content-Type', 'application/json');
+      res.write('{"data":[');
+      let first = true;
+      for await (const doc of cursor) {
+        if (!first) res.write(',');
+        res.write(JSON.stringify(doc));
+        first = false;
+      }
+      res.write(']}');
+      res.end();
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+      else res.end();
     }
   });
 
