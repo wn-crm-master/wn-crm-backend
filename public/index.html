@@ -791,7 +791,7 @@ async function manualResync() {
   btn.style.animation = 'spin 1s linear infinite';
   btn.disabled = true;
   try {
-    const res = await api('/api/resync', 'POST');
+    const res = await api('/api/resync', { method: 'POST' });
     btn.style.animation = '';
     btn.disabled = false;
     if (res.success) {
