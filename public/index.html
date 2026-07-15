@@ -541,7 +541,7 @@
       <div id="earn-sub-earn-ae" class="earn-sub-content active">
         <div class="tab-toolbar">
           <div class="title-row">
-            <div style="display:flex;align-items:center;gap:8px;position:relative;z-index:300;">
+            <div style="display:flex;align-items:center;gap:8px;position:relative;z-index:300;flex-wrap:wrap;">
               <label style="font-weight:500;color:#555;">Month:</label>
               <div id="earn-ae-month-wrap" style="position:relative;display:inline-block;">
                 <button id="earn-ae-month-btn" onclick="toggleEarnMonthDD()" style="padding:6px 14px;border:1px solid #ccc;border-radius:6px;font-size:0.95rem;background:#fff;cursor:pointer;min-width:160px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -549,6 +549,7 @@
                 </button>
                 <div id="earn-ae-month-dd" style="display:none;position:absolute;top:100%;left:0;z-index:300;background:#fff;border:1px solid #ccc;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.12);max-height:260px;overflow-y:auto;min-width:180px;margin-top:4px;"></div>
               </div>
+              <button class="btn btn-download" onclick="downloadCSV('earn_ae',this)">⬇ Download CSV</button>
             </div>
           </div>
         </div>
@@ -850,7 +851,7 @@ async function manualResync() {
     if (res.success) {
       state.authors.data = [];
       state.books.data = [];
-      _allAuthors = null; _allBooks = null;
+      _allAuthors = null; _allBooks = null; invalidateDistinctCache('authors'); invalidateDistinctCache('books');
       const active = document.querySelector('.nav-link.active');
       if (active) active.click();
     }
@@ -1649,6 +1650,7 @@ function renderFilterTags(entity) {
 
 function clearFilter(entity, field) {
   state[entity].filter[field] = new Set();
+  renderFilterTags(entity);
   if (entity === 'authors' || entity === 'books') {
     if (entity === 'authors') loadAuthors(1); else loadBooks(1);
     return;
@@ -1659,6 +1661,7 @@ function clearFilter(entity, field) {
 
 function clearAllFilters(entity) {
   state[entity].filter = {};
+  renderFilterTags(entity);
   if (entity === 'authors' || entity === 'books') {
     if (entity === 'authors') loadAuthors(1); else loadBooks(1);
     return;
@@ -1747,11 +1750,17 @@ function togglePin(entity, field) {
 }
 
 // ── Filter Dropdown ────────────────────────────────────────────────
+const _distinctCache = {};
+function invalidateDistinctCache(entity) {
+  for (const k of Object.keys(_distinctCache)) {
+    if (k.startsWith(entity + ':')) delete _distinctCache[k];
+  }
+}
+
 async function openFD(event, entity, field, btn) {
   event.stopPropagation();
   const dd = document.getElementById('filter-dropdown');
 
-  // Toggle closed if same button
   if (fdCtx && fdCtx.entity===entity && fdCtx.field===field && dd.classList.contains('open')) {
     closeFD(); return;
   }
@@ -1759,32 +1768,38 @@ async function openFD(event, entity, field, btn) {
   const s = state[entity];
   const filterSet = s.filter[field] || new Set();
 
-  // Collect unique values for this column
   const meta = ENTITY_META[entity];
   const cols = meta ? meta.cols : AUTHOR_COLS;
   const colDef = cols.find(c=>c.field===field);
 
   fdCtx = { entity, field, allVals: [], filterSet, loading: true };
   document.getElementById('fd-search').value = '';
-  document.getElementById('fd-options').innerHTML = '<div class="fd-empty">Loading…</div>';
 
-  // Fetch distinct values from server for books/authors, use local data for others
+  const cacheKey = entity + ':' + field;
   let dataVals;
   const virtualFields = new Set(['_daysInStage']);
-  if ((entity === 'books' || entity === 'authors') && !virtualFields.has(field)) {
-    try {
-      const r = await api(`/api/${entity}/distinct/${field}`);
-      dataVals = new Set((r.values || []).map(v => String(v ?? '')));
-    } catch (e) {
+
+  if (_distinctCache[cacheKey]) {
+    dataVals = _distinctCache[cacheKey];
+    document.getElementById('fd-options').innerHTML = '';
+  } else {
+    document.getElementById('fd-options').innerHTML = '<div class="fd-empty">Loading…</div>';
+    if ((entity === 'books' || entity === 'authors') && !virtualFields.has(field)) {
+      try {
+        const r = await api(`/api/${entity}/distinct/${field}`);
+        dataVals = new Set((r.values || []).map(v => String(v ?? '')));
+      } catch (e) {
+        dataVals = new Set(s.data.map(r => String(r[field]??'')));
+      }
+    } else if (field === '_daysInStage') {
+      dataVals = new Set(s.data.map(r => getRowFilterVal(r, '_daysInStage')));
+    } else {
       dataVals = new Set(s.data.map(r => String(r[field]??'')));
     }
-  } else if (field === '_daysInStage') {
-    dataVals = new Set(s.data.map(r => getRowFilterVal(r, '_daysInStage')));
-  } else {
-    dataVals = new Set(s.data.map(r => String(r[field]??'')));
+    if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
+    dataVals.add('');
+    _distinctCache[cacheKey] = dataVals;
   }
-  if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
-  dataVals.add('');
 
   let nonBlank;
   if (field === 'stage') {
@@ -1816,17 +1831,16 @@ function closeFD() {
     const entity = fdCtx.entity;
     const virtualFields = new Set(['_daysInStage']);
     const hasServerFilters = Object.entries(state[entity].filter).some(([k, v]) => v && v.size > 0 && !virtualFields.has(k));
-    if ((entity === 'authors' || entity === 'books') && hasServerFilters) {
+    if (entity === 'authors' || entity === 'books') {
       document.getElementById('filter-dropdown').classList.remove('open');
       fdCtx = null;
-      if (entity === 'authors') loadAuthors(1); else loadBooks(1);
-      return;
-    }
-    if ((entity === 'authors' || entity === 'books') && hasActiveFilters(entity)) {
-      document.getElementById('filter-dropdown').classList.remove('open');
-      fdCtx = null;
-      applyRowFilters(entity);
       renderFilterTags(entity);
+      if (hasServerFilters) {
+        if (entity === 'authors') loadAuthors(1); else loadBooks(1);
+      } else {
+        applyRowFilters(entity);
+        renderTable(entity);
+      }
       return;
     }
   }
@@ -2778,7 +2792,7 @@ function resumeActiveImports() {
           if (s.stubs > 0) msg += ` ${s.stubs} stub author(s) created.`;
           textEl.textContent = msg;
         }
-        _allAuthors = null; _allBooks = null;
+        _allAuthors = null; _allBooks = null; invalidateDistinctCache('authors'); invalidateDistinctCache('books');
         if (entity === 'authors') loadAuthors(); else if (entity === 'aes') loadAeList(); else loadBooks();
         loadStats();
         setTimeout(() => progressEl.classList.remove('active'), 4000);
@@ -2794,7 +2808,7 @@ function filterRowsForDownload(entity, rows) {
 }
 
 async function downloadCSV(entity, btn) {
-  const cols = entity==='authors' ? AUTHOR_COLS : entity==='aes' ? AE_COLS : BOOK_COLS;
+  const cols = entity==='authors' ? AUTHOR_COLS : entity==='aes' ? AE_COLS : entity==='earn_ae' ? EARN_AE_COLS : BOOK_COLS;
   const triggerBtn = btn || (window.event && window.event.target);
   const origLabel = triggerBtn ? triggerBtn.textContent : null;
   if (triggerBtn) { triggerBtn.disabled = true; triggerBtn.textContent = 'Preparing…'; }
