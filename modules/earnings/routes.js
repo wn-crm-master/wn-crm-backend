@@ -38,15 +38,15 @@ function register(app, getDb, authMiddleware) {
 
       const rows = [];
       for (const [aeEmail, auths] of Object.entries(aeMap)) {
-        const authorsContracted = auths.filter(a => {
+        const authorsContractedBefore = auths.filter(a => {
           const d = a.firstContractDate;
-          return d && String(d).slice(0, 10) < earliestStart;
+          return d && String(d).slice(0, 10) < '2025-08-01';
         }).length;
         const s1 = auths.filter(a => isInAnyMonth(a.firstContractDate)).length;
         const s2 = auths.filter(a => isInAnyMonth(a.first300kWordDate)).length;
-        const s3 = Math.floor((authorsContracted + s1) / 10) - Math.floor(authorsContracted / 10);
+        const s3 = Math.floor(authorsContractedBefore / 10);
         const earnings = s1 * 50 + s2 * 200 + s3 * 100;
-        rows.push({ aeEmail, authorsContracted, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
+        rows.push({ aeEmail, authorsContracted: authorsContractedBefore, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
       }
 
       res.json({ data: rows });

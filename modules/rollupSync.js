@@ -291,14 +291,14 @@ async function syncAeRollups(db, authorResults) {
         return d && String(d).trim() !== '';
       }).length;
 
-      const authContBeforeLM = uids.filter(uid => {
+      const authContractedBefore = uids.filter(uid => {
         const d = authorMap[uid]?.firstContractDate;
-        return d && String(d).slice(0, 10) < lmStart;
+        return d && String(d).slice(0, 10) < '2025-08-01';
       }).length;
 
       const stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
       const stage2Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.first300kWordDate)).length;
-      const stage3Cleared = Math.floor((authContBeforeLM + stage1Cleared) / 10) - Math.floor(authContBeforeLM / 10);
+      const stage3Cleared = Math.floor(authContractedBefore / 10);
       const lmEarnings = stage1Cleared * 50 + stage2Cleared * 200 + stage3Cleared * 100;
 
       const regDates = uids.map(uid => authorMap[uid]?.regnDate).filter(d => d).sort();
