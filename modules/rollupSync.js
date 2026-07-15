@@ -21,13 +21,13 @@ async function syncRollups(db) {
         booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } },
         _firstContract: { $reduce: {
           input: { $filter: { input: '$_books', cond: { $and: [
-            { $ne: ['$$this.contractSigningDate', null] },
-            { $ne: ['$$this.contractSigningDate', ''] }
+            { $ne: ['$$this.ofwDate', null] },
+            { $ne: ['$$this.ofwDate', ''] }
           ] } } },
           initialValue: null,
           in: { $cond: [
-            { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.contractSigningDate', '$$value.d'] }] },
-            { d: '$$this.contractSigningDate', id: '$$this.id' },
+            { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.ofwDate', '$$value.d'] }] },
+            { d: '$$this.ofwDate', id: '$$this.id' },
             '$$value'
           ] }
         } },
