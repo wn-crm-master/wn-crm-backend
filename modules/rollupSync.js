@@ -33,17 +33,12 @@ async function syncRollups(db) {
         } },
         _first300k: { $reduce: {
           input: { $filter: { input: '$_books', cond: { $and: [
-            { $ne: ['$$this.contractSigningDate', null] },
-            { $ne: ['$$this.contractSigningDate', ''] },
+            { $ne: ['$$this.ofwDate', null] },
+            { $ne: ['$$this.ofwDate', ''] },
             { $ne: ['$$this.words300kDate', null] },
             { $ne: ['$$this.words300kDate', ''] },
-            { $or: [
-              { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'ongoing' } },
-              { $and: [
-                { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'rejected' } },
-                { $gt: [{ $ifNull: ['$$this.wbpRejectedDate', ''] }, '$$this.words300kDate'] }
-              ] }
-            ] }
+            { $gt: ['$$this.words300kDate', '2025-07-31'] },
+            { $lt: ['$$this.words300kDate', '2026-07-01'] }
           ] } } },
           initialValue: null,
           in: { $cond: [
