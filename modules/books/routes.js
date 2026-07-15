@@ -59,14 +59,16 @@ function register(app, getDb, authMiddleware) {
   app.post('/api/books/query', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const { page = 1, limit = 100 } = req.query;
+      const { page = 1, limit = 1000 } = req.query;
       const query = buildBooksQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      const [total, data] = await Promise.all([
-        db.collection('books').countDocuments(query),
-        db.collection('books').find(query).skip(skip).limit(parseInt(limit)).toArray()
-      ]);
-      res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
+      const parsedLimit = parseInt(limit);
+      const data = await db.collection('books').find(query).skip(skip).limit(parsedLimit).toArray();
+      const total = (skip === 0 && data.length < parsedLimit)
+        ? data.length
+        : await db.collection('books').countDocuments(query);
+      const pages = Math.ceil(total / parsedLimit) || 1;
+      res.json({ data, total, page: parseInt(page), pages });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -75,14 +77,16 @@ function register(app, getDb, authMiddleware) {
   app.get('/api/books', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const { page = 1, limit = 100 } = req.query;
+      const { page = 1, limit = 1000 } = req.query;
       const query = buildBooksQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
-      const [total, data] = await Promise.all([
-        db.collection('books').countDocuments(query),
-        db.collection('books').find(query).skip(skip).limit(parseInt(limit)).toArray()
-      ]);
-      res.json({ data, total, page: parseInt(page), pages: Math.ceil(total / parseInt(limit)) || 1 });
+      const parsedLimit = parseInt(limit);
+      const data = await db.collection('books').find(query).skip(skip).limit(parsedLimit).toArray();
+      const total = (skip === 0 && data.length < parsedLimit)
+        ? data.length
+        : await db.collection('books').countDocuments(query);
+      const pages = Math.ceil(total / parsedLimit) || 1;
+      res.json({ data, total, page: parseInt(page), pages });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -94,10 +98,20 @@ function register(app, getDb, authMiddleware) {
       const fields = req.body.fields || ['id', 'authorId', 'title'];
       const projection = { _id: 0 };
       fields.forEach(f => { projection[f] = 1; });
-      const data = await db.collection('books').find({}, { projection, batchSize: 10000 }).toArray();
-      res.json({ data });
+      const cursor = db.collection('books').find({}, { projection, batchSize: 5000 });
+      res.setHeader('Content-Type', 'application/json');
+      res.write('{"data":[');
+      let first = true;
+      for await (const doc of cursor) {
+        if (!first) res.write(',');
+        res.write(JSON.stringify(doc));
+        first = false;
+      }
+      res.write(']}');
+      res.end();
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      if (!res.headersSent) res.status(500).json({ error: err.message });
+      else res.end();
     }
   });
 

@@ -457,80 +457,16 @@
     </div>
 
     <div id="tab-ae" class="tab">
-      <div class="ae-sub-tabs">
-        <div class="ae-sub-tab active" onclick="showAeSubTab('ae-list')">AE List</div>
-        <div class="ae-sub-tab" onclick="showAeSubTab('ae-authors')">Authors List</div>
-        <div class="ae-sub-tab" onclick="showAeSubTab('ae-books')">Books Data</div>
-        <div class="ae-sub-tab" onclick="showAeSubTab('ae-payments')">Payments Data</div>
-        <div class="ae-sub-tab" onclick="showAeSubTab('ae-report')">Report</div>
-        <button class="btn-stages" onclick="document.getElementById('stages-modal').classList.add('open')">&#9432; Stages</button>
-      </div>
-
-      <div id="stages-modal" class="stages-overlay" onclick="if(event.target===this)this.classList.remove('open')">
-        <div class="stages-box">
-          <button class="close-btn" onclick="document.getElementById('stages-modal').classList.remove('open')">&times;</button>
-          <h3>AE Reward Stages</h3>
-          <div class="stages-period">Before 1 Jul' 26</div>
-          <table>
-            <thead><tr><th>Stage</th><th>Criteria</th><th>Reward</th></tr></thead>
-            <tbody>
-              <tr><td>Stage 1</td><td>Contracted</td><td>$50</td></tr>
-              <tr><td>Stage 2</td><td>&gt;30 hrs</td><td>$200</td></tr>
-              <tr><td>Stage 3</td><td>&gt;10 Authors Contracted</td><td>$100</td></tr>
-            </tbody>
-          </table>
-          <div class="stages-period">After 1 Jul' 26</div>
-          <table>
-            <thead><tr><th>Stage</th><th>Criteria</th><th>Reward</th></tr></thead>
-            <tbody>
-              <tr><td>Stage 1</td><td>Contracted</td><td>$50</td></tr>
-              <tr><td>Stage 2</td><td>&gt;400k words</td><td>$150</td></tr>
-              <tr><td>Stage 3</td><td>&gt;700k words</td><td>$300</td></tr>
-            </tbody>
-          </table>
+      <div class="tab-toolbar">
+        <div class="title-row"><div class="page-title">AE List <span id="ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
+        <div class="import-btns">
+          <button class="btn btn-download" onclick="downloadCSV('aes',this)">⬇ Download CSV</button>
+          <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','aes')" /></label>
         </div>
       </div>
-      <div id="ae-sub-ae-list" class="ae-sub-content active">
-        <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">AE List <span id="ae-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
-          <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadCSV('aes',this)">⬇ Download CSV</button>
-            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','aes')" /></label>
-          </div>
-        </div>
-        <div id="aes-import-msg" class="inline-msg"></div>
-        <div id="aes-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
-        <div class="table-card"><div class="table-scroll"><div id="ae-list-body"><div class="empty">No data yet. Use Import above.</div></div></div></div>
-      </div>
-      <div id="ae-sub-ae-authors" class="ae-sub-content">
-        <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Authors List <span id="ae-authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="ae_authors-active-filters"></div></div>
-          <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-authors')">⬇ Download CSV</button>
-          </div>
-        </div>
-        <div class="table-card"><div class="table-scroll"><div id="ae-authors-body"></div></div></div>
-      </div>
-      <div id="ae-sub-ae-books" class="ae-sub-content">
-        <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Books Data <span id="ae-books-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="ae_books-active-filters"></div></div>
-          <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-books')">⬇ Download CSV</button>
-          </div>
-        </div>
-        <div class="table-card"><div class="table-scroll"><div id="ae-books-body"></div></div></div>
-      </div>
-      <div id="ae-sub-ae-payments" class="ae-sub-content">
-        <div class="tab-toolbar">
-          <div class="title-row"><div class="page-title">Payments Data</div></div>
-          <div class="import-btns">
-            <button class="btn btn-download" onclick="downloadAeSubCSV('ae-payments')">⬇ Download CSV</button>
-            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleAeSubImport(event,'ae-payments')" /></label>
-          </div>
-        </div>
-        <div class="table-card"><div class="table-scroll"><div id="ae-payments-body"></div></div></div>
-      </div>
-      <div id="ae-sub-ae-report" class="ae-sub-content"><div class="empty">Coming soon</div></div>
+      <div id="aes-import-msg" class="inline-msg"></div>
+      <div id="aes-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
+      <div class="table-card"><div class="table-scroll"><div id="ae-list-body"><div class="empty">No data yet. Use Import above.</div></div></div></div>
     </div>
 
     <div id="tab-earnings" class="tab">
@@ -567,11 +503,21 @@
       <div class="tab-toolbar">
         <div class="title-row"><div class="page-title">Reports</div></div>
       </div>
+
       <div style="display:flex;align-items:center;gap:12px;margin:0 0 12px;">
+        <h3 style="margin:0;font-size:1rem;color:#c0272d;">Stage Summary</h3>
+        <select id="stage-report-month" onchange="loadStageReport()" style="padding:4px 8px;border:1px solid #ccc;border-radius:6px;font-size:0.85rem;">
+          <option value="">All Months</option>
+        </select>
+        <button class="btn" style="padding:4px 12px;font-size:0.8rem;" onclick="copyReportTable('stage-report-body')">Copy Table</button>
+      </div>
+      <div class="table-card"><div class="table-scroll" style="max-height:calc(100vh - 340px);"><div id="stage-report-body"><div class="empty">Loading...</div></div></div></div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin:20px 0 12px;">
         <h3 style="margin:0;font-size:1rem;color:#c0272d;">AE LM Earnings</h3>
         <button class="btn" style="padding:4px 12px;font-size:0.8rem;" onclick="copyReportTable('reports-ae-lm-body')" id="copy-report-btn">Copy Table</button>
       </div>
-      <div class="table-card"><div class="table-scroll" style="max-height:calc(100vh - 240px);"><div id="reports-ae-lm-body"><div class="empty">Loading…</div></div></div></div>
+      <div class="table-card"><div class="table-scroll" style="max-height:calc(100vh - 340px);"><div id="reports-ae-lm-body"><div class="empty">Loading…</div></div></div></div>
     </div>
 
     <div id="tab-settings" class="tab">
@@ -886,7 +832,7 @@ function showTab(name) {
   if (name==='settings') loadBackups();
   if (name==='ae') { loadAeList(); }
   if (name==='earnings') { populateEarnAeMonths(); loadEarnAe(); }
-  if (name==='reports') { loadReportAeLM(); }
+  if (name==='reports') { loadStageReportMonths(); loadStageReport(); loadReportAeLM(); }
 }
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
@@ -981,50 +927,13 @@ async function loadEarnAe() {
   if (earnAeSelected.size === 0) { container.innerHTML = '<div class="empty">Select a month to view earnings</div>'; return; }
   container.innerHTML = '<div class="loading">Loading…</div>';
   try {
-    await ensureAuthorsAndBooksLoaded();
-    if (!_allAuthors || !_allAuthors.length) { container.innerHTML = '<div class="empty">Could not load authors data. ' + (_bulkLoadError ? escHtml(_bulkLoadError) : 'Please refresh the page.') + '</div>'; return; }
-
-    const monthRanges = [...earnAeSelected].map(v => {
-      const [yStr, mStr] = v.split('-');
-      const year = parseInt(yStr), month = parseInt(mStr) - 1;
-      return {
-        key: v,
-        start: new Date(year, month, 1).toISOString().slice(0, 10),
-        end: new Date(year, month + 1, 0).toISOString().slice(0, 10),
-        nextStart: new Date(year, month + 1, 1).toISOString().slice(0, 10),
-      };
+    const r = await api('/api/earnings/ae', {
+      method: 'POST',
+      body: JSON.stringify({ months: [...earnAeSelected] })
     });
+    if (r.error) { container.innerHTML = '<div class="empty">Error: ' + escHtml(r.error) + '</div>'; return; }
 
-    function isInAnyMonth(dateStr) {
-      if (!dateStr) return false;
-      const d = String(dateStr).slice(0, 10);
-      return monthRanges.some(r => d >= r.start && d <= r.end);
-    }
-    const latestNextStart = monthRanges.reduce((max, r) => r.nextStart > max ? r.nextStart : max, '');
-    const earliestStart = monthRanges.reduce((min, r) => r.start < min ? r.start : min, monthRanges[0].start);
-
-    const authorMap = {};
-    for (const a of _allAuthors) if (a.uid) authorMap[a.uid] = a;
-
-    const aeMap = {};
-    for (const a of _allAuthors) {
-      const ae = (a.aeEmail || '').trim().toLowerCase();
-      if (!ae || !a.uid) continue;
-      if (!aeMap[ae]) aeMap[ae] = [];
-      aeMap[ae].push(a.uid);
-    }
-
-    const rows = [];
-    for (const [aeEmail, uids] of Object.entries(aeMap)) {
-      const authorsContracted = uids.filter(uid => { const d = authorMap[uid]?.firstContractDate; return d && String(d).slice(0, 10) < earliestStart; }).length;
-      const s1 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.firstContractDate)).length;
-      const s2 = uids.filter(uid => isInAnyMonth(authorMap[uid]?.first300kWordDate)).length;
-      const s3 = Math.floor((authorsContracted + s1) / 10) - Math.floor(authorsContracted / 10);
-      const earnings = s1 * 50 + s2 * 200 + s3 * 100;
-      rows.push({ aeEmail, authorsContracted, stage1Cleared: s1, stage2Cleared: s2, stage3Cleared: s3, earnings, payment: '' });
-    }
-
-    state.earn_ae.data = rows;
+    state.earn_ae.data = r.data || [];
     state.earn_ae.filter = {};
     state.earn_ae.sort = { field: null, dir: 'asc' };
     renderTable('earn_ae');
@@ -1146,6 +1055,121 @@ const EARN_AE_COLS = [
   { field:'earnings',            header:'Earnings',                         width:140, type:'number' },
   { field:'payment',             header:'Payment',                          width:140 },
 ];
+
+const STAGE_FLOWS = [
+  { flow: 'Flow A (including A/B)', stages: [
+    'Awaiting Chp 1', 'Awaiting 10k', 'Awaiting Moderation', 'Mod Failed',
+    'Check BES <> 10', 'Check Mod Passed Pub WC <10k',
+    'Send For 1 Hr LLM Score', 'Awaiting 1 Hr LLM', 'Check - 1 Hr LLM Failed',
+    'Send Addn Details Form', 'Awaiting Addn Details',
+    'Send For Review', 'Awaiting Review',
+    'Send for Contracting', 'Awaiting Program ID',
+    'Signing Pending', 'OFW', 'WBP Ongoing',
+    'Awaiting 5 hr LLM', '5 Hr LLM Rejected',
+    'Send for PPV Testing', 'Awaiting Testing Results', 'Mod Passed'
+  ]},
+  { flow: 'Flow B', stages: [
+    'Awaiting 50k'
+  ]},
+  { flow: 'Contracted Flow', stages: [
+    'Contract Rejected'
+  ]},
+  { flow: 'Dead Flow', match: 'Dead' },
+  { flow: 'PPV Bad Flow', stages: [
+    'Check - PPV Bad', 'Check - PPV Average', 'PPV Bad', 'PPV Avg'
+  ]},
+];
+
+let _stageMonthsLoaded = false;
+async function loadStageReportMonths() {
+  if (_stageMonthsLoaded) return;
+  try {
+    const res = await api('/api/reports/stage-months');
+    const sel = document.getElementById('stage-report-month');
+    sel.innerHTML = '<option value="">All Months</option>';
+    for (const m of (res.months || [])) {
+      sel.innerHTML += `<option value="${m}">${m}</option>`;
+    }
+    _stageMonthsLoaded = true;
+  } catch (e) {}
+}
+
+async function loadStageReport() {
+  const container = document.getElementById('stage-report-body');
+  container.innerHTML = '<div class="loading">Loading...</div>';
+  try {
+    const month = document.getElementById('stage-report-month').value;
+    const body = {};
+    if (month) body.month = month;
+    const res = await api('/api/reports/stage-summary', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    if (res.error) { container.innerHTML = '<div class="empty">Error: ' + escHtml(res.error) + '</div>'; return; }
+    const counts = res.data || {};
+    const total = res.total || 0;
+
+    let html = '<table class="wide"><thead><tr>';
+    html += '<th style="width:60px;min-width:60px;">S.No</th>';
+    html += '<th style="width:300px;min-width:300px;">Stage</th>';
+    html += '<th style="width:120px;min-width:120px;text-align:right;">No. of Books</th>';
+    html += '</tr></thead><tbody>';
+
+    let sno = 0;
+    let grandTotal = 0;
+
+    for (const flowDef of STAGE_FLOWS) {
+      html += `<tr style="background:#fce8e8;font-weight:700;"><td colspan="3" style="color:#b71c1c;">${flowDef.flow}</td></tr>`;
+
+      if (flowDef.match) {
+        const matched = Object.entries(counts).filter(([k]) => k.startsWith(flowDef.match)).sort((a, b) => b[1] - a[1]);
+        let flowTotal = 0;
+        for (const [stage, count] of matched) {
+          sno++;
+          flowTotal += count;
+          html += `<tr><td>${sno}</td><td>${escHtml(stage)}</td><td style="text-align:right;">${count.toLocaleString()}</td></tr>`;
+        }
+        if (!matched.length) {
+          html += `<tr><td></td><td style="color:#999;">No books in this flow</td><td></td></tr>`;
+        }
+        html += `<tr style="background:#f5e0e0;font-weight:600;"><td></td><td>Subtotal</td><td style="text-align:right;">${flowTotal.toLocaleString()}</td></tr>`;
+        grandTotal += flowTotal;
+      } else {
+        let flowTotal = 0;
+        for (const stage of flowDef.stages) {
+          const count = counts[stage] || 0;
+          sno++;
+          flowTotal += count;
+          html += `<tr><td>${sno}</td><td>${escHtml(stage)}</td><td style="text-align:right;">${count.toLocaleString()}</td></tr>`;
+        }
+        html += `<tr style="background:#f5e0e0;font-weight:600;"><td></td><td>Subtotal</td><td style="text-align:right;">${flowTotal.toLocaleString()}</td></tr>`;
+        grandTotal += flowTotal;
+      }
+    }
+
+    const uncategorized = Object.entries(counts).filter(([k]) => {
+      if (k.startsWith('Dead')) return false;
+      return !STAGE_FLOWS.some(f => f.stages && f.stages.includes(k));
+    });
+    if (uncategorized.length) {
+      html += `<tr style="background:#fce8e8;font-weight:700;"><td colspan="3" style="color:#b71c1c;">Other / Uncategorized</td></tr>`;
+      let otherTotal = 0;
+      for (const [stage, count] of uncategorized.sort((a, b) => b[1] - a[1])) {
+        sno++;
+        otherTotal += count;
+        html += `<tr><td>${sno}</td><td>${escHtml(stage)}</td><td style="text-align:right;">${count.toLocaleString()}</td></tr>`;
+      }
+      html += `<tr style="background:#f5e0e0;font-weight:600;"><td></td><td>Subtotal</td><td style="text-align:right;">${otherTotal.toLocaleString()}</td></tr>`;
+      grandTotal += otherTotal;
+    }
+
+    html += `<tr style="background:#fdf2f2;font-weight:700;font-size:0.95rem;"><td></td><td>Grand Total</td><td style="text-align:right;">${total.toLocaleString()}</td></tr>`;
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<div class="empty">Error loading stage report</div>';
+  }
+}
 
 async function loadReportAeLM() {
   const container = document.getElementById('reports-ae-lm-body');
@@ -1829,18 +1853,11 @@ async function openFD(event, entity, field, btn) {
 function closeFD() {
   if (fdCtx) {
     const entity = fdCtx.entity;
-    const virtualFields = new Set(['_daysInStage']);
-    const hasServerFilters = Object.entries(state[entity].filter).some(([k, v]) => v && v.size > 0 && !virtualFields.has(k));
     if (entity === 'authors' || entity === 'books') {
       document.getElementById('filter-dropdown').classList.remove('open');
       fdCtx = null;
       renderFilterTags(entity);
-      if (hasServerFilters) {
-        if (entity === 'authors') loadAuthors(1); else loadBooks(1);
-      } else {
-        applyRowFilters(entity);
-        renderTable(entity);
-      }
+      if (entity === 'authors') loadAuthors(1); else loadBooks(1);
       return;
     }
   }

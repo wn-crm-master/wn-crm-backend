@@ -21,29 +21,24 @@ async function syncRollups(db) {
         booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } },
         _firstContract: { $reduce: {
           input: { $filter: { input: '$_books', cond: { $and: [
-            { $ne: ['$$this.contractSigningDate', null] },
-            { $ne: ['$$this.contractSigningDate', ''] }
+            { $ne: ['$$this.ofwDate', null] },
+            { $ne: ['$$this.ofwDate', ''] }
           ] } } },
           initialValue: null,
           in: { $cond: [
-            { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.contractSigningDate', '$$value.d'] }] },
-            { d: '$$this.contractSigningDate', id: '$$this.id' },
+            { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.ofwDate', '$$value.d'] }] },
+            { d: '$$this.ofwDate', id: '$$this.id' },
             '$$value'
           ] }
         } },
         _first300k: { $reduce: {
           input: { $filter: { input: '$_books', cond: { $and: [
-            { $ne: ['$$this.contractSigningDate', null] },
-            { $ne: ['$$this.contractSigningDate', ''] },
+            { $ne: ['$$this.ofwDate', null] },
+            { $ne: ['$$this.ofwDate', ''] },
             { $ne: ['$$this.words300kDate', null] },
             { $ne: ['$$this.words300kDate', ''] },
-            { $or: [
-              { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'ongoing' } },
-              { $and: [
-                { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpStatus', ''] } }, regex: 'rejected' } },
-                { $gt: [{ $ifNull: ['$$this.wbpRejectedDate', ''] }, '$$this.words300kDate'] }
-              ] }
-            ] }
+            { $gt: ['$$this.words300kDate', '2025-07-31'] },
+            { $lt: ['$$this.words300kDate', '2026-07-01'] }
           ] } } },
           initialValue: null,
           in: { $cond: [
@@ -70,8 +65,11 @@ async function syncRollups(db) {
 
     const results = await db.collection('authors').aggregate(pipeline, { allowDiskUse: true }).toArray();
 
+    const clean = v => (v == null ? null : (typeof v === 'string' && v.trim() === '') ? null : v);
     const bulk = db.collection('authors').initializeUnorderedBulkOp();
     for (const r of results) {
+      const fcd = clean(r.firstContractDate);
+      const f3d = clean(r.first300kWordDate);
       bulk.find({ uid: r.uid }).updateOne({ $set: {
         booksCreated: r.booksCreated,
         booksChp1Published: r.booksChp1Published,
@@ -80,10 +78,10 @@ async function syncRollups(db) {
         booksExpressContracted: r.booksExpressContracted,
         booksWBPContracted: r.booksWBPContracted,
         booksOFW: r.booksOFW,
-        firstContractDate: r.firstContractDate,
-        firstContractBookId: r.firstContractBookId,
-        first300kWordDate: r.first300kWordDate,
-        first300kWordBookId: r.first300kWordBookId,
+        firstContractDate: fcd,
+        firstContractBookId: fcd ? (r.firstContractBookId || '') : '',
+        first300kWordDate: f3d,
+        first300kWordBookId: f3d ? (r.first300kWordBookId || '') : '',
         _rollupsUpdatedAt: new Date()
       }});
     }
@@ -293,14 +291,14 @@ async function syncAeRollups(db, authorResults) {
         return d && String(d).trim() !== '';
       }).length;
 
-      const authContBeforeLM = uids.filter(uid => {
+      const authContractedBefore = uids.filter(uid => {
         const d = authorMap[uid]?.firstContractDate;
-        return d && String(d).slice(0, 10) < lmStart;
+        return d && String(d).slice(0, 10) < '2025-08-01';
       }).length;
 
       const stage1Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.firstContractDate)).length;
       const stage2Cleared = uids.filter(uid => isLastMonth(authorMap[uid]?.first300kWordDate)).length;
-      const stage3Cleared = Math.floor((authContBeforeLM + stage1Cleared) / 10) - Math.floor(authContBeforeLM / 10);
+      const stage3Cleared = Math.floor(authContractedBefore / 10);
       const lmEarnings = stage1Cleared * 50 + stage2Cleared * 200 + stage3Cleared * 100;
 
       const regDates = uids.map(uid => authorMap[uid]?.regnDate).filter(d => d).sort();
