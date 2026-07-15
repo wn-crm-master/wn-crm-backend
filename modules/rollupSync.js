@@ -21,20 +21,20 @@ async function syncRollups(db) {
         booksOFW:               { $size: { $filter: { input: '$_books', cond: { $regexMatch: { input: { $toLower: { $ifNull: ['$$this.wbpSubStatus',''] } }, regex: 'open.?for.?withdrawal|\\bofw\\b' } } } } },
         _firstContract: { $reduce: {
           input: { $filter: { input: '$_books', cond: { $and: [
-            { $ne: ['$$this.ofwDate', null] },
-            { $ne: ['$$this.ofwDate', ''] }
+            { $ne: ['$$this.contractSigningDate', null] },
+            { $ne: ['$$this.contractSigningDate', ''] }
           ] } } },
           initialValue: null,
           in: { $cond: [
-            { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.ofwDate', '$$value.d'] }] },
-            { d: '$$this.ofwDate', id: '$$this.id' },
+            { $or: [{ $eq: ['$$value', null] }, { $lt: ['$$this.contractSigningDate', '$$value.d'] }] },
+            { d: '$$this.contractSigningDate', id: '$$this.id' },
             '$$value'
           ] }
         } },
         _first300k: { $reduce: {
           input: { $filter: { input: '$_books', cond: { $and: [
-            { $ne: ['$$this.ofwDate', null] },
-            { $ne: ['$$this.ofwDate', ''] },
+            { $ne: ['$$this.contractSigningDate', null] },
+            { $ne: ['$$this.contractSigningDate', ''] },
             { $ne: ['$$this.words300kDate', null] },
             { $ne: ['$$this.words300kDate', ''] },
             { $gt: ['$$this.words300kDate', '2025-07-31'] },
