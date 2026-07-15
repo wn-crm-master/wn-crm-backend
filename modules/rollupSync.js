@@ -70,8 +70,11 @@ async function syncRollups(db) {
 
     const results = await db.collection('authors').aggregate(pipeline, { allowDiskUse: true }).toArray();
 
+    const clean = v => (v == null ? null : (typeof v === 'string' && v.trim() === '') ? null : v);
     const bulk = db.collection('authors').initializeUnorderedBulkOp();
     for (const r of results) {
+      const fcd = clean(r.firstContractDate);
+      const f3d = clean(r.first300kWordDate);
       bulk.find({ uid: r.uid }).updateOne({ $set: {
         booksCreated: r.booksCreated,
         booksChp1Published: r.booksChp1Published,
@@ -80,10 +83,10 @@ async function syncRollups(db) {
         booksExpressContracted: r.booksExpressContracted,
         booksWBPContracted: r.booksWBPContracted,
         booksOFW: r.booksOFW,
-        firstContractDate: r.firstContractDate,
-        firstContractBookId: r.firstContractBookId,
-        first300kWordDate: r.first300kWordDate,
-        first300kWordBookId: r.first300kWordBookId,
+        firstContractDate: fcd,
+        firstContractBookId: fcd ? (r.firstContractBookId || '') : '',
+        first300kWordDate: f3d,
+        first300kWordBookId: f3d ? (r.first300kWordBookId || '') : '',
         _rollupsUpdatedAt: new Date()
       }});
     }

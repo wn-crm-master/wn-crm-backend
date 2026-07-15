@@ -1728,18 +1728,11 @@ async function openFD(event, entity, field, btn) {
 function closeFD() {
   if (fdCtx) {
     const entity = fdCtx.entity;
-    const virtualFields = new Set(['_daysInStage']);
-    const hasServerFilters = Object.entries(state[entity].filter).some(([k, v]) => v && v.size > 0 && !virtualFields.has(k));
     if (entity === 'authors' || entity === 'books') {
       document.getElementById('filter-dropdown').classList.remove('open');
       fdCtx = null;
       renderFilterTags(entity);
-      if (hasServerFilters) {
-        if (entity === 'authors') loadAuthors(1); else loadBooks(1);
-      } else {
-        applyRowFilters(entity);
-        renderTable(entity);
-      }
+      if (entity === 'authors') loadAuthors(1); else loadBooks(1);
       return;
     }
   }
