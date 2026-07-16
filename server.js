@@ -55,6 +55,14 @@ MongoClient.connect(MONGO_URI)
     db.collection('ae_books').createIndex({ aeEmail: 1 }).catch(() => {});
     db.collection('ae_payments').createIndex({ aeEmail: 1 }).catch(() => {});
     seedUsers(db).catch(err => console.error('User seed error:', err));
+    // One-time migration: boolean true → "YES" for form1 fields
+    (async () => {
+      const form1Fields = ['form1MailSent','form1FollowUp1Sent','form1FollowUp2Sent','form1Filled'];
+      for (const f of form1Fields) {
+        await db.collection('authors').updateMany({ [f]: true }, { $set: { [f]: 'YES' } }).catch(() => {});
+        await db.collection('authors').updateMany({ [f]: false }, { $set: { [f]: '' } }).catch(() => {});
+      }
+    })().catch(err => console.error('form1 migration error:', err));
     syncRollups(db).catch(err => console.error('Initial rollup sync error:', err));
     startScheduledSync(getDb);
   })
