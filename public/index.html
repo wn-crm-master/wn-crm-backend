@@ -663,7 +663,7 @@ const BASE = '';
 let token = localStorage.getItem('crm_token') || '';
 
 const state = {
-  authors: { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  authors: { data: [], sortedData: [], pinned: new Set(['uid','regnDate']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
   books:   { data: [], sortedData: [], pinned: new Set(['title','createMonth','stage','_daysInStage']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
   aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -1585,6 +1585,8 @@ function renderTable(entity) {
         else tdContent = escHtml(String(rawVal));
       } else if (isForm2NA) {
         tdContent = 'NA';
+      } else if (ctype === 'monthyear') {
+        tdContent = escHtml(formatMonthYear(String(rawVal)));
       } else if (isId || col.readOnly) {
         tdContent = escHtml(String(rawVal));
       } else if (ctype === 'rollup') {
@@ -1596,8 +1598,6 @@ function renderTable(entity) {
         tdClass += 'checkbox-cell';
         tdClick = `onclick="toggleCheckbox('${entity}','${rowIdEsc}','${col.field}',${checked},this)"`;
         tdContent = checked ? '<span class="cb-check">✓</span>' : '<span class="cb-uncheck">✗</span>';
-      } else if (ctype === 'monthyear') {
-        tdContent = escHtml(formatMonthYear(String(rawVal)));
       } else if (ctype === 'date') {
         tdClass += 'editable';
         tdClick = `onclick="startEdit('${entity}','${rowIdEsc}','${col.field}','${escAttr(String(rawVal))}',this)"`;
