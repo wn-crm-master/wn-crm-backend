@@ -542,6 +542,7 @@
 // ── Column definitions ─────────────────────────────────────────────
 const AUTHOR_COLS = [
   { field:'uid',                    header:'Author ID',                width:160 },
+  { field:'regnDate',               header:'Reg. Month',              width:100, type:'monthyear', readOnly:true },
   { field:'name',                   header:'Author Name',              width:160 },
   { field:'regnDate',               header:'Author Reg. Date',         width:140, type:'date' },
   { field:'locale',                 header:'Author Locale',            width:120 },
@@ -752,6 +753,16 @@ function formatPercent(val) {
   if (s.endsWith('%')) return s;
   const n = parseFloat(s);
   return isNaN(n) ? s : n+'%';
+}
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function formatMonthYear(val) {
+  if (!val) return '';
+  const s = String(val).trim();
+  const iso = s.match(/^(\d{4})-(\d{1,2})/);
+  if (iso) return `${MONTHS_SHORT[parseInt(iso[2],10)-1]}' ${iso[1].slice(2)}`;
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return `${MONTHS_SHORT[d.getMonth()]}' ${String(d.getFullYear()).slice(2)}`;
+  return '';
 }
 function formatDate(val) {
   if (!val) return '';
@@ -1585,6 +1596,8 @@ function renderTable(entity) {
         tdClass += 'checkbox-cell';
         tdClick = `onclick="toggleCheckbox('${entity}','${rowIdEsc}','${col.field}',${checked},this)"`;
         tdContent = checked ? '<span class="cb-check">✓</span>' : '<span class="cb-uncheck">✗</span>';
+      } else if (ctype === 'monthyear') {
+        tdContent = escHtml(formatMonthYear(String(rawVal)));
       } else if (ctype === 'date') {
         tdClass += 'editable';
         tdClick = `onclick="startEdit('${entity}','${rowIdEsc}','${col.field}','${escAttr(String(rawVal))}',this)"`;
