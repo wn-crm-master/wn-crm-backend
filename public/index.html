@@ -542,7 +542,7 @@
 // ── Column definitions ─────────────────────────────────────────────
 const AUTHOR_COLS = [
   { field:'uid',                    header:'Author ID',                width:160 },
-  { field:'_regMonth',              header:'Reg. Month',              width:100, type:'monthyear', readOnly:true },
+  { field:'_regMonth',              header:'Reg. Month',              width:100, type:'monthyear', readOnly:true, fixed:true },
   { field:'name',                   header:'Author Name',              width:160 },
   { field:'regnDate',               header:'Author Reg. Date',         width:140, type:'date' },
   { field:'locale',                 header:'Author Locale',            width:120 },
@@ -1499,7 +1499,7 @@ function renderTable(entity) {
           <span class="th-icons">
             <button class="sort-btn ${sortDir==='asc'?'active':''}" title="Sort A→Z" onclick="setSort('${entity}','${col.field}','asc')">▲</button>
             <button class="sort-btn ${sortDir==='desc'?'active':''}" title="Sort Z→A" onclick="setSort('${entity}','${col.field}','desc')">▼</button>
-            ${col.field!==fixedField?`<button class="pin-btn ${isSticky?'pinned':''}" title="${isSticky?'Unpin':'Pin column'}" onclick="togglePin('${entity}','${col.field}')">📌</button>`:''}
+            ${col.field!==fixedField && !col.fixed?`<button class="pin-btn ${isSticky?'pinned':''}" title="${isSticky?'Unpin':'Pin column'}" onclick="togglePin('${entity}','${col.field}')">📌</button>`:''}
           </span>
         </div>
         <div class="th-filter">
@@ -1783,6 +1783,9 @@ function setSort(entity, field, dir) {
   renderTable(entity);
 }
 function togglePin(entity, field) {
+  const meta = ENTITY_META[entity];
+  const col = meta.cols.find(c => c.field === field);
+  if (col && col.fixed) return;
   const p = state[entity].pinned;
   p.has(field) ? p.delete(field) : p.add(field);
   renderTable(entity);
