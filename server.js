@@ -68,7 +68,6 @@ MongoClient.connect(MONGO_URI)
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);
-    process.exit(1);
   });
 
 const authMiddleware = createAuthMiddleware(JWT_SECRET);

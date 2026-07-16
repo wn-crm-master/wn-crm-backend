@@ -760,6 +760,8 @@ function formatMonthYear(val) {
   const s = String(val).trim();
   const iso = s.match(/^(\d{4})-(\d{1,2})/);
   if (iso) return `${MONTHS_SHORT[parseInt(iso[2],10)-1]}' ${iso[1].slice(2)}`;
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (dmy) return `${MONTHS_SHORT[parseInt(dmy[2],10)-1]}' ${dmy[3].slice(2)}`;
   const d = new Date(s);
   if (!isNaN(d.getTime())) return `${MONTHS_SHORT[d.getMonth()]}' ${String(d.getFullYear()).slice(2)}`;
   return '';
@@ -1586,7 +1588,7 @@ function renderTable(entity) {
       } else if (isForm2NA) {
         tdContent = 'NA';
       } else if (ctype === 'monthyear') {
-        tdContent = escHtml(formatMonthYear(String(rawVal)));
+        tdContent = escHtml(String(rawVal));
       } else if (isId || col.readOnly) {
         tdContent = escHtml(String(rawVal));
       } else if (ctype === 'rollup') {
