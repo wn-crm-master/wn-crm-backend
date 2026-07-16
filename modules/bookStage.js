@@ -45,6 +45,11 @@ function daysAgo(dateVal, now) {
 }
 
 function computeBookStage(row) {
+  // Manual override — set via UI, persists until cleared
+  if (row.stageManual && String(row.stageManual).trim()) {
+    return { stage: String(row.stageManual).trim(), sinceDate: row.stageManualDate || row.updatedAt, imp: 'medium' };
+  }
+
   const updDate = row.updatedAt || row.createDate;
 
   // Step 1-2: Dead flow (highest priority, supersedes all else)

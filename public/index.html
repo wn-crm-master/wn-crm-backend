@@ -261,6 +261,11 @@
     #mapping-modal.open, #mass-update-modal.open { display: flex; }
     .btn-mass-update { background: #c0272d; color: #fff; }
     .btn-mass-update:hover { background: #a32126; }
+    .bulk-actions-wrap { position: relative; display: inline-block; }
+    .bulk-actions-menu { display: none; position: absolute; top: 100%; left: 0; background: #fff; border: 1px solid #dde2f0; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,0.13); z-index: 9000; min-width: 210px; overflow: hidden; }
+    .bulk-actions-menu.open { display: block; }
+    .bulk-actions-menu button { display: block; width: 100%; text-align: left; padding: 10px 16px; background: none; border: none; cursor: pointer; font-size: 0.9rem; color: #222; }
+    .bulk-actions-menu button:hover { background: #fce8e8; color: #c0272d; }
     .mu-field-group { margin-bottom: 16px; }
     .mu-field-group label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 6px; font-weight: 500; }
     .mu-field-group select, .mu-field-group input { width: 100%; padding: 9px 12px; border: 1px solid #dde2f0; border-radius: 6px; font-size: 0.9rem; outline: none; }
@@ -438,8 +443,14 @@
           <button class="btn btn-download" onclick="downloadCSV('books',this)">⬇ Download CSV</button>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
-          <button class="btn btn-mass-update" id="books-mass-update" style="display:none" onclick="openMassUpdate('books')">Mass Update</button>
-          <button class="btn btn-danger btn-del-selected" id="books-del-selected" style="display:none" onclick="deleteSelected('books')">Delete Selected</button>
+          <div class="bulk-actions-wrap" id="books-bulk-wrap" style="display:none">
+            <button class="btn btn-mass-update" id="books-bulk-btn" onclick="toggleBulkMenu('books')">Bulk Actions ▾</button>
+            <div class="bulk-actions-menu" id="books-bulk-menu">
+              <button onclick="closeBulkMenu('books');openMassUpdate('books')">Mass Update</button>
+              <button onclick="closeBulkMenu('books');pushLlmSheet()">Push for 1 hr LLM Score</button>
+              <button onclick="closeBulkMenu('books');deleteSelected('books')" style="color:#c0272d;">Delete Selected</button>
+            </div>
+          </div>
           <button class="btn btn-danger" onclick="deleteAllEntity('books')">Delete Data</button>
         </div>
       </div>
@@ -576,11 +587,45 @@ const AUTHOR_COLS = [
   { field:'first300kWordDate',     header:'1st 300k Word Date',       width:170, type:'date' },
   { field:'first300kWordBookId',   header:'1st 300k Word Date Book ID', width:220, readOnly:true },
 ];
+// Stage display order — also used as dropdown options for manual stage override
+const STAGE_ORDER = [
+  'Dead - Book Status =',
+  'Dead - Show Status =',
+  'Check - PPV Bad',
+  'Check - PPV Average',
+  'PPV Bad',
+  'PPV Avg',
+  'Awaiting Chp 1',
+  'Awaiting 10k',
+  'Awaiting Moderation',
+  'Mod Failed',
+  'Check BES <> 10',
+  'Check Mod Passed Pub WC <10k',
+  'Send For 1 Hr LLM Score',
+  'Awaiting 1 Hr LLM',
+  'Check - 1 Hr LLM Failed',
+  'Send Addn Details Form',
+  'Awaiting Addn Details',
+  'Send For Review',
+  'Awaiting Review',
+  'Send for Contracting',
+  'Awaiting Program ID',
+  'Signing Pending',
+  'OFW',
+  'WBP Ongoing',
+  'Contract Rejected',
+  'Awaiting 50k',
+  'Awaiting 5 hr LLM',
+  '5 Hr LLM Rejected',
+  'Send for PPV Testing',
+  'Awaiting Testing Results',
+  'Mod Passed',
+];
+
 const BOOK_COLS = [
   { field:'title',                header:'Book Title',           width:200 },
   { field:'createMonth',          header:'Create Month',         width:100, type:'text', readOnly:true },
-  { field:'stage',                header:'Stage',                width:220, type:'text', readOnly:true },
-  { field:'_daysInStage',         header:'Days in Stage',        width:100 },
+  { field:'stage',                header:'Stage',                width:220, type:'dropdown', options:['',...STAGE_ORDER], writeField:'stageManual' },
   { field:'id',                   header:'Book ID',              width:140 },
   { field:'authorId',             header:'Author ID',            width:160 },
   { field:'authorPreContract',   header:'Author Pre-Contract',   width:180, type:'text', readOnly:true },
@@ -653,6 +698,7 @@ const BOOK_COLS = [
   { field:'h10Ret',               header:'H10 Ret%',             width:95,  type:'percent' },
   { field:'h15EligibleLdau',      header:'H15 Eligible LDAU',    width:150, type:'number' },
   { field:'h15Ret',               header:'H15 Ret%',             width:95,  type:'percent' },
+  { field:'_daysInStage',         header:'Days in Stage',        width:100 },
 ];
 
 const SPECIAL_AUTHORS = new Set(['name','regnDate','locale','email','phone','bucketTag','contestTag','sourceTag','authorTypeTag','preContractedTag','preContractCompany']);
@@ -664,7 +710,7 @@ let token = localStorage.getItem('crm_token') || '';
 
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid','_regMonth']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
-  books:   { data: [], sortedData: [], pinned: new Set(['title','createMonth','stage','_daysInStage']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  books:   { data: [], sortedData: [], pinned: new Set(['title','createMonth','stage']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
   aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
@@ -699,44 +745,6 @@ function daysAgo(dateVal) {
   return Math.floor((new Date() - d) / (1000*60*60*24));
 }
 
-// Stage/IMP/URG/Create Month are now computed and stored server-side
-// (modules/bookStage.js, run by rollupSync) so filtering/sorting/pagination
-// on them works exactly like any other Mongo-indexed column. The client only
-// needs to know the display order for the Stage filter dropdown.
-// Matches the step order of the Stage decision table (Dead > PPV Failed > Flow A/B).
-const STAGE_ORDER = [
-  'Dead - Book Status =',
-  'Dead - Show Status =',
-  'Check - PPV Bad',
-  'Check - PPV Average',
-  'PPV Bad',
-  'PPV Avg',
-  'Awaiting Chp 1',
-  'Awaiting 10k',
-  'Awaiting Moderation',
-  'Mod Failed',
-  'Check BES <> 10',
-  'Check Mod Passed Pub WC <10k',
-  'Send For 1 Hr LLM Score',
-  'Awaiting 1 Hr LLM',
-  'Check - 1 Hr LLM Failed',
-  'Send Addn Details Form',
-  'Awaiting Addn Details',
-  'Send For Review',
-  'Awaiting Review',
-  'Send for Contracting',
-  'Awaiting Program ID',
-  'Signing Pending',
-  'OFW',
-  'WBP Ongoing',
-  'Contract Rejected',
-  'Awaiting 50k',
-  'Awaiting 5 hr LLM',
-  '5 Hr LLM Rejected',
-  'Send for PPV Testing',
-  'Awaiting Testing Results',
-  'Mod Passed',
-];
 function stageSortIndex(stage) {
   const i = STAGE_ORDER.findIndex(s => stage === s || stage.startsWith(s));
   return i === -1 ? STAGE_ORDER.length : i;
@@ -2068,7 +2076,8 @@ async function saveEdit(entity, rowId, field, newVal, oldVal, cell) {
   const cols = entity==='authors'?AUTHOR_COLS:BOOK_COLS;
   const col = cols.find(c=>c.field===field);
   const ctype = col?.type||'text';
-  const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, { method:'PUT', body:JSON.stringify({ [field]:newVal }) });
+  const saveField = col?.writeField || field;
+  const res = await api(`/api/${entity}/${encodeURIComponent(rowId)}`, { method:'PUT', body:JSON.stringify({ [saveField]:newVal }) });
   cell.classList.remove('editing');
   cell.classList.add('editable');
   const displayVal = res.success ? newVal : oldVal;
@@ -2144,6 +2153,8 @@ function updateSelectionUI(entity) {
   if (delBtn) { delBtn.style.display = count > 0 ? '' : 'none'; delBtn.textContent = `Delete Selected (${count})`; }
   const muBtn = document.getElementById(`${entity}-mass-update`);
   if (muBtn) { muBtn.style.display = count > 0 ? '' : 'none'; muBtn.textContent = `Mass Update (${count})`; }
+  const bulkWrap = document.getElementById(`${entity}-bulk-wrap`);
+  if (bulkWrap) { bulkWrap.style.display = count > 0 ? '' : 'none'; document.getElementById(`${entity}-bulk-btn`).textContent = `Bulk Actions (${count}) ▾`; }
   // Sync master checkbox state
   const rows = [...document.querySelectorAll(`#${bodyId} tbody tr`)].filter(tr=>tr.style.display!=='none');
   const master = document.querySelector(`#${bodyId} thead .row-cb`);
@@ -2182,6 +2193,37 @@ async function deleteSelected(entity) {
   updateSelectionUI(entity);
   loadStats();
   if (done < ids.length) showSave(false, `${ids.length - done} record(s) failed to delete`);
+}
+
+// ── Bulk Actions dropdown ───────────────────────────────────────────
+function toggleBulkMenu(entity) {
+  const menu = document.getElementById(`${entity}-bulk-menu`);
+  if (menu) menu.classList.toggle('open');
+}
+function closeBulkMenu(entity) {
+  const menu = document.getElementById(`${entity}-bulk-menu`);
+  if (menu) menu.classList.remove('open');
+}
+document.addEventListener('click', e => {
+  ['books','authors'].forEach(entity => {
+    const wrap = document.getElementById(`${entity}-bulk-wrap`);
+    if (wrap && !wrap.contains(e.target)) closeBulkMenu(entity);
+  });
+});
+
+async function pushLlmSheet() {
+  const ids = [...state.books.selected];
+  if (!ids.length) return;
+  const btn = document.getElementById('books-bulk-btn');
+  btn.disabled = true; btn.textContent = 'Pushing…';
+  const res = await api('/api/books/llm-sheet', { method: 'POST', body: JSON.stringify({ ids }) });
+  btn.disabled = false; btn.textContent = `Bulk Actions (${ids.length}) ▾`;
+  if (res.sheetUrl) {
+    showSave(true, 'Pushed to sheet — opening…');
+    window.open(res.sheetUrl, '_blank');
+  } else {
+    showSave(false, res.error || 'Failed to push to sheet');
+  }
 }
 
 // ── Mass Update ────────────────────────────────────────────────────

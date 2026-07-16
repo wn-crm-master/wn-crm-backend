@@ -206,6 +206,7 @@ function register(app, getDb, authMiddleware) {
         if (computedFields.has(key)) continue;
         updates[key] = val;
       }
+      if (updates.stageManual !== undefined) updates.stageManualDate = new Date();
       if (Object.keys(updates).length === 0) return res.json({ success: true, message: 'Nothing to update' });
       const { _id: bId, ...bookData } = existing;
       await db.collection('books_backups').insertOne({ ...bookData, _originalId: bId, importId: 'direct-edit', backedUpAt: new Date() });
