@@ -65,7 +65,7 @@ async function syncForm2Dates(db) {
   const responses = await fetchFormResponses();
   if (!responses.length) return { matched: 0, updated: 0, unmatched: 0 };
 
-  const books = await db.collection('books').find({}).toArray();
+  const books = await db.collection('books').find({}, { projection: { _id: 0, id: 1, title: 1, form2RecdDate: 1 } }).toArray();
 
   const titleIndex = new Map();
   for (const book of books) {
@@ -125,6 +125,7 @@ function register(app, getDb, authMiddleware) {
   app.post('/api/sync/form2', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
+      if (!db) return res.status(503).json({ error: 'Database not available' });
       const result = await syncForm2Dates(db);
       res.json({ success: true, ...result });
     } catch (err) {

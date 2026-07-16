@@ -22,6 +22,7 @@ function register(app, getDb, authMiddleware) {
       const db = getDb();
       const { importId, entity } = req.body;
       if (!importId || !entity) return res.status(400).json({ error: 'importId and entity required' });
+      if (!['authors', 'books'].includes(entity)) return res.status(400).json({ error: 'Invalid entity' });
       const backupCol = entity === 'authors' ? 'authors_backups' : 'books_backups';
       const liveCol = entity === 'authors' ? 'authors' : 'books';
       const idField = entity === 'authors' ? 'uid' : 'id';

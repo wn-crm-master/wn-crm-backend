@@ -36,11 +36,11 @@ function register(app, getDb, authMiddleware) {
     const search = req.body?.search || req.query.search;
     const filters = req.body?.filters || (req.query.filters ? JSON.parse(req.query.filters) : null);
     const matchQuery = { uid: { $exists: true, $ne: '' } };
-    if (search) matchQuery.$or = [
-      { name: { $regex: search, $options: 'i' } },
-      { uid: { $regex: search, $options: 'i' } },
-      { email: { $regex: search, $options: 'i' } }
-    ];
+    if (search) { const sr = escapeRegex(search); matchQuery.$or = [
+      { name: { $regex: sr, $options: 'i' } },
+      { uid: { $regex: sr, $options: 'i' } },
+      { email: { $regex: sr, $options: 'i' } }
+    ]; }
     if (filters) {
       try {
         const conds = buildFilterConditions(typeof filters === 'string' ? JSON.parse(filters) : filters);

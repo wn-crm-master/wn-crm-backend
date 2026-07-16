@@ -29,6 +29,7 @@ app.use(compression());
 app.use(express.json({ limit: '50mb' }));
 
 const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) { console.error('FATAL: MONGO_URI is not set in environment'); process.exit(1); }
 const JWT_SECRET = process.env.JWT_SECRET || 'wn-crm-secret-change-in-production';
 
 let db;
@@ -72,6 +73,13 @@ MongoClient.connect(MONGO_URI)
 
 const authMiddleware = createAuthMiddleware(JWT_SECRET);
 
+// DB availability guard — applied after /api/health so health check still works when DB is down
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health') return next();
+  if (!db) return res.status(503).json({ error: 'Database not available' });
+  next();
+});
+
 // Health
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: db ? 'connected' : 'disconnected' });
@@ -107,5 +115,7 @@ registerReportsRoutes(app, getDb, authMiddleware);
 // Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/{*path}', (req, res) => res.sendFile(path.join(__dirname, 'public/index.html')));
+
+process.on('unhandledRejection', (err) => console.error('Unhandled rejection:', err));
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -1103,7 +1103,7 @@ async function loadStageReportMonths() {
     const sel = document.getElementById('stage-report-month');
     sel.innerHTML = '<option value="">All Months</option>';
     for (const m of (res.months || [])) {
-      sel.innerHTML += `<option value="${m}">${m}</option>`;
+      const opt = document.createElement('option'); opt.value = m; opt.textContent = m; sel.appendChild(opt);
     }
     _stageMonthsLoaded = true;
   } catch (e) {}

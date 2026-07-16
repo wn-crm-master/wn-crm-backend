@@ -5,6 +5,7 @@ function register(app, getDb, authMiddleware) {
       const db = getDb();
       const { months } = req.body;
       if (!Array.isArray(months) || !months.length) return res.status(400).json({ error: 'months array is required' });
+      if (months.some(v => !/^\d{4}-\d{2}$/.test(v))) return res.status(400).json({ error: 'months must be in YYYY-MM format' });
 
       const monthRanges = months.map(v => {
         const [yStr, mStr] = v.split('-');

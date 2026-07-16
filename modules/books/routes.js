@@ -38,11 +38,11 @@ function register(app, getDb, authMiddleware) {
     const authorId = req.query.authorId;
     const filters = req.body?.filters || (req.query.filters ? JSON.parse(req.query.filters) : null);
     const query = {};
-    if (search) query.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { authorName: { $regex: search, $options: 'i' } }
-    ];
-    if (genre) query.genre = { $regex: genre, $options: 'i' };
+    if (search) { const sr = escapeRegex(search); query.$or = [
+      { title: { $regex: sr, $options: 'i' } },
+      { authorName: { $regex: sr, $options: 'i' } }
+    ]; }
+    if (genre) query.genre = { $regex: escapeRegex(genre), $options: 'i' };
     if (authorId) query.authorId = authorId;
     if (filters) {
       try {

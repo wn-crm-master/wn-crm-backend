@@ -29,6 +29,7 @@ function register(app, getDb, authMiddleware) {
       const db = getDb();
       const { field, value } = req.body;
       if (!field) return res.status(400).json({ error: 'field is required' });
+      if (['_id', 'email'].includes(field)) return res.status(400).json({ error: 'Cannot update identity fields' });
       const update = { [field]: value, updatedAt: new Date() };
       const result = await db.collection('aes').updateOne({ email: req.params.email }, { $set: update });
       if (result.matchedCount === 0) return res.status(404).json({ error: 'AE not found' });
