@@ -113,7 +113,7 @@ async function syncRollups(db) {
 async function syncBookAuthorFields(db) {
   try {
     const authors = await db.collection('authors').find({}, {
-      projection: { uid: 1, preContractedTag: 1, preContractCompany: 1, aeEmail: 1 }
+      projection: { uid: 1, name: 1, email: 1, preContractedTag: 1, preContractCompany: 1, aeEmail: 1 }
     }).toArray();
     const authorMap = {};
     for (const a of authors) authorMap[a.uid] = a;
@@ -130,7 +130,9 @@ async function syncBookAuthorFields(db) {
       bulk.find({ id: b.id }).updateOne({ $set: {
         authorPreContract: a.preContractedTag || '',
         authorPreContractCompany: a.preContractCompany || '',
-        authorAeEmail: a.aeEmail || ''
+        authorAeEmail: a.aeEmail || '',
+        authorEmail: a.email || '',
+        authorName: a.name || ''
       }});
     }
     await bulk.execute();

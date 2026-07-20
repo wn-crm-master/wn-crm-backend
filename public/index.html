@@ -291,6 +291,16 @@
     .modal-actions { display: flex; gap: 10px; }
     td.checkbox-cell { cursor: pointer; text-align: center; }
     td.checkbox-cell:hover { background: #fce8e8 !important; }
+    .var-chips { display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:6px 0; }
+    .var-chips-label { font-size:.75rem;color:#999;margin-right:2px;white-space:nowrap; }
+    .var-chip { font-size:.72rem;padding:2px 7px;border:1px solid #ddd;border-radius:10px;cursor:pointer;background:#f8f8f8;color:#555;font-family:monospace;line-height:1.6; }
+    .var-chip:hover { background:#fce8e8;border-color:#c0272d;color:#c0272d; }
+    .compose-toolbar { display:flex;gap:8px;align-items:center;margin-bottom:2px; }
+    .compose-toolbar button { font-size:.8rem;padding:4px 10px;border:1px solid #ddd;border-radius:6px;background:#f8f8f8;color:#555;cursor:pointer; }
+    .compose-toolbar button:hover { background:#fce8e8;border-color:#c0272d;color:#c0272d; }
+    .link-dialog { background:#f8f9ff;border:1px solid #d0d8f0;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px; }
+    .link-dialog input { padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem;width:100%; }
+    .link-dialog-actions { display:flex;gap:8px;justify-content:flex-end; }
     .cb-check { color: #1a7f52; font-weight: 700; font-size: 1rem; }
     .cb-uncheck { color: #ccc; font-size: 1rem; }
     td.rollup-cell { background: #f8f9ff; color: #667; text-align: right; font-variant-numeric: tabular-nums; cursor: default; }
@@ -415,6 +425,7 @@
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
           <button class="btn btn-mass-update" id="authors-mass-update" style="display:none" onclick="openMassUpdate('authors')">Mass Update</button>
           <button class="btn btn-danger btn-del-selected" id="authors-del-selected" style="display:none" onclick="deleteSelected('authors')">Delete Selected</button>
+          <button class="btn" id="authors-email-btn" style="display:none;background:#e8f4fd;color:#1565c0;border-color:#b3d4f5" onclick="openEmailComposeFrom('authors')">✉ Email Selected</button>
           <button class="btn btn-danger" onclick="deleteAllEntity('authors')">Delete Data</button>
         </div>
       </div>
@@ -436,6 +447,7 @@
             <div class="bulk-actions-menu" id="books-bulk-menu">
               <button onclick="closeBulkMenu('books');openMassUpdate('books')">Mass Update</button>
               <button onclick="closeBulkMenu('books');pushLlmSheet()">Push for 1 hr LLM Score</button>
+              <button onclick="closeBulkMenu('books');openEmailComposeFrom('books')">✉ Email Selected</button>
               <button onclick="closeBulkMenu('books');deleteSelected('books')" style="color:#c0272d;">Delete Selected</button>
             </div>
           </div>
@@ -461,6 +473,7 @@
         <div class="import-btns">
           <button class="btn btn-download" onclick="downloadCSV('aes',this)">⬇ Download CSV</button>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','aes')" /></label>
+          <button class="btn" id="aes-email-btn" style="display:none;background:#e8f4fd;color:#1565c0;border-color:#b3d4f5" onclick="openEmailComposeFrom('aes')">✉ Email Selected</button>
         </div>
       </div>
       <div id="aes-import-msg" class="inline-msg"></div>
@@ -553,7 +566,7 @@
 
     <!-- Template Editor Modal -->
     <div id="email-template-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeTemplateEditor()">
-      <div class="modal-box" style="max-width:600px;width:95%">
+      <div class="modal-box" style="max-width:640px;width:95%">
         <div class="modal-header"><span id="template-editor-title">New Template</span><button class="modal-close" onclick="closeTemplateEditor()">×</button></div>
         <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
           <div>
@@ -565,11 +578,22 @@
             <input id="tmpl-subject" type="text" placeholder="Email subject" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem">
           </div>
           <div>
-            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">
-              Body
-              <span style="font-weight:400;color:#aaa;font-size:.75rem;margin-left:8px">{{name}}, {{email}}, {{uid}}</span>
-            </label>
-            <textarea id="tmpl-body" rows="10" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;resize:vertical;font-family:inherit"></textarea>
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Body</label>
+            <div class="var-chips" id="tmpl-var-chips"></div>
+            <div class="compose-toolbar">
+              <button type="button" onclick="showLinkDialog('tmpl-body')">🔗 Insert Link</button>
+              <button type="button" onclick="previewEmail('tmpl-subject','tmpl-body')">👁 Preview</button>
+            </div>
+            <div id="tmpl-link-dialog" class="link-dialog" style="display:none">
+              <div style="font-size:.8rem;font-weight:600;color:#555;margin-bottom:2px">Insert Hyperlink</div>
+              <input id="tmpl-link-text" type="text" placeholder="Display text (can use {{variables}})">
+              <input id="tmpl-link-url" type="text" placeholder="URL (can use {{variables}}, e.g. https://example.com/{{uid}})">
+              <div class="link-dialog-actions">
+                <button type="button" class="btn" style="background:#f0f2f5;color:#555;padding:4px 12px;font-size:.82rem" onclick="document.getElementById('tmpl-link-dialog').style.display='none'">Cancel</button>
+                <button type="button" class="btn btn-primary" style="padding:4px 12px;font-size:.82rem" onclick="doInsertLink('tmpl-body','tmpl-link-text','tmpl-link-url','tmpl-link-dialog')">Insert</button>
+              </div>
+            </div>
+            <textarea id="tmpl-body" rows="10" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;resize:vertical;font-family:inherit;margin-top:6px"></textarea>
           </div>
           <div id="tmpl-error" style="display:none;color:#c0272d;font-size:.85rem;padding:8px 12px;background:#fdf2f2;border-radius:6px"></div>
         </div>
@@ -584,10 +608,27 @@
 
     <!-- Email Compose Modal -->
     <div id="email-compose-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEmailCompose()">
-      <div class="modal-box" style="max-width:640px;width:95%">
+      <div class="modal-box" style="max-width:660px;width:95%">
         <div class="modal-header"><span>Compose Email</span><button class="modal-close" onclick="closeEmailCompose()">×</button></div>
         <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
-          <div>
+
+          <!-- Recipients: source mode (from a tab) -->
+          <div id="ec-source-info" style="display:none">
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:6px">Recipients</label>
+            <div style="background:#f0f8ff;border:1px solid #b3d4f5;border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+              <div id="ec-source-desc" style="font-size:.88rem;color:#1565c0;font-weight:500"></div>
+              <!-- Author/AE toggle: only shown when source = authors -->
+              <div id="ec-send-to-wrap" style="display:none;display:flex;align-items:center;gap:14px">
+                <span style="font-size:.82rem;font-weight:600;color:#555">Send to:</span>
+                <label style="font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="ec-send-to" value="author" checked onchange="updateComposeToggle()"> Author</label>
+                <label style="font-size:.85rem;cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="ec-send-to" value="ae" onchange="updateComposeToggle()"> AE (assigned to author)</label>
+              </div>
+              <a href="#" onclick="clearEmailSource();return false" style="font-size:.78rem;color:#888;text-decoration:underline">✕ Clear — use custom list instead</a>
+            </div>
+          </div>
+
+          <!-- Recipients: manual mode -->
+          <div id="ec-manual-area">
             <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Recipients</label>
             <select id="ec-recip-type" onchange="updateRecipientHint()" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem">
               <option value="custom">Custom list (paste emails)</option>
@@ -597,10 +638,12 @@
             </select>
             <div id="ec-custom-area" style="margin-top:8px">
               <textarea id="ec-custom-emails" rows="3" placeholder="one@email.com, two@email.com, name &lt;three@email.com&gt;" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem;resize:vertical"></textarea>
-              <div style="font-size:.78rem;color:#888;margin-top:3px">Separate multiple emails with commas or newlines. Use <code>Name &lt;email&gt;</code> format to include names.</div>
+              <div style="font-size:.78rem;color:#888;margin-top:3px">Separate by commas or newlines. Use <code>Name &lt;email&gt;</code> to include names.</div>
             </div>
             <div id="ec-recip-hint" style="font-size:.78rem;color:#888;margin-top:6px"></div>
           </div>
+
+          <!-- Subject + Load Template -->
           <div style="display:flex;align-items:center;gap:10px">
             <div style="flex:1">
               <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Subject</label>
@@ -612,12 +655,25 @@
               </select>
             </div>
           </div>
+
+          <!-- Body -->
           <div>
-            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">
-              Body
-              <span style="font-weight:400;color:#aaa;font-size:.75rem;margin-left:8px">Use {{name}}, {{email}}, {{uid}} for personalization</span>
-            </label>
-            <textarea id="ec-body" rows="10" placeholder="Dear {{name}},&#10;&#10;..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;resize:vertical;font-family:inherit"></textarea>
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Body</label>
+            <div class="var-chips" id="ec-var-chips"></div>
+            <div class="compose-toolbar">
+              <button type="button" onclick="showLinkDialog('ec-body')">🔗 Insert Link</button>
+              <button type="button" onclick="previewEmail('ec-subject','ec-body')">👁 Preview</button>
+            </div>
+            <div id="ec-link-dialog" class="link-dialog" style="display:none">
+              <div style="font-size:.8rem;font-weight:600;color:#555;margin-bottom:2px">Insert Hyperlink</div>
+              <input id="ec-link-text" type="text" placeholder="Display text (can use {{variables}})">
+              <input id="ec-link-url" type="text" placeholder="URL (can use {{variables}}, e.g. https://example.com/{{uid}})">
+              <div class="link-dialog-actions">
+                <button type="button" class="btn" style="background:#f0f2f5;color:#555;padding:4px 12px;font-size:.82rem" onclick="document.getElementById('ec-link-dialog').style.display='none'">Cancel</button>
+                <button type="button" class="btn btn-primary" style="padding:4px 12px;font-size:.82rem" onclick="doInsertLink('ec-body','ec-link-text','ec-link-url','ec-link-dialog')">Insert</button>
+              </div>
+            </div>
+            <textarea id="ec-body" rows="10" placeholder="Dear {{name}},&#10;&#10;..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;resize:vertical;font-family:inherit;margin-top:6px"></textarea>
           </div>
           <div id="ec-error" style="display:none;color:#c0272d;font-size:.85rem;padding:8px 12px;background:#fdf2f2;border-radius:6px"></div>
         </div>
@@ -627,6 +683,18 @@
             <button class="btn" style="background:#f0f2f5;color:#555" onclick="closeEmailCompose()">Cancel</button>
             <button class="btn btn-primary" id="ec-send-btn" onclick="sendEmailCampaign()">Send Campaign</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Preview Modal -->
+    <div id="email-preview-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal-box" style="max-width:680px;width:95%">
+        <div class="modal-header"><span>Email Preview <span style="font-size:.8rem;font-weight:400;color:#aaa">(sample data)</span></span><button class="modal-close" onclick="document.getElementById('email-preview-overlay').style.display='none'">×</button></div>
+        <div class="modal-body">
+          <div style="font-size:.82rem;color:#888;margin-bottom:6px">Subject: <strong id="preview-subject" style="color:#333"></strong></div>
+          <div style="font-size:.72rem;color:#bbb;margin-bottom:10px">Sample: name=Priya Sharma · email=priya@example.com · bookName=The Lost Kingdom · contestName=Express Contest · aeName=Rahul Singh</div>
+          <div id="preview-body" style="border:1px solid #eee;border-radius:6px;padding:16px;font-size:.9rem;line-height:1.7;min-height:80px"></div>
         </div>
       </div>
     </div>
@@ -2254,6 +2322,8 @@ function updateSelectionUI(entity) {
   if (muBtn) { muBtn.style.display = count > 0 ? '' : 'none'; muBtn.textContent = `Mass Update (${count})`; }
   const bulkWrap = document.getElementById(`${entity}-bulk-wrap`);
   if (bulkWrap) { bulkWrap.style.display = count > 0 ? '' : 'none'; document.getElementById(`${entity}-bulk-btn`).textContent = `Bulk Actions (${count}) ▾`; }
+  const emailBtn = document.getElementById(`${entity}-email-btn`);
+  if (emailBtn) emailBtn.style.display = count > 0 ? '' : 'none';
   // Sync master checkbox state
   const rows = [...document.querySelectorAll(`#${bodyId} tbody tr`)].filter(tr=>tr.style.display!=='none');
   const master = document.querySelector(`#${bodyId} thead .row-cb`);
@@ -3071,6 +3141,112 @@ async function markReplied(sendId, btn, campaignId, subject) {
   showEmailSends(campaignId, subject);
 }
 
+// ── Email variable chips ───────────────────────────────────────────
+const EMAIL_VARS = [
+  { p:'{{name}}',        hint:'Recipient name' },
+  { p:'{{email}}',       hint:'Recipient email' },
+  { p:'{{uid}}',         hint:'Author UID' },
+  { p:'{{authorName}}',  hint:'Author name' },
+  { p:'{{authorEmail}}', hint:'Author email' },
+  { p:'{{authorId}}',    hint:'Author ID' },
+  { p:'{{aeName}}',      hint:'AE name' },
+  { p:'{{aeEmail}}',     hint:'AE email' },
+  { p:'{{bookName}}',    hint:'Book title' },
+  { p:'{{contestName}}', hint:'Contest name' },
+];
+
+function renderVarChips(targetId) {
+  return '<span class="var-chips-label">Insert:</span>' +
+    EMAIL_VARS.map(v =>
+      `<button type="button" class="var-chip" title="${v.hint}" onclick="insertAtCursor('${targetId}','${v.p}')">${v.p}</button>`
+    ).join('');
+}
+
+function insertAtCursor(elOrId, text) {
+  const el = typeof elOrId === 'string' ? document.getElementById(elOrId) : elOrId;
+  if (!el) return;
+  const s = el.selectionStart, e = el.selectionEnd;
+  el.value = el.value.slice(0, s) + text + el.value.slice(e);
+  el.selectionStart = el.selectionEnd = s + text.length;
+  el.focus();
+}
+
+function showLinkDialog(bodyId) {
+  // Determine which dialog belongs to this body
+  const dialogId = bodyId === 'ec-body' ? 'ec-link-dialog' : 'tmpl-link-dialog';
+  const textId   = bodyId === 'ec-body' ? 'ec-link-text'   : 'tmpl-link-text';
+  const el = document.getElementById(bodyId);
+  const selected = el && el.selectionStart !== el.selectionEnd
+    ? el.value.slice(el.selectionStart, el.selectionEnd) : '';
+  document.getElementById(textId).value = selected;
+  document.getElementById(bodyId === 'ec-body' ? 'ec-link-url' : 'tmpl-link-url').value = '';
+  document.getElementById(dialogId).style.display = '';
+}
+
+function doInsertLink(bodyId, textInputId, urlInputId, dialogId) {
+  const text = document.getElementById(textInputId).value || 'Click here';
+  const url  = document.getElementById(urlInputId).value  || '#';
+  insertAtCursor(bodyId, `[${text}](${url})`);
+  document.getElementById(dialogId).style.display = 'none';
+}
+
+const PREVIEW_SAMPLE = {
+  name:'Priya Sharma', email:'priya@example.com', uid:'UID-12345',
+  authorName:'Priya Sharma', authorEmail:'priya@example.com', authorId:'UID-12345',
+  aeName:'Rahul Singh', aeEmail:'rahul.ae@example.com',
+  bookName:'The Lost Kingdom', contestName:'Express Contest'
+};
+
+function previewEmail(subjectId, bodyId) {
+  const subject = document.getElementById(subjectId).value;
+  const body    = document.getElementById(bodyId).value;
+  function apply(text) {
+    return EMAIL_VARS.reduce((t, v) => {
+      const key = v.p.replace(/\{\{|\}\}/g, '');
+      return t.replace(new RegExp('\\{\\{' + key + '\\}\\}', 'gi'), PREVIEW_SAMPLE[key] || '');
+    }, text);
+  }
+  function toHtml(text) {
+    const applied = apply(text);
+    const linkRe = /\[([^\]]*)\]\(([^)]*)\)/g;
+    const parts = []; let last = 0, m;
+    while ((m = linkRe.exec(applied)) !== null) {
+      parts.push(escHtml(applied.slice(last, m.index)));
+      parts.push(`<a href="${escAttr(m[2])}">${escHtml(m[1])}</a>`);
+      last = m.index + m[0].length;
+    }
+    parts.push(escHtml(applied.slice(last)));
+    return parts.join('').replace(/\n/g, '<br>');
+  }
+  document.getElementById('preview-subject').textContent = apply(subject);
+  document.getElementById('preview-body').innerHTML = toHtml(body);
+  document.getElementById('email-preview-overlay').style.display = 'flex';
+}
+
+// ── Compose modal ──────────────────────────────────────────────────
+let _emailComposeSource = null; // { source: 'authors'|'books'|'aes', rows: [], recipientTarget: 'author'|'ae' }
+
+function getAeName(aeEmail) {
+  if (!aeEmail) return '';
+  const lc = aeEmail.toLowerCase();
+  const ae = (state.aes.data || []).find(a => (a.email || '').toLowerCase() === lc);
+  return ae ? (ae.name || '') : '';
+}
+
+function openEmailComposeFrom(entity) {
+  const meta = ENTITY_META[entity];
+  const idField = meta ? meta.idField : 'uid';
+  const sel = state[entity] ? state[entity].selected : new Set();
+  const rows = (state[entity] ? state[entity].data : []).filter(r => sel.has(String(r[idField])));
+  if (!rows.length) { alert('No rows selected.'); return; }
+  _emailComposeSource = {
+    source: entity,
+    rows,
+    recipientTarget: entity === 'aes' ? 'ae' : 'author'
+  };
+  showEmailCompose();
+}
+
 function showEmailCompose() {
   document.getElementById('ec-subject').value = '';
   document.getElementById('ec-body').value = '';
@@ -3081,9 +3257,65 @@ function showEmailCompose() {
   document.getElementById('ec-recip-count').textContent = '';
   document.getElementById('ec-error').style.display = 'none';
   document.getElementById('ec-send-btn').disabled = false;
+  document.getElementById('ec-link-dialog').style.display = 'none';
+
+  // Chips
+  document.getElementById('ec-var-chips').innerHTML = renderVarChips('ec-body');
+
+  if (_emailComposeSource) {
+    document.getElementById('ec-source-info').style.display = '';
+    document.getElementById('ec-manual-area').style.display = 'none';
+    const showToggle = _emailComposeSource.source === 'authors';
+    document.getElementById('ec-send-to-wrap').style.display = showToggle ? 'flex' : 'none';
+    // Reset toggle
+    const radios = document.querySelectorAll('input[name="ec-send-to"]');
+    radios.forEach(r => { r.checked = r.value === (_emailComposeSource.recipientTarget || 'author'); });
+    updateComposeSourceDesc();
+  } else {
+    document.getElementById('ec-source-info').style.display = 'none';
+    document.getElementById('ec-manual-area').style.display = '';
+  }
+
   document.getElementById('email-compose-overlay').style.display = 'flex';
 }
-function closeEmailCompose() { document.getElementById('email-compose-overlay').style.display = 'none'; }
+
+function closeEmailCompose() {
+  document.getElementById('email-compose-overlay').style.display = 'none';
+  _emailComposeSource = null;
+}
+
+function clearEmailSource() {
+  _emailComposeSource = null;
+  document.getElementById('ec-source-info').style.display = 'none';
+  document.getElementById('ec-manual-area').style.display = '';
+}
+
+function updateComposeToggle() {
+  if (!_emailComposeSource) return;
+  const val = document.querySelector('input[name="ec-send-to"]:checked')?.value || 'author';
+  _emailComposeSource.recipientTarget = val;
+  updateComposeSourceDesc();
+}
+
+function updateComposeSourceDesc() {
+  if (!_emailComposeSource) return;
+  const { source, rows, recipientTarget } = _emailComposeSource;
+  let desc = '';
+  if (source === 'authors') {
+    if (recipientTarget === 'ae') {
+      const aeEmails = new Set(rows.map(r => (r.aeEmail || '').toLowerCase()).filter(Boolean));
+      desc = `${aeEmails.size} AE${aeEmails.size !== 1 ? 's' : ''} (assigned to ${rows.length} selected author${rows.length !== 1 ? 's' : ''})`;
+    } else {
+      desc = `${rows.length} selected author${rows.length !== 1 ? 's' : ''}`;
+    }
+  } else if (source === 'books') {
+    const emails = new Set(rows.map(r => (r.authorEmail || r.email || '').toLowerCase()).filter(Boolean));
+    desc = `${emails.size} author${emails.size !== 1 ? 's' : ''} (from ${rows.length} selected book${rows.length !== 1 ? 's' : ''})`;
+  } else if (source === 'aes') {
+    desc = `${rows.length} selected AE${rows.length !== 1 ? 's' : ''}`;
+  }
+  document.getElementById('ec-source-desc').textContent = desc;
+}
 
 function updateRecipientHint() {
   const type = document.getElementById('ec-recip-type').value;
@@ -3104,18 +3336,70 @@ function updateRecipientHint() {
 
 function parseCustomEmails(raw) {
   const recipients = [];
-  const parts = raw.split(/[\n,]+/);
-  for (const part of parts) {
+  for (const part of raw.split(/[\n,]+/)) {
     const p = part.trim();
     if (!p) continue;
     const m = p.match(/^(.+?)\s*<([^>]+)>$/);
-    if (m) { recipients.push({ name: m[1].trim(), email: m[2].trim().toLowerCase() }); }
-    else if (p.includes('@')) { recipients.push({ email: p.toLowerCase() }); }
+    if (m) recipients.push({ name: m[1].trim(), email: m[2].trim().toLowerCase() });
+    else if (p.includes('@')) recipients.push({ email: p.toLowerCase() });
   }
   return recipients;
 }
 
 async function buildRecipients() {
+  // Source mode: selected rows from a tab
+  if (_emailComposeSource) {
+    const { source, rows, recipientTarget } = _emailComposeSource;
+    if (source === 'aes') {
+      return rows.filter(r => r.email).map(r => ({
+        name: r.name || '', email: (r.email || '').toLowerCase(),
+        aeName: r.name || '', aeEmail: (r.email || '').toLowerCase()
+      }));
+    }
+    if (source === 'books') {
+      const seen = new Set();
+      return rows.map(r => {
+        const email = (r.authorEmail || r.email || '').toLowerCase();
+        if (!email || seen.has(email)) return null;
+        seen.add(email);
+        return {
+          name: r.authorName || '', email,
+          uid: r.authorId || '', authorName: r.authorName || '',
+          authorEmail: email, authorId: r.authorId || '',
+          aeEmail: (r.authorAeEmail || r.aeEmail || '').toLowerCase(),
+          aeName: getAeName(r.authorAeEmail || r.aeEmail),
+          bookName: r.title || '', contestName: r.contestName || ''
+        };
+      }).filter(Boolean);
+    }
+    if (source === 'authors') {
+      if (recipientTarget === 'ae') {
+        const seen = new Set();
+        return rows.filter(r => r.aeEmail).map(r => {
+          const aeEmail = (r.aeEmail || '').toLowerCase();
+          if (!aeEmail || seen.has(aeEmail)) return null;
+          seen.add(aeEmail);
+          const aeName = getAeName(r.aeEmail);
+          return {
+            name: aeName || aeEmail, email: aeEmail,
+            aeName, aeEmail,
+            authorName: r.name || '', authorEmail: (r.email || '').toLowerCase(),
+            authorId: r.uid || '', uid: r.uid || ''
+          };
+        }).filter(Boolean);
+      } else {
+        return rows.filter(r => r.email).map(r => ({
+          name: r.name || '', email: (r.email || '').toLowerCase(),
+          uid: r.uid || '', authorName: r.name || '',
+          authorEmail: (r.email || '').toLowerCase(), authorId: r.uid || '',
+          aeEmail: (r.aeEmail || '').toLowerCase(), aeName: getAeName(r.aeEmail)
+        }));
+      }
+    }
+    return [];
+  }
+
+  // Manual mode
   const type = document.getElementById('ec-recip-type').value;
   if (type === 'custom') {
     return parseCustomEmails(document.getElementById('ec-custom-emails').value);
@@ -3123,19 +3407,26 @@ async function buildRecipients() {
   if (type === 'authors') {
     const filters = buildFilterBody('authors');
     const res = await api('/api/authors/query?limit=5000&page=1', { method:'POST', body: JSON.stringify(filters) });
-    return (res.data||[]).filter(a=>a.email).map(a=>({ name:a.name||'', email:(a.email||'').toLowerCase(), uid:a.uid||'' }));
+    return (res.data||[]).filter(a=>a.email).map(a=>({
+      name: a.name||'', email: (a.email||'').toLowerCase(), uid: a.uid||'',
+      authorName: a.name||'', authorEmail: (a.email||'').toLowerCase(), authorId: a.uid||'',
+      aeEmail: (a.aeEmail||'').toLowerCase(), aeName: getAeName(a.aeEmail)
+    }));
   }
   if (type === 'books') {
     const filters = buildFilterBody('books');
     const res = await api('/api/books/query?limit=5000&page=1', { method:'POST', body: JSON.stringify(filters) });
     const seen = new Set();
-    return (res.data||[]).filter(b=>b.authorEmail||b.email).map(b=>({
-      name: b.authorName||'', email: ((b.authorEmail||b.email)||'').toLowerCase(), uid: b.authorId||''
-    })).filter(r => { if (!r.email||seen.has(r.email)) return false; seen.add(r.email); return true; });
+    return (res.data||[]).map(b => {
+      const email = (b.authorEmail || b.email || '').toLowerCase();
+      if (!email || seen.has(email)) return null;
+      seen.add(email);
+      return { name: b.authorName||'', email, uid: b.authorId||'', authorName: b.authorName||'', authorEmail: email, authorId: b.authorId||'', aeEmail: (b.authorAeEmail||b.aeEmail||'').toLowerCase(), aeName: getAeName(b.authorAeEmail||b.aeEmail), bookName: b.title||'', contestName: b.contestName||'' };
+    }).filter(Boolean);
   }
   if (type === 'aes') {
     const res = await api('/api/aes?limit=5000');
-    return (res.data||[]).filter(a=>a.email).map(a=>({ name:a.name||'', email:(a.email||'').toLowerCase() }));
+    return (res.data||[]).filter(a=>a.email).map(a=>({ name:a.name||'', email:(a.email||'').toLowerCase(), aeName:a.name||'', aeEmail:(a.email||'').toLowerCase() }));
   }
   return [];
 }
@@ -3214,6 +3505,8 @@ function showTemplateEditor(id) {
   _editingTemplateId = id || null;
   document.getElementById('tmpl-error').style.display = 'none';
   document.getElementById('tmpl-save-btn').disabled = false;
+  document.getElementById('tmpl-link-dialog').style.display = 'none';
+  document.getElementById('tmpl-var-chips').innerHTML = renderVarChips('tmpl-body');
   if (id) {
     const t = _emailTemplates.find(x => x.id === id);
     if (!t) return;

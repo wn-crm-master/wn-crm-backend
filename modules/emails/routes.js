@@ -18,13 +18,34 @@ async function brevoSend(payload) {
 
 function applyTemplate(text, r) {
   return text
-    .replace(/\{\{name\}\}/gi, r.name || '')
-    .replace(/\{\{email\}\}/gi, r.email || '')
-    .replace(/\{\{uid\}\}/gi, r.uid || '');
+    .replace(/\{\{name\}\}/gi,         r.name         || '')
+    .replace(/\{\{email\}\}/gi,        r.email        || '')
+    .replace(/\{\{uid\}\}/gi,          r.uid          || '')
+    .replace(/\{\{authorName\}\}/gi,   r.authorName   || r.name  || '')
+    .replace(/\{\{authorEmail\}\}/gi,  r.authorEmail  || r.email || '')
+    .replace(/\{\{authorId\}\}/gi,     r.authorId     || r.uid   || '')
+    .replace(/\{\{aeName\}\}/gi,       r.aeName       || '')
+    .replace(/\{\{aeEmail\}\}/gi,      r.aeEmail      || '')
+    .replace(/\{\{bookName\}\}/gi,     r.bookName     || '')
+    .replace(/\{\{contestName\}\}/gi,  r.contestName  || '');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function toHtml(text) {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  // Convert [display](url) markdown links → <a href> before HTML-escaping
+  const linkRe = /\[([^\]]*)\]\(([^)]*)\)/g;
+  const parts = [];
+  let last = 0, m;
+  while ((m = linkRe.exec(text)) !== null) {
+    parts.push(escHtml(text.slice(last, m.index)));
+    parts.push(`<a href="${m[2].replace(/"/g, '&quot;')}">${escHtml(m[1])}</a>`);
+    last = m.index + m[0].length;
+  }
+  parts.push(escHtml(text.slice(last)));
+  return parts.join('').replace(/\n/g, '<br>');
 }
 
 function register(app, getDb, authMiddleware) {
