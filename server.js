@@ -20,6 +20,7 @@ const { register: registerEarningsRoutes } = require('./modules/earnings/routes'
 const { register: registerReportsRoutes } = require('./modules/reports/routes');
 const { register: registerLlmSheet } = require('./modules/llmSheet');
 const { register: registerAeSubRoutes } = require('./modules/aes/subRoutes');
+const { register: registerEmails } = require('./modules/emails/routes');
 const { syncRollups } = require('./modules/rollupSync');
 
 const app = express();
@@ -56,6 +57,9 @@ MongoClient.connect(MONGO_URI)
     db.collection('ae_authors').createIndex({ aeEmail: 1, uid: 1 }, { unique: true }).catch(() => {});
     db.collection('ae_books').createIndex({ aeEmail: 1 }).catch(() => {});
     db.collection('ae_payments').createIndex({ aeEmail: 1 }).catch(() => {});
+    db.collection('email_campaigns').createIndex({ createdAt: -1 }).catch(() => {});
+    db.collection('email_sends').createIndex({ campaignId: 1 }).catch(() => {});
+    db.collection('email_sends').createIndex({ resendId: 1 }, { sparse: true }).catch(() => {});
     seedUsers(db).catch(err => console.error('User seed error:', err));
     // One-time migration: boolean true → "YES" for form1 fields
     (async () => {
@@ -111,6 +115,7 @@ registerAeSubRoutes(app, getDb, authMiddleware);
 registerEarningsRoutes(app, getDb, authMiddleware);
 registerReportsRoutes(app, getDb, authMiddleware);
 registerLlmSheet(app, getDb, authMiddleware);
+registerEmails(app, getDb, authMiddleware);
 
 // Serve frontend
 app.use(express.static(path.join(__dirname, 'public')));

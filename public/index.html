@@ -387,6 +387,7 @@
       <div class="nav-link" onclick="showTab('review')">Review</div>
       <div class="nav-link" onclick="showTab('earnings')">Earnings</div>
       <div class="nav-link" onclick="showTab('reports')">Reports</div>
+      <div class="nav-link" onclick="showTab('emails')">Emails</div>
     </div>
     <div class="nav-right">
       <span class="nav-date" id="nav-date"></span>
@@ -516,6 +517,75 @@
         <button class="btn" style="padding:4px 12px;font-size:0.8rem;" onclick="copyReportTable('reports-ae-lm-body')" id="copy-report-btn">Copy Table</button>
       </div>
       <div class="table-card"><div class="table-scroll" style="max-height:calc(100vh - 340px);"><div id="reports-ae-lm-body"><div class="empty">Loading…</div></div></div></div>
+    </div>
+
+    <!-- ── Emails Tab ───────────────────────────────────────────── -->
+    <div id="tab-emails" class="tab">
+      <div class="tab-toolbar">
+        <div class="title-row">
+          <div class="page-title">Email Campaigns</div>
+          <button class="btn btn-primary" style="margin-left:auto" onclick="showEmailCompose()">+ Compose</button>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-scroll" style="max-height:calc(100vh - 200px)">
+          <div id="email-campaigns-body"><div class="empty">No campaigns yet. Click Compose to send your first email.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Compose Modal -->
+    <div id="email-compose-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEmailCompose()">
+      <div class="modal-box" style="max-width:640px;width:95%">
+        <div class="modal-header"><span>Compose Email</span><button class="modal-close" onclick="closeEmailCompose()">×</button></div>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Recipients</label>
+            <select id="ec-recip-type" onchange="updateRecipientHint()" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem">
+              <option value="custom">Custom list (paste emails)</option>
+              <option value="authors">All Authors (from current filter)</option>
+              <option value="books">Books authors (from current filter)</option>
+              <option value="aes">All AEs</option>
+            </select>
+            <div id="ec-custom-area" style="margin-top:8px">
+              <textarea id="ec-custom-emails" rows="3" placeholder="one@email.com, two@email.com, name &lt;three@email.com&gt;" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem;resize:vertical"></textarea>
+              <div style="font-size:.78rem;color:#888;margin-top:3px">Separate multiple emails with commas or newlines. Use <code>Name &lt;email&gt;</code> format to include names.</div>
+            </div>
+            <div id="ec-recip-hint" style="font-size:.78rem;color:#888;margin-top:6px"></div>
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Subject</label>
+            <input id="ec-subject" type="text" placeholder="Email subject" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">
+              Body
+              <span style="font-weight:400;color:#aaa;font-size:.75rem;margin-left:8px">Use {{name}}, {{email}}, {{uid}} for personalization</span>
+            </label>
+            <textarea id="ec-body" rows="10" placeholder="Dear {{name}},&#10;&#10;..." style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;resize:vertical;font-family:inherit"></textarea>
+          </div>
+          <div id="ec-error" style="display:none;color:#c0272d;font-size:.85rem;padding:8px 12px;background:#fdf2f2;border-radius:6px"></div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-note" id="ec-recip-count" style="color:#555"></div>
+          <div class="modal-actions">
+            <button class="btn" style="background:#f0f2f5;color:#555" onclick="closeEmailCompose()">Cancel</button>
+            <button class="btn btn-primary" id="ec-send-btn" onclick="sendEmailCampaign()">Send Campaign</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campaign Sends Modal -->
+    <div id="email-sends-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEmailSends()">
+      <div class="modal-box" style="max-width:820px;width:95%">
+        <div class="modal-header"><span id="email-sends-title">Campaign Details</span><button class="modal-close" onclick="closeEmailSends()">×</button></div>
+        <div class="modal-body" style="padding:0">
+          <div class="table-scroll" style="max-height:60vh">
+            <div id="email-sends-body"><div class="empty loading">Loading…</div></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="tab-settings" class="tab">
@@ -811,7 +881,7 @@ function showApp() {
   resumeActiveImports();
 }
 
-const NAV_TAB_ORDER = ['dashboard','ae','authors','books','review','earnings','reports'];
+const NAV_TAB_ORDER = ['dashboard','ae','authors','books','review','earnings','reports','emails'];
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
@@ -829,6 +899,7 @@ function showTab(name) {
   if (name==='ae') { loadAeList(); }
   if (name==='earnings') { populateEarnAeMonths(); loadEarnAe(); }
   if (name==='reports') { loadStageReportMonths(); loadStageReport(); loadReportAeLM(); }
+  if (name==='emails') loadEmailCampaigns();
 }
 async function loadStats() { const res=await api('/api/stats'); if(res.totalAuthors!==undefined){document.getElementById('stat-authors').textContent=res.totalAuthors;document.getElementById('stat-books').textContent=res.totalBooks;} }
 
@@ -2887,6 +2958,158 @@ async function restoreBackup(importId,entity) {
   const res=await api('/api/backups/restore',{method:'POST',body:JSON.stringify({importId,entity})});
   if(res.success){alert(`Restored ${res.restored} record(s).`);loadBackups();entity==='authors'?loadAuthors():loadBooks();}
   else alert(res.error||'Restore failed.');
+}
+
+// ── Email Campaigns ────────────────────────────────────────────────
+async function loadEmailCampaigns() {
+  const body = document.getElementById('email-campaigns-body');
+  body.innerHTML = '<div class="loading">Loading…</div>';
+  const res = await api('/api/emails/campaigns');
+  if (res.error) { body.innerHTML = `<div class="empty">Error: ${escHtml(res.error)}</div>`; return; }
+  const campaigns = res.data || [];
+  if (!campaigns.length) { body.innerHTML = '<div class="empty">No campaigns yet. Click Compose to send your first email.</div>'; return; }
+  let html = '<table class="data-table"><thead><tr><th>Date</th><th>Subject</th><th>Recipients</th><th>Sent</th><th>Opened</th><th>Replied</th><th>Status</th></tr></thead><tbody>';
+  for (const c of campaigns) {
+    const date = c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    const openPct = c.sentCount > 0 ? Math.round((c.openedCount / c.sentCount) * 100) + '%' : '—';
+    const replyPct = c.sentCount > 0 ? Math.round((c.repliedCount / c.sentCount) * 100) + '%' : '—';
+    const statusColor = c.status === 'sent' ? '#2e7d32' : c.status === 'sending' ? '#f57c00' : c.status === 'error' ? '#c62828' : '#555';
+    html += `<tr style="cursor:pointer" onclick="showEmailSends('${escAttr(c.id)}','${escAttr(c.subject)}')">
+      <td style="white-space:nowrap">${date}</td>
+      <td>${escHtml(c.subject)}</td>
+      <td style="text-align:center">${c.recipientCount}</td>
+      <td style="text-align:center">${c.sentCount}</td>
+      <td style="text-align:center">${c.openedCount} <small style="color:#888">(${openPct})</small></td>
+      <td style="text-align:center">${c.repliedCount} <small style="color:#888">(${replyPct})</small></td>
+      <td><span style="color:${statusColor};font-weight:600;text-transform:capitalize">${c.status}</span></td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+async function showEmailSends(campaignId, subject) {
+  document.getElementById('email-sends-title').textContent = subject;
+  document.getElementById('email-sends-body').innerHTML = '<div class="empty loading">Loading…</div>';
+  document.getElementById('email-sends-overlay').style.display = 'flex';
+  const res = await api(`/api/emails/campaigns/${campaignId}/sends`);
+  if (res.error) { document.getElementById('email-sends-body').innerHTML = `<div class="empty">Error: ${escHtml(res.error)}</div>`; return; }
+  const sends = res.data || [];
+  if (!sends.length) { document.getElementById('email-sends-body').innerHTML = '<div class="empty">No sends recorded.</div>'; return; }
+  let html = '<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>UID</th><th>Opened</th><th>Replied</th><th>Status</th><th></th></tr></thead><tbody>';
+  for (const s of sends) {
+    const opened = s.opened ? `<span style="color:#2e7d32;font-weight:600">✓ ${s.openedAt ? new Date(s.openedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}</span>` : '<span style="color:#aaa">—</span>';
+    const replied = s.replied ? `<span style="color:#1565c0;font-weight:600">✓ ${s.repliedAt ? new Date(s.repliedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}</span>` : '<span style="color:#aaa">—</span>';
+    const status = s.failed ? '<span style="color:#c62828">Failed</span>' : '<span style="color:#2e7d32">Sent</span>';
+    const replyBtn = !s.replied && !s.failed ? `<button class="btn" style="padding:3px 10px;font-size:.78rem;background:#e3f2fd;color:#1565c0;border:none" onclick="markReplied('${escAttr(s.id)}',this,'${escAttr(campaignId)}','${escAttr(subject)}')">Mark Replied</button>` : '';
+    html += `<tr><td>${escHtml(s.name||'')}</td><td>${escHtml(s.email)}</td><td>${escHtml(s.uid||'')}</td><td>${opened}</td><td>${replied}</td><td>${status}</td><td>${replyBtn}</td></tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('email-sends-body').innerHTML = html;
+}
+function closeEmailSends() { document.getElementById('email-sends-overlay').style.display = 'none'; }
+
+async function markReplied(sendId, btn, campaignId, subject) {
+  btn.disabled = true; btn.textContent = '…';
+  const res = await api(`/api/emails/sends/${sendId}/replied`, { method:'POST' });
+  if (res.error) { btn.disabled = false; btn.textContent = 'Mark Replied'; alert(res.error); return; }
+  showEmailSends(campaignId, subject);
+}
+
+function showEmailCompose() {
+  document.getElementById('ec-subject').value = '';
+  document.getElementById('ec-body').value = '';
+  document.getElementById('ec-custom-emails').value = '';
+  document.getElementById('ec-recip-type').value = 'custom';
+  document.getElementById('ec-custom-area').style.display = 'block';
+  document.getElementById('ec-recip-hint').textContent = '';
+  document.getElementById('ec-recip-count').textContent = '';
+  document.getElementById('ec-error').style.display = 'none';
+  document.getElementById('ec-send-btn').disabled = false;
+  document.getElementById('email-compose-overlay').style.display = 'flex';
+}
+function closeEmailCompose() { document.getElementById('email-compose-overlay').style.display = 'none'; }
+
+function updateRecipientHint() {
+  const type = document.getElementById('ec-recip-type').value;
+  const customArea = document.getElementById('ec-custom-area');
+  const hint = document.getElementById('ec-recip-hint');
+  if (type === 'custom') {
+    customArea.style.display = 'block'; hint.textContent = '';
+  } else {
+    customArea.style.display = 'none';
+    const hints = {
+      authors: 'Will email all authors matching the current Authors tab filter.',
+      books: 'Will email authors of all books matching the current Books tab filter.',
+      aes: 'Will email all active AEs.'
+    };
+    hint.textContent = hints[type] || '';
+  }
+}
+
+function parseCustomEmails(raw) {
+  const recipients = [];
+  const parts = raw.split(/[\n,]+/);
+  for (const part of parts) {
+    const p = part.trim();
+    if (!p) continue;
+    const m = p.match(/^(.+?)\s*<([^>]+)>$/);
+    if (m) { recipients.push({ name: m[1].trim(), email: m[2].trim().toLowerCase() }); }
+    else if (p.includes('@')) { recipients.push({ email: p.toLowerCase() }); }
+  }
+  return recipients;
+}
+
+async function buildRecipients() {
+  const type = document.getElementById('ec-recip-type').value;
+  if (type === 'custom') {
+    return parseCustomEmails(document.getElementById('ec-custom-emails').value);
+  }
+  if (type === 'authors') {
+    const filters = buildFilterBody('authors');
+    const res = await api('/api/authors/query?limit=5000&page=1', { method:'POST', body: JSON.stringify(filters) });
+    return (res.data||[]).filter(a=>a.email).map(a=>({ name:a.name||'', email:(a.email||'').toLowerCase(), uid:a.uid||'' }));
+  }
+  if (type === 'books') {
+    const filters = buildFilterBody('books');
+    const res = await api('/api/books/query?limit=5000&page=1', { method:'POST', body: JSON.stringify(filters) });
+    const seen = new Set();
+    return (res.data||[]).filter(b=>b.authorEmail||b.email).map(b=>({
+      name: b.authorName||'', email: ((b.authorEmail||b.email)||'').toLowerCase(), uid: b.authorId||''
+    })).filter(r => { if (!r.email||seen.has(r.email)) return false; seen.add(r.email); return true; });
+  }
+  if (type === 'aes') {
+    const res = await api('/api/aes?limit=5000');
+    return (res.data||[]).filter(a=>a.email).map(a=>({ name:a.name||'', email:(a.email||'').toLowerCase() }));
+  }
+  return [];
+}
+
+async function sendEmailCampaign() {
+  const subject = document.getElementById('ec-subject').value.trim();
+  const body = document.getElementById('ec-body').value.trim();
+  const errEl = document.getElementById('ec-error');
+  const btn = document.getElementById('ec-send-btn');
+  const countEl = document.getElementById('ec-recip-count');
+  errEl.style.display = 'none';
+  if (!subject) { errEl.textContent = 'Subject is required.'; errEl.style.display = 'block'; return; }
+  if (!body) { errEl.textContent = 'Body is required.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Preparing…'; countEl.textContent = 'Fetching recipients…';
+  const recipients = await buildRecipients();
+  if (!recipients.length) {
+    errEl.textContent = 'No valid recipients found.'; errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Send Campaign'; countEl.textContent = ''; return;
+  }
+  const invalid = recipients.filter(r => !r.email || !r.email.includes('@'));
+  const valid = recipients.filter(r => r.email && r.email.includes('@'));
+  countEl.textContent = `${valid.length} recipient${valid.length!==1?'s':''}${invalid.length ? ` (${invalid.length} invalid skipped)` : ''}`;
+  btn.textContent = 'Sending…';
+  const res = await api('/api/emails/send', { method:'POST', body: JSON.stringify({ subject, body, recipients: valid }) });
+  btn.disabled = false; btn.textContent = 'Send Campaign';
+  if (res.error) { errEl.textContent = res.error; errEl.style.display = 'block'; return; }
+  closeEmailCompose();
+  showTab('emails');
+  setTimeout(loadEmailCampaigns, 2000);
 }
 
 // ── Boot ───────────────────────────────────────────────────────────
