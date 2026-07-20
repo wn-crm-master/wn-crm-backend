@@ -1,5 +1,21 @@
 function register(app, getDb, authMiddleware) {
   const { triggerSync } = require('../rollupSync');
+  const { computeBookStage, computeBookUrg, computeCreateMonth } = require('../bookStage');
+
+  function fillComputedFields(books) {
+    const now = new Date();
+    for (const b of books) {
+      if (!b.stage) {
+        const s = computeBookStage(b);
+        b.stage = s.stage;
+        b.stageSince = s.sinceDate || null;
+        b.stageImp = s.imp || 'low';
+        b.stageUrg = computeBookUrg(s, now);
+      }
+      if (!b.createMonth) b.createMonth = computeCreateMonth(b.createDate);
+    }
+    return books;
+  }
 
   function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
@@ -80,7 +96,7 @@ function register(app, getDb, authMiddleware) {
       ]);
       const resolvedTotal = total !== null ? total : (data.length < parsedLimit ? data.length : await db.collection('books').countDocuments(query));
       const pages = Math.ceil(resolvedTotal / parsedLimit) || 1;
-      res.json({ data, total: resolvedTotal, page: parseInt(page), pages });
+      res.json({ data: fillComputedFields(data), total: resolvedTotal, page: parseInt(page), pages });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
