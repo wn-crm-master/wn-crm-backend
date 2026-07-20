@@ -34,13 +34,7 @@ async function importRecords(db, collection, backupCollection, records, idField,
   const existingMap = new Map();
   for (const doc of existingDocs) existingMap.set(doc[idField], doc);
 
-  // Backup all existing docs that will be updated
-  const backups = [];
-  for (const doc of existingDocs) {
-    const { _id, ...data } = doc;
-    backups.push({ ...data, _originalId: _id, importId, backedUpAt: new Date() });
-  }
-  if (backups.length) await db.collection(backupCollection).insertMany(backups, { ordered: false });
+  // Backups skipped during bulk import — only kept for single-record edits
 
   const ops = [];
   for (const record of validRecords) {
