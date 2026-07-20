@@ -697,7 +697,7 @@ let token = '';
 
 const state = {
   authors: { data: [], sortedData: [], pinned: new Set(['uid','_regMonth']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
-  books:   { data: [], sortedData: [], pinned: new Set(['title','createMonth','stage']),  sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
+  books:   { data: [], sortedData: [], pinned: new Set(['title','createMonth','stage']),  sort: { field: 'createDate', dir: 'desc' }, filter: {}, selected: new Set(), page: 1, pages: 1, total: 0 },
   aes:          { data: [], sortedData: [], pinned: new Set(['aeStatus','email']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_authors:   { data: [], sortedData: [], pinned: new Set(['uid']), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
   ae_books:     { data: [], sortedData: [], pinned: new Set(), sort: { field: null, dir: 'asc' }, filter: {}, selected: new Set() },
