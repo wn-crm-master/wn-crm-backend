@@ -2704,8 +2704,8 @@ async function confirmMapping() {
   progressEl.classList.add('active');
   fillEl.style.width='0%';
 
-  const CHUNK = 5000;
-  const PARALLEL = 3;
+  const CHUNK = 2000;
+  const PARALLEL = 2;
   const totalRecords = records.length;
   textEl.textContent = `Preparing ${totalRecords} records…`;
 
