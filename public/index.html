@@ -2718,27 +2718,15 @@ async function confirmMapping() {
 
   for (let ci = 0; ci < chunks.length; ci += PARALLEL) {
     const wave = chunks.slice(ci, ci + PARALLEL);
-    textEl.textContent = `Uploading batches ${ci+1}–${Math.min(ci+PARALLEL, chunks.length)} / ${chunks.length}…`;
+    textEl.textContent = `Batch ${ci+1}–${Math.min(ci+PARALLEL, chunks.length)} of ${chunks.length} (${processed}/${totalRecords})…`;
+    fillEl.style.width = Math.round((processed / totalRecords) * 100) + '%';
 
-    const startResults = await Promise.all(wave.map(chunk =>
+    const results = await Promise.all(wave.map(chunk =>
       api('/api/import-job/'+entity, {method:'POST', body:JSON.stringify({records: chunk})})
     ));
 
-    for (let wi = 0; wi < startResults.length; wi++) {
-      if (!startResults[wi].jobId) {
-        setMsg(msgEl,'error',startResults[wi].error||`Failed to start batch ${ci+wi+1}.`);
-        progressEl.classList.remove('active');
-        return;
-      }
-      saveActiveImport(entity, startResults[wi].jobId, totalRecords);
-    }
-
-    const jobResults = await Promise.all(startResults.map((sr, wi) =>
-      waitForJob(sr.jobId, entity, ci+wi, chunks.length, totalRecords, processed, fillEl, textEl)
-    ));
-
-    for (let wi = 0; wi < jobResults.length; wi++) {
-      const result = jobResults[wi];
+    for (let wi = 0; wi < results.length; wi++) {
+      const result = results[wi];
       if (result.error) {
         setMsg(msgEl,'error',`Batch ${ci+wi+1} error: ${result.error}`);
         progressEl.classList.remove('active');
@@ -2764,108 +2752,9 @@ async function confirmMapping() {
   setTimeout(()=>progressEl.classList.remove('active'),3000);
 }
 
-function waitForJob(jobId, entity, chunkIdx, totalChunks, totalRecords, prevProcessed, fillEl, textEl) {
-  return new Promise(resolve => {
-    const poll = setInterval(async () => {
-      const s = await api('/api/import-job/'+jobId);
-      if (s.error || !s.status) {
-        clearInterval(poll);
-        resolve({ error: 'Connection lost (server may have restarted).' });
-        return;
-      }
-      const globalProcessed = prevProcessed + (s.processed || 0);
-      const pct = Math.round((globalProcessed / totalRecords) * 100);
-      fillEl.style.width = pct + '%';
-      textEl.textContent = `Batch ${chunkIdx+1}/${totalChunks} — ${globalProcessed} / ${totalRecords}…`;
-      if (s.status === 'done' || s.status === 'error') {
-        clearInterval(poll);
-        if (s.status === 'error') resolve({ error: s.error || 'Unknown' });
-        else resolve(s);
-      }
-    }, 1000);
-  });
-}
-
-function pollImportJob(jobId, entity, totalRecords, fillEl, textEl, msgEl, progressEl, prevProcessed) {
-  const poll = setInterval(async () => {
-    const s = await api('/api/import-job/'+jobId);
-    if (s.error || !s.status) { clearInterval(poll); clearActiveImport(entity); setMsg(msgEl,'error','Import connection lost (server may have restarted). Refresh to see data.'); progressEl.classList.remove('active'); return; }
-    const pct = s.total ? Math.round((s.processed/s.total)*100) : 0;
-    fillEl.style.width = pct+'%';
-    textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
-
-    if (s.status==='done' || s.status==='error') {
-      clearInterval(poll);
-      clearActiveImport(entity);
-      if (s.status==='error') {
-        setMsg(msgEl,'error','Import error: '+(s.error||'Unknown'));
-      } else {
-        fillEl.style.width='100%';
-        textEl.textContent='Complete';
-        let msg=`Done! ${s.inserted} added, ${s.updated} updated.`;
-        if(s.skipped>0) msg+=` ${s.skipped} skipped.`;
-        if(s.stubs>0) msg+=` ${s.stubs} stub author(s) created.`;
-        setMsg(msgEl,'success',msg);
-        if(entity==='authors') loadAuthors(); else if(entity==='aes') loadAeList(); else loadBooks(); loadStats();
-      }
-      setTimeout(()=>progressEl.classList.remove('active'),3000);
-    }
-  }, 1000);
-}
-
-function saveActiveImport(entity, jobId, total) {
-  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
-  jobs[entity] = { jobId, total, ts: Date.now() };
-  localStorage.setItem('activeImports', JSON.stringify(jobs));
-}
-function clearActiveImport(entity) {
-  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
-  delete jobs[entity];
-  localStorage.setItem('activeImports', JSON.stringify(jobs));
-}
-function resumeActiveImports() {
-  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
-  const cutoff = Date.now() - 30 * 60 * 1000;
-  for (const [entity, info] of Object.entries(jobs)) {
-    if (info.ts < cutoff) { clearActiveImport(entity); continue; }
-    const progressEl = document.getElementById(entity + '-import-progress');
-    if (!progressEl) continue;
-    progressEl.classList.add('active');
-    const fillEl = progressEl.querySelector('.import-progress-fill');
-    const textEl = progressEl.querySelector('.import-progress-text');
-    textEl.textContent = 'Reconnecting to import…';
-    const poll = setInterval(async () => {
-      const s = await api('/api/import-job/' + info.jobId);
-      if (s.error || !s.status) {
-        clearInterval(poll);
-        clearActiveImport(entity);
-        textEl.textContent = 'Import finished (or server restarted). Refresh to see data.';
-        setTimeout(() => progressEl.classList.remove('active'), 4000);
-        return;
-      }
-      const pct = s.total ? Math.round((s.processed / s.total) * 100) : 0;
-      fillEl.style.width = pct + '%';
-      textEl.textContent = `Importing ${s.processed} / ${s.total}…`;
-      if (s.status === 'done' || s.status === 'error') {
-        clearInterval(poll);
-        clearActiveImport(entity);
-        fillEl.style.width = '100%';
-        if (s.status === 'error') {
-          textEl.textContent = 'Import error: ' + (s.error || 'Unknown');
-        } else {
-          let msg = `Done! ${s.inserted} added, ${s.updated} updated.`;
-          if (s.skipped > 0) msg += ` ${s.skipped} skipped.`;
-          if (s.stubs > 0) msg += ` ${s.stubs} stub author(s) created.`;
-          textEl.textContent = msg;
-        }
-        _allAuthors = null; _allBooks = null; invalidateDistinctCache('authors'); invalidateDistinctCache('books');
-        if (entity === 'authors') loadAuthors(); else if (entity === 'aes') loadAeList(); else loadBooks();
-        loadStats();
-        setTimeout(() => progressEl.classList.remove('active'), 4000);
-      }
-    }, 1500);
-  }
-}
+function saveActiveImport(entity, jobId, total) {}
+function clearActiveImport(entity) {}
+function resumeActiveImports() {}
 
 function filterRowsForDownload(entity, rows) {
   const activeFilters = Object.entries(state[entity].filter || {}).filter(([,v])=>v&&v.size>0);
