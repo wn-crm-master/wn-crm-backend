@@ -2704,7 +2704,8 @@ async function confirmMapping() {
   progressEl.classList.add('active');
   fillEl.style.width='0%';
 
-  const CHUNK = 1000;
+  const CHUNK = 5000;
+  const PARALLEL = 3;
   const totalRecords = records.length;
   textEl.textContent = `Preparing ${totalRecords} records…`;
 
@@ -2714,28 +2715,41 @@ async function confirmMapping() {
   let processed = 0;
 
   setMsg(msgEl,'info',`Importing ${totalRecords} ${entity} in ${chunks.length} batch(es)…`);
-  textEl.textContent = `Uploading batch 1 / ${chunks.length}…`;
 
-  for (let ci = 0; ci < chunks.length; ci++) {
-    textEl.textContent = `Uploading batch ${ci+1} / ${chunks.length}…`;
-    const startRes = await api('/api/import-job/'+entity, {method:'POST', body:JSON.stringify({records: chunks[ci]})});
-    if (!startRes.jobId) {
-      setMsg(msgEl,'error',startRes.error||`Failed to start batch ${ci+1}.`);
-      progressEl.classList.remove('active');
-      return;
+  for (let ci = 0; ci < chunks.length; ci += PARALLEL) {
+    const wave = chunks.slice(ci, ci + PARALLEL);
+    textEl.textContent = `Uploading batches ${ci+1}–${Math.min(ci+PARALLEL, chunks.length)} / ${chunks.length}…`;
+
+    const startResults = await Promise.all(wave.map(chunk =>
+      api('/api/import-job/'+entity, {method:'POST', body:JSON.stringify({records: chunk})})
+    ));
+
+    for (let wi = 0; wi < startResults.length; wi++) {
+      if (!startResults[wi].jobId) {
+        setMsg(msgEl,'error',startResults[wi].error||`Failed to start batch ${ci+wi+1}.`);
+        progressEl.classList.remove('active');
+        return;
+      }
+      saveActiveImport(entity, startResults[wi].jobId, totalRecords);
     }
-    saveActiveImport(entity, startRes.jobId, totalRecords);
-    const result = await waitForJob(startRes.jobId, entity, ci, chunks.length, totalRecords, processed, fillEl, textEl);
-    if (result.error) {
-      setMsg(msgEl,'error',`Batch ${ci+1} error: ${result.error}`);
-      progressEl.classList.remove('active');
-      return;
+
+    const jobResults = await Promise.all(startResults.map((sr, wi) =>
+      waitForJob(sr.jobId, entity, ci+wi, chunks.length, totalRecords, processed, fillEl, textEl)
+    ));
+
+    for (let wi = 0; wi < jobResults.length; wi++) {
+      const result = jobResults[wi];
+      if (result.error) {
+        setMsg(msgEl,'error',`Batch ${ci+wi+1} error: ${result.error}`);
+        progressEl.classList.remove('active');
+        return;
+      }
+      totalInserted += result.inserted || 0;
+      totalUpdated += result.updated || 0;
+      totalSkipped += result.skipped || 0;
+      totalStubs += result.stubs || 0;
+      processed += result.processed || wave[wi].length;
     }
-    totalInserted += result.inserted || 0;
-    totalUpdated += result.updated || 0;
-    totalSkipped += result.skipped || 0;
-    totalStubs += result.stubs || 0;
-    processed += result.processed || chunks[ci].length;
   }
 
   fillEl.style.width='100%';
