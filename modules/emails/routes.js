@@ -29,6 +29,44 @@ function toHtml(text) {
 
 function register(app, getDb, authMiddleware) {
 
+  // Templates
+  app.get('/api/emails/templates', authMiddleware, async (req, res) => {
+    try {
+      const data = await getDb().collection('email_templates').find({}).sort({ createdAt: -1 }).toArray();
+      res.json({ data });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.post('/api/emails/templates', authMiddleware, async (req, res) => {
+    try {
+      const { name, subject, body } = req.body;
+      if (!name || !subject || !body) return res.status(400).json({ error: 'name, subject, body required' });
+      const id = crypto.randomBytes(8).toString('hex');
+      const doc = { id, name, subject, body, createdAt: new Date(), updatedAt: new Date() };
+      await getDb().collection('email_templates').insertOne(doc);
+      res.json({ success: true, id });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.put('/api/emails/templates/:id', authMiddleware, async (req, res) => {
+    try {
+      const { name, subject, body } = req.body;
+      if (!name || !subject || !body) return res.status(400).json({ error: 'name, subject, body required' });
+      await getDb().collection('email_templates').updateOne(
+        { id: req.params.id },
+        { $set: { name, subject, body, updatedAt: new Date() } }
+      );
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.delete('/api/emails/templates/:id', authMiddleware, async (req, res) => {
+    try {
+      await getDb().collection('email_templates').deleteOne({ id: req.params.id });
+      res.json({ success: true });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   app.get('/api/emails/campaigns', authMiddleware, async (req, res) => {
     try {
       const data = await getDb().collection('email_campaigns').find({}).sort({ createdAt: -1 }).limit(200).toArray();

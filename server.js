@@ -60,6 +60,7 @@ MongoClient.connect(MONGO_URI)
     db.collection('email_campaigns').createIndex({ createdAt: -1 }).catch(() => {});
     db.collection('email_sends').createIndex({ campaignId: 1 }).catch(() => {});
     db.collection('email_sends').createIndex({ resendId: 1 }, { sparse: true }).catch(() => {});
+    db.collection('email_templates').createIndex({ createdAt: -1 }).catch(() => {});
     seedUsers(db).catch(err => console.error('User seed error:', err));
     // One-time migration: boolean true → "YES" for form1 fields
     (async () => {

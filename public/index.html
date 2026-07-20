@@ -523,13 +523,61 @@
     <div id="tab-emails" class="tab">
       <div class="tab-toolbar">
         <div class="title-row">
-          <div class="page-title">Email Campaigns</div>
-          <button class="btn btn-primary" style="margin-left:auto" onclick="showEmailCompose()">+ Compose</button>
+          <div class="page-title">Emails</div>
+          <div style="margin-left:auto;display:flex;gap:8px">
+            <button class="btn" style="background:#f0f2f5;color:#555" onclick="showEmailSubTab('templates')">Templates</button>
+            <button class="btn btn-primary" onclick="showEmailCompose()">+ Compose</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:0;margin-top:10px;border-bottom:2px solid #f0e0e0">
+          <div id="email-sub-campaigns" class="earn-sub-tab active" style="flex:none;padding:8px 20px" onclick="showEmailSubTab('campaigns')">Campaigns</div>
+          <div id="email-sub-templates" class="earn-sub-tab" style="flex:none;padding:8px 20px" onclick="showEmailSubTab('templates')">Templates</div>
         </div>
       </div>
-      <div class="table-card">
-        <div class="table-scroll" style="max-height:calc(100vh - 200px)">
+      <div id="email-pane-campaigns" class="table-card">
+        <div class="table-scroll" style="max-height:calc(100vh - 240px)">
           <div id="email-campaigns-body"><div class="empty">No campaigns yet. Click Compose to send your first email.</div></div>
+        </div>
+      </div>
+      <div id="email-pane-templates" style="display:none">
+        <div style="padding:16px 0 10px;display:flex;justify-content:flex-end">
+          <button class="btn btn-primary" onclick="showTemplateEditor()">+ New Template</button>
+        </div>
+        <div class="table-card">
+          <div class="table-scroll" style="max-height:calc(100vh - 260px)">
+            <div id="email-templates-body"><div class="empty">No templates yet.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Template Editor Modal -->
+    <div id="email-template-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeTemplateEditor()">
+      <div class="modal-box" style="max-width:600px;width:95%">
+        <div class="modal-header"><span id="template-editor-title">New Template</span><button class="modal-close" onclick="closeTemplateEditor()">×</button></div>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Template Name</label>
+            <input id="tmpl-name" type="text" placeholder="e.g. Form 1 Follow-up" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Subject</label>
+            <input id="tmpl-subject" type="text" placeholder="Email subject" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem">
+          </div>
+          <div>
+            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">
+              Body
+              <span style="font-weight:400;color:#aaa;font-size:.75rem;margin-left:8px">{{name}}, {{email}}, {{uid}}</span>
+            </label>
+            <textarea id="tmpl-body" rows="10" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem;resize:vertical;font-family:inherit"></textarea>
+          </div>
+          <div id="tmpl-error" style="display:none;color:#c0272d;font-size:.85rem;padding:8px 12px;background:#fdf2f2;border-radius:6px"></div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-actions">
+            <button class="btn" style="background:#f0f2f5;color:#555" onclick="closeTemplateEditor()">Cancel</button>
+            <button class="btn btn-primary" id="tmpl-save-btn" onclick="saveTemplate()">Save Template</button>
+          </div>
         </div>
       </div>
     </div>
@@ -553,9 +601,16 @@
             </div>
             <div id="ec-recip-hint" style="font-size:.78rem;color:#888;margin-top:6px"></div>
           </div>
-          <div>
-            <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Subject</label>
-            <input id="ec-subject" type="text" placeholder="Email subject" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="flex:1">
+              <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">Subject</label>
+              <input id="ec-subject" type="text" placeholder="Email subject" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.9rem">
+            </div>
+            <div style="margin-top:18px">
+              <select id="ec-template-picker" onchange="loadTemplateIntoCompose()" style="padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:.85rem;color:#555">
+                <option value="">Load template…</option>
+              </select>
+            </div>
           </div>
           <div>
             <label style="font-size:.82rem;font-weight:600;color:#555;display:block;margin-bottom:4px">
@@ -3110,6 +3165,105 @@ async function sendEmailCampaign() {
   closeEmailCompose();
   showTab('emails');
   setTimeout(loadEmailCampaigns, 2000);
+}
+
+// ── Email Templates ────────────────────────────────────────────────
+let _emailTemplates = [];
+
+function showEmailSubTab(name) {
+  document.getElementById('email-pane-campaigns').style.display = name === 'campaigns' ? '' : 'none';
+  document.getElementById('email-pane-templates').style.display = name === 'templates' ? '' : 'none';
+  document.getElementById('email-sub-campaigns').classList.toggle('active', name === 'campaigns');
+  document.getElementById('email-sub-templates').classList.toggle('active', name === 'templates');
+  if (name === 'templates') loadEmailTemplates();
+}
+
+async function loadEmailTemplates() {
+  const body = document.getElementById('email-templates-body');
+  body.innerHTML = '<div class="loading">Loading…</div>';
+  const res = await api('/api/emails/templates');
+  _emailTemplates = res.data || [];
+  refreshTemplatePicker();
+  if (!_emailTemplates.length) { body.innerHTML = '<div class="empty">No templates yet. Click + New Template to create one.</div>'; return; }
+  let html = '<table class="data-table"><thead><tr><th>Name</th><th>Subject</th><th>Last Updated</th><th></th></tr></thead><tbody>';
+  for (const t of _emailTemplates) {
+    const date = t.updatedAt ? new Date(t.updatedAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : '—';
+    html += `<tr>
+      <td style="font-weight:600">${escHtml(t.name)}</td>
+      <td>${escHtml(t.subject)}</td>
+      <td style="white-space:nowrap">${date}</td>
+      <td style="white-space:nowrap;text-align:right">
+        <button class="btn" style="padding:3px 10px;font-size:.78rem;margin-right:4px" onclick="showTemplateEditor('${escAttr(t.id)}')">Edit</button>
+        <button class="btn" style="padding:3px 10px;font-size:.78rem;background:#fdf2f2;color:#c0272d;border:none" onclick="deleteTemplate('${escAttr(t.id)}','${escAttr(t.name)}')">Delete</button>
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+function refreshTemplatePicker() {
+  const sel = document.getElementById('ec-template-picker');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Load template…</option>' +
+    _emailTemplates.map(t => `<option value="${escAttr(t.id)}">${escHtml(t.name)}</option>`).join('');
+}
+
+let _editingTemplateId = null;
+function showTemplateEditor(id) {
+  _editingTemplateId = id || null;
+  document.getElementById('tmpl-error').style.display = 'none';
+  document.getElementById('tmpl-save-btn').disabled = false;
+  if (id) {
+    const t = _emailTemplates.find(x => x.id === id);
+    if (!t) return;
+    document.getElementById('template-editor-title').textContent = 'Edit Template';
+    document.getElementById('tmpl-name').value = t.name;
+    document.getElementById('tmpl-subject').value = t.subject;
+    document.getElementById('tmpl-body').value = t.body;
+  } else {
+    document.getElementById('template-editor-title').textContent = 'New Template';
+    document.getElementById('tmpl-name').value = '';
+    document.getElementById('tmpl-subject').value = '';
+    document.getElementById('tmpl-body').value = '';
+  }
+  document.getElementById('email-template-overlay').style.display = 'flex';
+}
+function closeTemplateEditor() { document.getElementById('email-template-overlay').style.display = 'none'; }
+
+async function saveTemplate() {
+  const name = document.getElementById('tmpl-name').value.trim();
+  const subject = document.getElementById('tmpl-subject').value.trim();
+  const body = document.getElementById('tmpl-body').value.trim();
+  const errEl = document.getElementById('tmpl-error');
+  errEl.style.display = 'none';
+  if (!name || !subject || !body) { errEl.textContent = 'All fields are required.'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('tmpl-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const url = _editingTemplateId ? `/api/emails/templates/${_editingTemplateId}` : '/api/emails/templates';
+  const method = _editingTemplateId ? 'PUT' : 'POST';
+  const res = await api(url, { method, body: JSON.stringify({ name, subject, body }) });
+  btn.disabled = false; btn.textContent = 'Save Template';
+  if (res.error) { errEl.textContent = res.error; errEl.style.display = 'block'; return; }
+  closeTemplateEditor();
+  loadEmailTemplates();
+}
+
+async function deleteTemplate(id, name) {
+  if (!confirm(`Delete template "${name}"?`)) return;
+  const res = await api(`/api/emails/templates/${id}`, { method: 'DELETE' });
+  if (res.error) { alert(res.error); return; }
+  loadEmailTemplates();
+}
+
+function loadTemplateIntoCompose() {
+  const id = document.getElementById('ec-template-picker').value;
+  if (!id) return;
+  const t = _emailTemplates.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('ec-subject').value = t.subject;
+  document.getElementById('ec-body').value = t.body;
+  document.getElementById('ec-template-picker').value = '';
 }
 
 // ── Boot ───────────────────────────────────────────────────────────
