@@ -2704,8 +2704,7 @@ async function confirmMapping() {
   progressEl.classList.add('active');
   fillEl.style.width='0%';
 
-  const CHUNK = 2000;
-  const PARALLEL = 3;
+  const CHUNK = 1000;
   const totalRecords = records.length;
   textEl.textContent = `Preparing ${totalRecords} records…`;
 
@@ -2715,29 +2714,28 @@ async function confirmMapping() {
   let processed = 0;
 
   setMsg(msgEl,'info',`Importing ${totalRecords} ${entity} in ${chunks.length} batch(es)…`);
+  textEl.textContent = `Uploading batch 1 / ${chunks.length}…`;
 
-  for (let ci = 0; ci < chunks.length; ci += PARALLEL) {
-    const wave = chunks.slice(ci, ci + PARALLEL);
-    textEl.textContent = `Batch ${ci+1}–${Math.min(ci+PARALLEL, chunks.length)} of ${chunks.length} (${processed}/${totalRecords})…`;
-    fillEl.style.width = Math.round((processed / totalRecords) * 100) + '%';
-
-    const results = await Promise.all(wave.map(chunk =>
-      api('/api/import-job/'+entity, {method:'POST', body:JSON.stringify({records: chunk})})
-    ));
-
-    for (let wi = 0; wi < results.length; wi++) {
-      const result = results[wi];
-      if (result.error) {
-        setMsg(msgEl,'error',`Batch ${ci+wi+1} error: ${result.error}`);
-        progressEl.classList.remove('active');
-        return;
-      }
-      totalInserted += result.inserted || 0;
-      totalUpdated += result.updated || 0;
-      totalSkipped += result.skipped || 0;
-      totalStubs += result.stubs || 0;
-      processed += result.processed || wave[wi].length;
+  for (let ci = 0; ci < chunks.length; ci++) {
+    textEl.textContent = `Uploading batch ${ci+1} / ${chunks.length}…`;
+    const startRes = await api('/api/import-job/'+entity, {method:'POST', body:JSON.stringify({records: chunks[ci]})});
+    if (!startRes.jobId) {
+      setMsg(msgEl,'error',startRes.error||`Failed to start batch ${ci+1}.`);
+      progressEl.classList.remove('active');
+      return;
     }
+    saveActiveImport(entity, startRes.jobId, totalRecords);
+    const result = await waitForJob(startRes.jobId, processed, totalRecords, fillEl, textEl, ci, chunks.length);
+    if (result.error) {
+      setMsg(msgEl,'error',`Batch ${ci+1} error: ${result.error}`);
+      progressEl.classList.remove('active');
+      return;
+    }
+    totalInserted += result.inserted || 0;
+    totalUpdated += result.updated || 0;
+    totalSkipped += result.skipped || 0;
+    totalStubs += result.stubs || 0;
+    processed += result.processed || chunks[ci].length;
   }
 
   fillEl.style.width='100%';
@@ -2752,8 +2750,37 @@ async function confirmMapping() {
   setTimeout(()=>progressEl.classList.remove('active'),3000);
 }
 
-function saveActiveImport(entity, jobId, total) {}
-function clearActiveImport(entity) {}
+function waitForJob(jobId, prevProcessed, totalRecords, fillEl, textEl, chunkIdx, totalChunks) {
+  return new Promise(resolve => {
+    const poll = setInterval(async () => {
+      const s = await api('/api/import-job/'+jobId);
+      if (s.error || !s.status) {
+        clearInterval(poll);
+        resolve({ error: 'Connection lost.' });
+        return;
+      }
+      const globalProcessed = prevProcessed + (s.processed || 0);
+      fillEl.style.width = Math.round((globalProcessed / totalRecords) * 100) + '%';
+      textEl.textContent = `Batch ${chunkIdx+1}/${totalChunks} — ${globalProcessed} / ${totalRecords}…`;
+      if (s.status === 'done' || s.status === 'error') {
+        clearInterval(poll);
+        if (s.status === 'error') resolve({ error: s.error || 'Unknown' });
+        else resolve(s);
+      }
+    }, 1000);
+  });
+}
+
+function saveActiveImport(entity, jobId, total) {
+  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
+  jobs[entity] = { jobId, total, ts: Date.now() };
+  localStorage.setItem('activeImports', JSON.stringify(jobs));
+}
+function clearActiveImport(entity) {
+  const jobs = JSON.parse(localStorage.getItem('activeImports') || '{}');
+  delete jobs[entity];
+  localStorage.setItem('activeImports', JSON.stringify(jobs));
+}
 function resumeActiveImports() {}
 
 function filterRowsForDownload(entity, rows) {
