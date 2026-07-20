@@ -59,12 +59,22 @@ function register(app, getDb, authMiddleware) {
       const parsedLimit = parseInt(limit);
       const sortField = req.body?.sortField || 'regnDate';
       const sortDir = req.body?.sortDir === 'asc' ? 1 : -1;
-      const data = await db.collection('authors').find(matchQuery).sort({ [sortField]: sortDir }).skip(skip).limit(parsedLimit).toArray();
-      const total = (skip === 0 && data.length < parsedLimit)
-        ? data.length
-        : await db.collection('authors').countDocuments(matchQuery);
-      const pages = Math.ceil(total / parsedLimit) || 1;
-      res.json({ data, total, page: parseInt(page), pages });
+      const sortKey = '_sortKey';
+      const pipeline = [
+        { $match: matchQuery },
+        { $addFields: { [sortKey]: { $cond: { if: { $gt: [`$${sortField}`, ''] }, then: `$${sortField}`, else: sortDir === 1 ? '￿' : '0000-00-00' } } } },
+        { $sort: { [sortKey]: sortDir } },
+        { $skip: skip },
+        { $limit: parsedLimit },
+        { $project: { [sortKey]: 0 } }
+      ];
+      const [data, total] = await Promise.all([
+        db.collection('authors').aggregate(pipeline).toArray(),
+        skip === 0 ? Promise.resolve(null) : db.collection('authors').countDocuments(matchQuery)
+      ]);
+      const resolvedTotal = total !== null ? total : (data.length < parsedLimit ? data.length : await db.collection('authors').countDocuments(matchQuery));
+      const pages = Math.ceil(resolvedTotal / parsedLimit) || 1;
+      res.json({ data, total: resolvedTotal, page: parseInt(page), pages });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
