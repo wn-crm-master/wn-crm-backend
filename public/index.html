@@ -2752,13 +2752,20 @@ async function confirmMapping() {
 
 function waitForJob(jobId, prevProcessed, totalRecords, fillEl, textEl, chunkIdx, totalChunks) {
   return new Promise(resolve => {
+    let retries = 0;
+    const MAX_RETRIES = 10;
     const poll = setInterval(async () => {
       const s = await api('/api/import-job/'+jobId);
       if (s.error || !s.status) {
-        clearInterval(poll);
-        resolve({ error: 'Connection lost.' });
+        retries++;
+        textEl.textContent = `Batch ${chunkIdx+1}/${totalChunks} — retrying (${retries}/${MAX_RETRIES})…`;
+        if (retries >= MAX_RETRIES) {
+          clearInterval(poll);
+          resolve({ error: 'Server unavailable after retries. Please try again.' });
+        }
         return;
       }
+      retries = 0;
       const globalProcessed = prevProcessed + (s.processed || 0);
       fillEl.style.width = Math.round((globalProcessed / totalRecords) * 100) + '%';
       textEl.textContent = `Batch ${chunkIdx+1}/${totalChunks} — ${globalProcessed} / ${totalRecords}…`;
@@ -2767,7 +2774,7 @@ function waitForJob(jobId, prevProcessed, totalRecords, fillEl, textEl, chunkIdx
         if (s.status === 'error') resolve({ error: s.error || 'Unknown' });
         else resolve(s);
       }
-    }, 1000);
+    }, 1500);
   });
 }
 
