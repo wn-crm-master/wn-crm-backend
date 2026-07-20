@@ -118,14 +118,12 @@ async function syncBookAuthorFields(db) {
     const authorMap = {};
     for (const a of authors) authorMap[a.uid] = a;
 
-    const books = await db.collection('books').find(
+    const cursor = db.collection('books').find(
       { authorId: { $exists: true, $ne: '' } },
-      { projection: { id: 1, authorId: 1 } }
-    ).toArray();
-    if (!books.length) return;
-
-    const bulk = db.collection('books').initializeUnorderedBulkOp();
-    for (const b of books) {
+      { projection: { id: 1, authorId: 1 }, batchSize: 2000 }
+    );
+    let total = 0, bulk = db.collection('books').initializeUnorderedBulkOp(), count = 0;
+    for await (const b of cursor) {
       const a = authorMap[b.authorId] || {};
       bulk.find({ id: b.id }).updateOne({ $set: {
         authorPreContract: a.preContractedTag || '',
@@ -134,9 +132,16 @@ async function syncBookAuthorFields(db) {
         authorEmail: a.email || '',
         authorName: a.name || ''
       }});
+      count++;
+      if (count >= 2000) {
+        await bulk.execute();
+        total += count;
+        bulk = db.collection('books').initializeUnorderedBulkOp();
+        count = 0;
+      }
     }
-    await bulk.execute();
-    console.log(`Book author-field sync complete: ${books.length} books updated`);
+    if (count > 0) { await bulk.execute(); total += count; }
+    console.log(`Book author-field sync complete: ${total} books updated`);
   } catch (err) {
     console.error('Book author-field sync error:', err);
   }
@@ -148,7 +153,7 @@ async function syncBookAuthorFields(db) {
 // happens to be loaded client-side.
 async function syncBookStages(db) {
   try {
-    const books = await db.collection('books').find({}, {
+    const cursor = db.collection('books').find({}, {
       projection: {
         id: 1, status: 1, showStatus: 1, ppvTag: 1, ppvManualCheck: 1, ppvBadDate: 1, ppvAvgDate: 1,
         ppvManualCheckDate: 1, ppvTagDate: 1, authorPreContract: 1, chp1PublishedDate: 1, pubWC: 1,
@@ -158,26 +163,31 @@ async function syncBookStages(db) {
         dateAddedForReview: 1, reviewCompDate: 1, contractingDecision: 1, sentForContractingDate: 1,
         wbpStatus: 1, wbpSubStatus: 1, contractOfferedDate: 1, contractSigningDate: 1, wbpOngoingDate: 1, ofwDate: 1, wbpRejectedDate: 1,
         llmScore5hr: 1, llmDecision5hr: 1, llmDate5hr: 1, updatedAt: 1
-      }
-    }).toArray();
-    if (!books.length) return;
+      },
+      batchSize: 1000
+    });
 
     const now = new Date();
-    const bulk = db.collection('books').initializeUnorderedBulkOp();
-    for (const b of books) {
+    let total = 0, bulk = db.collection('books').initializeUnorderedBulkOp(), count = 0;
+    for await (const b of cursor) {
       const stageObj = computeBookStage(b);
-      const urg = computeBookUrg(stageObj, now);
-      const createMonth = computeCreateMonth(b.createDate);
       bulk.find({ id: b.id }).updateOne({ $set: {
         stage: stageObj.stage,
         stageSince: stageObj.sinceDate || null,
         stageImp: stageObj.imp || 'low',
-        stageUrg: urg,
-        createMonth
+        stageUrg: computeBookUrg(stageObj, now),
+        createMonth: computeCreateMonth(b.createDate)
       }});
+      count++;
+      if (count >= 1000) {
+        await bulk.execute();
+        total += count;
+        bulk = db.collection('books').initializeUnorderedBulkOp();
+        count = 0;
+      }
     }
-    await bulk.execute();
-    console.log(`Book stage sync complete: ${books.length} books updated`);
+    if (count > 0) { await bulk.execute(); total += count; }
+    console.log(`Book stage sync complete: ${total} books updated`);
   } catch (err) {
     console.error('Book stage sync error:', err);
   }
