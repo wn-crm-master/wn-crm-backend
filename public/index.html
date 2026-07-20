@@ -2337,6 +2337,8 @@ function buildFilterBody(entity) {
   }
   const body = {};
   if (Object.keys(active).length) body.filters = active;
+  const sort = state[entity].sort;
+  if (sort && sort.field) { body.sortField = sort.field; body.sortDir = sort.dir || 'asc'; }
   return body;
 }
 async function loadAuthors(page) {

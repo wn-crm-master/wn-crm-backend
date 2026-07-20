@@ -57,7 +57,9 @@ function register(app, getDb, authMiddleware) {
       const matchQuery = buildAuthorsQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const parsedLimit = parseInt(limit);
-      const data = await db.collection('authors').find(matchQuery).skip(skip).limit(parsedLimit).toArray();
+      const sortField = req.body?.sortField || 'regnDate';
+      const sortDir = req.body?.sortDir === 'asc' ? 1 : -1;
+      const data = await db.collection('authors').find(matchQuery).sort({ [sortField]: sortDir }).skip(skip).limit(parsedLimit).toArray();
       const total = (skip === 0 && data.length < parsedLimit)
         ? data.length
         : await db.collection('authors').countDocuments(matchQuery);

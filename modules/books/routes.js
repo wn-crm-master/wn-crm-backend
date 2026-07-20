@@ -63,7 +63,9 @@ function register(app, getDb, authMiddleware) {
       const query = buildBooksQuery(req);
       const skip = (parseInt(page) - 1) * parseInt(limit);
       const parsedLimit = parseInt(limit);
-      const data = await db.collection('books').find(query).skip(skip).limit(parsedLimit).toArray();
+      const sortField = req.body?.sortField || 'createDate';
+      const sortDir = req.body?.sortDir === 'asc' ? 1 : -1;
+      const data = await db.collection('books').find(query).sort({ [sortField]: sortDir }).skip(skip).limit(parsedLimit).toArray();
       const total = (skip === 0 && data.length < parsedLimit)
         ? data.length
         : await db.collection('books').countDocuments(query);
