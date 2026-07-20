@@ -66,6 +66,8 @@ MongoClient.connect(MONGO_URI)
       }
     })().catch(err => console.error('form1 migration error:', err));
     startScheduledSync(getDb);
+    // Run rollup sync 15s after boot so stage/createMonth are always populated
+    setTimeout(() => syncRollups(db).catch(err => console.error('Startup rollup error:', err)), 15000);
     // Hourly rollup sync as a safety net for any missed triggerSync calls
     setInterval(() => { if (db) syncRollups(db); }, 60 * 60 * 1000);
   })
@@ -87,15 +89,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', database: db ? 'connected' : 'disconnected' });
 });
 
-// Manual resync
-app.post('/api/resync', authMiddleware, async (req, res) => {
-  try {
-    const start = Date.now();
-    await syncRollups(getDb());
-    res.json({ success: true, duration: Date.now() - start });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// Manual resync — fire-and-forget so Render's 30s timeout doesn't kill it
+app.post('/api/resync', authMiddleware, (req, res) => {
+  res.json({ success: true, message: 'Sync started in background' });
+  setImmediate(() => syncRollups(getDb()).catch(err => console.error('Manual resync error:', err)));
 });
 
 // Register all modules
