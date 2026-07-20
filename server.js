@@ -66,6 +66,8 @@ MongoClient.connect(MONGO_URI)
       }
     })().catch(err => console.error('form1 migration error:', err));
     startScheduledSync(getDb);
+    // Hourly rollup sync as a safety net for any missed triggerSync calls
+    setInterval(() => { if (db) syncRollups(db); }, 60 * 60 * 1000);
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);

@@ -3,10 +3,12 @@ const { computeBookStage, computeBookUrg, computeCreateMonth } = require('./book
 const TRUTHY_VALS = [true, 1, 'true', 'TRUE', 'True', 'yes', 'YES', 'Yes', 'y', 'Y', '1'];
 
 let syncing = false;
+let pendingSync = false;
 
 async function syncRollups(db) {
-  if (syncing) return;
+  if (syncing) { pendingSync = true; return; }
   syncing = true;
+  pendingSync = false;
   try {
     // ── Author rollups ──────────────────────────────────────────────
     const pipeline = [
@@ -102,6 +104,7 @@ async function syncRollups(db) {
     console.error('Rollup sync error:', err);
   } finally {
     syncing = false;
+    if (pendingSync) { pendingSync = false; setImmediate(() => syncRollups(db)); }
   }
 }
 
