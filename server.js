@@ -65,7 +65,6 @@ MongoClient.connect(MONGO_URI)
         await db.collection('authors').updateMany({ [f]: false }, { $set: { [f]: '' } }).catch(() => {});
       }
     })().catch(err => console.error('form1 migration error:', err));
-    syncRollups(db).catch(err => console.error('Initial rollup sync error:', err));
     startScheduledSync(getDb);
   })
   .catch(err => {
