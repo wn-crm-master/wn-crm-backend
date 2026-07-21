@@ -273,7 +273,10 @@
     .mu-field-group select:focus, .mu-field-group input:focus { border-color: #c0272d; }
     .mu-preview { font-size: 0.82rem; color: #888; margin-top: 6px; }
     .modal-box { background: #fff; border-radius: 12px; width: min(780px, 95vw); max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); overflow: hidden; }
-    .modal-header { padding: 20px 24px 14px; border-bottom: 1px solid #eee; flex-shrink: 0; }
+    .modal-header { padding: 16px 24px; border-bottom: 1px solid #eee; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .modal-header > span, .modal-header > h2 { font-size: 1rem; font-weight: 600; color: #4a1a1a; margin: 0; }
+    .modal-close { background: none; border: none; font-size: 1.4rem; line-height: 1; cursor: pointer; color: #aaa; padding: 0 2px; flex-shrink: 0; }
+    .modal-close:hover { color: #c0272d; }
     .modal-header h2 { font-size: 1.1rem; color: #4a1a1a; margin-bottom: 4px; }
     .modal-header p { font-size: 0.83rem; color: #888; }
     .modal-body { overflow-y: auto; flex: 1; padding: 16px 24px; }
@@ -3311,8 +3314,8 @@ function updateComposeSourceDesc() {
       desc = `${rows.length} selected author${rows.length !== 1 ? 's' : ''}`;
     }
   } else if (source === 'books') {
-    const emails = new Set(rows.map(r => (r.authorEmail || r.email || '').toLowerCase()).filter(Boolean));
-    desc = `${emails.size} author${emails.size !== 1 ? 's' : ''} (from ${rows.length} selected book${rows.length !== 1 ? 's' : ''})`;
+    const authorIds = new Set(rows.map(r => r.authorId || r.uid || (r.authorEmail || r.email || '').toLowerCase()).filter(Boolean));
+    desc = `${authorIds.size} author${authorIds.size !== 1 ? 's' : ''} (from ${rows.length} selected book${rows.length !== 1 ? 's' : ''})`;
   } else if (source === 'aes') {
     desc = `${rows.length} selected AE${rows.length !== 1 ? 's' : ''}`;
   }
@@ -3362,8 +3365,9 @@ async function buildRecipients() {
       const seen = new Set();
       return rows.map(r => {
         const email = (r.authorEmail || r.email || '').toLowerCase();
-        if (!email || seen.has(email)) return null;
-        seen.add(email);
+        const key = r.authorId || r.uid || email;
+        if (!email || !key || seen.has(key)) return null;
+        seen.add(key);
         return {
           name: r.authorName || '', email,
           uid: r.authorId || '', authorName: r.authorName || '',
