@@ -1917,7 +1917,15 @@ function renderTable(entity) {
 
   html += '</table>';
   container.innerHTML = html;
-  applyRowFilters(entity);
+  // authors and books are server-paginated — filters are already applied by the server.
+  // applyRowFilters is only needed for in-memory entities (aes, ae_authors, etc.)
+  if (entity !== 'authors' && entity !== 'books') {
+    applyRowFilters(entity);
+  } else {
+    // Still update totals for the loaded page
+    updateTotals(entity, sorted);
+    renderFilterTags(entity);
+  }
 }
 
 function getRowFilterVal(row, field) {
