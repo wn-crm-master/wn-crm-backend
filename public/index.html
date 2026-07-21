@@ -165,10 +165,19 @@
     /* Filter button */
     .th-filter { display: none; }
 
-    /* ── Filter bar above table ───────────────────────────────── */
-    .filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 0 4px; }
-    .filter-add-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; font-size: .8rem; border: 1px dashed #c0272d; border-radius: 14px; background: #fff; color: #c0272d; cursor: pointer; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
-    .filter-add-btn:hover { background: #fce8e8; }
+    /* ── Inline filter grid above table ──────────────────────── */
+    .inline-filters { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 10px; align-items: flex-start; }
+    .if-card { display: flex; flex-direction: column; gap: 4px; min-width: 140px; max-width: 200px; flex: 1 1 140px; }
+    .if-card-label { font-size: .72rem; font-weight: 600; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .if-drop { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 5px 9px; font-size: .8rem; border: 1px solid #d0d5e0; border-radius: 5px; background: #fff; color: #333; cursor: pointer; text-align: left; width: 100%; box-sizing: border-box; min-height: 30px; transition: border-color .15s; }
+    .if-drop:hover { border-color: #c0272d; background: #fdf7f7; }
+    .if-drop.active { border-color: #c0272d; background: #fce8e8; color: #c0272d; font-weight: 600; }
+    .if-drop-val { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .if-drop-arrow { font-size: .65rem; color: #aaa; flex-shrink: 0; }
+    .if-drop.active .if-drop-arrow { color: #c0272d; }
+    .if-clear-all-row { width: 100%; display: flex; justify-content: flex-end; padding: 0 2px 4px; }
+    .if-clear-all { font-size: .78rem; border: none; background: none; color: #c0272d; cursor: pointer; padding: 3px 6px; border-radius: 4px; }
+    .if-clear-all:hover { background: #fce8e8; text-decoration: underline; }
 
     /* ── Filter panel ─────────────────────────────────────────── */
     #filter-panel { position: fixed; z-index: 9999; background: #fff; border: 1px solid #dde2f0; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); width: 280px; display: none; flex-direction: column; max-height: 420px; overflow: hidden; }
@@ -361,7 +370,7 @@
     <div class="fp-list" id="fp-field-list"></div>
   </div>
   <div id="fp-values-pane" style="display:none;flex-direction:column;flex:1;overflow:hidden">
-    <div class="fp-hdr"><button class="fp-back" id="fp-back-btn" onclick="fpShowFields()">← <span id="fp-back-label"></span></button><button class="fp-x" onclick="closeFP()">×</button></div>
+    <div class="fp-hdr"><span class="fp-hdr-title" id="fp-back-label" style="font-size:.87rem;font-weight:600;color:#333"></span><button class="fp-x" onclick="closeFP()">×</button></div>
     <div id="fp-text-mode" style="display:none">
       <div class="fp-text-row"><input id="fp-text-input" type="text" placeholder="Type a value and press Add…" onkeydown="if(event.key==='Enter')fpTextAdd()"><button onclick="fpTextAdd()">Add</button></div>
       <div class="fp-chips" id="fp-text-chips"></div>
@@ -463,7 +472,7 @@
     <div id="tab-authors" class="tab">
       <div class="tab-toolbar">
         <div class="title-row"><div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
-        <div class="filter-bar" id="authors-filter-bar"><button class="filter-add-btn" onclick="openFP('authors',this)">+ Add Filter</button><div class="active-filters" id="authors-active-filters"></div></div>
+        <div class="inline-filters" id="authors-filter-bar"></div>
         <div class="import-btns">
           <button class="btn btn-show-selected" id="authors-show-sel-btn" onclick="toggleShowSelected('authors')">⊙ Show Selected</button>
           <div class="dl-wrap">
@@ -492,7 +501,7 @@
     <div id="tab-books" class="tab">
       <div class="tab-toolbar">
         <div class="title-row"><div class="page-title">Books</div></div>
-        <div class="filter-bar" id="books-filter-bar"><button class="filter-add-btn" onclick="openFP('books',this)">+ Add Filter</button><div class="active-filters" id="books-active-filters"></div></div>
+        <div class="inline-filters" id="books-filter-bar"></div>
         <div class="import-btns">
           <button class="btn btn-show-selected" id="books-show-sel-btn" onclick="toggleShowSelected('books')">⊙ Show Selected</button>
           <div class="dl-wrap">
@@ -1078,8 +1087,8 @@ function showTab(name) {
   if (idx>=0) document.querySelectorAll('.nav-link')[idx].classList.add('active');
   if (name==='settings') document.querySelector('.nav-settings').classList.add('active');
   closeFD();
-  if (name==='authors') loadAuthors();
-  if (name==='books') loadBooks();
+  if (name==='authors') { renderFilterTags('authors'); loadAuthors(); }
+  if (name==='books') { renderFilterTags('books'); loadBooks(); }
   if (name==='dashboard') loadStats();
   if (name==='review') loadReview();
   if (name==='settings') loadBackups();
@@ -1912,25 +1921,47 @@ function getRowFilterVal(row, field) {
 }
 
 function renderFilterTags(entity) {
-  const container = document.getElementById(entity+'-active-filters');
+  const container = document.getElementById(entity+'-filter-bar');
   if (!container) return;
   const s = state[entity];
-  const meta = ENTITY_META[entity];
-  const cols = meta ? meta.cols : AUTHOR_COLS;
-  const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
-  if (!activeFilters.length) { container.innerHTML=''; return; }
+  const fields = getFPFields(entity);
+  const anyActive = fields.some(f => s.filter[f.field] && s.filter[f.field].size > 0);
   let html = '';
-  activeFilters.forEach(([field, vals]) => {
-    const col = cols.find(c=>c.field===field);
-    const label = field==='stageImp'?'IMP':field==='stageUrg'?'URG':col ? col.header : field;
-    const valArr = [...vals];
-    const display = valArr.length <= 2
-      ? valArr.map(v=>v||'(blank)').join(', ')
-      : valArr.slice(0,2).map(v=>v||'(blank)').join(', ') + ' +' + (valArr.length-2);
-    html += `<span class="filter-tag" title="${label}: ${valArr.join(', ')}"><span class="filter-tag-label" style="cursor:pointer" onclick="reopenFilter('${entity}','${field}')">${label}:</span> <span class="filter-tag-vals" style="cursor:pointer" onclick="reopenFilter('${entity}','${field}')">${display}</span><button class="filter-tag-x" onclick="clearFilter('${entity}','${field}')">&times;</button></span>`;
+  fields.forEach(f => {
+    const vals = s.filter[f.field] ? [...s.filter[f.field]] : [];
+    const isActive = vals.length > 0;
+    let display = 'All';
+    if (isActive) {
+      display = vals.length <= 2
+        ? vals.map(v => v === '' ? '(blank)' : v).join(', ')
+        : vals.slice(0,2).map(v => v === '' ? '(blank)' : v).join(', ') + ' +' + (vals.length - 2);
+    }
+    const fd = JSON.stringify(f).replace(/"/g, '&quot;');
+    html += `<div class="if-card">
+      <div class="if-card-label" title="${escHtml(f.header)}">${escHtml(f.header)}</div>
+      <button class="if-drop${isActive?' active':''}" id="if-drop-${entity}-${f.field}" onclick="openFPFromCard('${entity}',${fd},this)" title="${escHtml(display)}">
+        <span class="if-drop-val">${escHtml(display)}</span>
+        <span class="if-drop-arrow">▼</span>
+      </button>
+    </div>`;
   });
-  html += `<button class="filter-clear-all" onclick="clearAllFilters('${entity}')">Clear all</button>`;
+  if (anyActive) {
+    html += `<div class="if-clear-all-row"><button class="if-clear-all" onclick="clearAllFilters('${entity}')">✕ Clear all filters</button></div>`;
+  }
   container.innerHTML = html;
+}
+
+function openFPFromCard(entity, fd, btn) {
+  if (typeof fd === 'string') fd = JSON.parse(fd);
+  fpCtx = { entity, field: null, type: null, workingSet: new Set(), allVals: [] };
+  const panel = document.getElementById('filter-panel');
+  const rect = btn.getBoundingClientRect();
+  panel.style.top = (rect.bottom + 4) + 'px';
+  const pw = 280;
+  const left = Math.min(rect.left, window.innerWidth - pw - 8);
+  panel.style.left = Math.max(8, left) + 'px';
+  panel.style.display = 'flex';
+  fpPickField(fd);
 }
 
 function clearFilter(entity, field) {
@@ -2242,7 +2273,7 @@ function closeFP() {
 // Close filter panel on outside click
 document.addEventListener('click', e => {
   const panel = document.getElementById('filter-panel');
-  if (panel.style.display !== 'none' && !panel.contains(e.target) && !e.target.closest('.filter-add-btn') && !e.target.closest('.filter-tag')) {
+  if (panel.style.display !== 'none' && !panel.contains(e.target) && !e.target.closest('.if-drop') && !e.target.closest('.if-card')) {
     closeFP();
   }
 });
@@ -2448,8 +2479,10 @@ async function selectAllMatching(entity) {
 }
 
 function reopenFilter(entity, field) {
+  const cardBtn = document.getElementById(`if-drop-${entity}-${field}`);
+  if (cardBtn) { openFPFromCard(entity, getFPFields(entity).find(f=>f.field===field), cardBtn); return; }
   const bar = document.getElementById(`${entity}-filter-bar`);
-  const btn = bar ? bar.querySelector('.filter-add-btn') : document.body;
+  const btn = (bar && bar.querySelector('.filter-add-btn')) || document.body;
   openFP(entity, btn, field);
 }
 
