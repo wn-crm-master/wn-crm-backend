@@ -87,6 +87,17 @@
     .file-label-csv:hover { background: #6d1418; }
     .btn-download { background: #fff; color: #c0272d; border: 1.5px solid #c0272d; padding: 7px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
     .btn-download:hover { background: #fdf2f2; }
+    .dl-wrap { position: relative; display: inline-block; }
+    .dl-menu { display: none; position: absolute; right: 0; top: calc(100% + 4px); background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.12); min-width: 200px; z-index: 1000; overflow: hidden; }
+    .dl-menu.open { display: block; }
+    .dl-menu button { display: block; width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; font-size: .83rem; cursor: pointer; color: #333; }
+    .dl-menu button:hover { background: #fdf2f2; color: #c0272d; }
+    .dl-menu button:disabled { color: #aaa; cursor: default; }
+    .dl-menu button:disabled:hover { background: none; color: #aaa; }
+    .dl-menu hr { margin: 4px 0; border: none; border-top: 1px solid #eee; }
+    .btn-show-selected { background: #fff; color: #555; border: 1.5px solid #ccc; padding: 7px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: none; }
+    .btn-show-selected.active { background: #e8f4fd; color: #1565c0; border-color: #90caf9; }
+    .btn-show-selected:hover { background: #f0f0f0; }
     .inline-msg { margin-bottom: 10px; padding: 10px 14px; border-radius: 6px; font-size: 0.88rem; display: none; position: relative; }
     .inline-msg.success { background: #e6f9f0; color: #1a7f52; display: block; }
     .inline-msg.error { background: #fdecea; color: #c0392b; display: block; }
@@ -454,7 +465,15 @@
         <div class="title-row"><div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
         <div class="filter-bar" id="authors-filter-bar"><button class="filter-add-btn" onclick="openFP('authors',this)">+ Add Filter</button><div class="active-filters" id="authors-active-filters"></div></div>
         <div class="import-btns">
-          <button class="btn btn-download" onclick="downloadCSV('authors',this)">⬇ Download CSV</button>
+          <button class="btn btn-show-selected" id="authors-show-sel-btn" onclick="toggleShowSelected('authors')">⊙ Show Selected</button>
+          <div class="dl-wrap">
+            <button class="btn btn-download" onclick="toggleDownloadMenu('authors',event)">⬇ Download CSV ▾</button>
+            <div class="dl-menu" id="authors-dl-menu">
+              <button id="authors-dl-selected" onclick="closeDownloadMenu('authors');downloadCSV('authors','selected')" disabled>Download Selected Rows</button>
+              <button onclick="closeDownloadMenu('authors');downloadCSV('authors','filtered')">Download Filtered Rows</button>
+              <button onclick="closeDownloadMenu('authors');downloadCSV('authors','all')">Download Entire Sheet</button>
+            </div>
+          </div>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
           <button class="btn btn-mass-update" id="authors-mass-update" style="display:none" onclick="openMassUpdate('authors')">Mass Update</button>
@@ -475,7 +494,15 @@
         <div class="title-row"><div class="page-title">Books</div></div>
         <div class="filter-bar" id="books-filter-bar"><button class="filter-add-btn" onclick="openFP('books',this)">+ Add Filter</button><div class="active-filters" id="books-active-filters"></div></div>
         <div class="import-btns">
-          <button class="btn btn-download" onclick="downloadCSV('books',this)">⬇ Download CSV</button>
+          <button class="btn btn-show-selected" id="books-show-sel-btn" onclick="toggleShowSelected('books')">⊙ Show Selected</button>
+          <div class="dl-wrap">
+            <button class="btn btn-download" onclick="toggleDownloadMenu('books',event)">⬇ Download CSV ▾</button>
+            <div class="dl-menu" id="books-dl-menu">
+              <button id="books-dl-selected" onclick="closeDownloadMenu('books');downloadCSV('books','selected')" disabled>Download Selected Rows</button>
+              <button onclick="closeDownloadMenu('books');downloadCSV('books','filtered')">Download Filtered Rows</button>
+              <button onclick="closeDownloadMenu('books');downloadCSV('books','all')">Download Entire Sheet</button>
+            </div>
+          </div>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
           <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
           <div class="bulk-actions-wrap" id="books-bulk-wrap" style="display:none">
@@ -1654,6 +1681,11 @@ function renderTable(entity) {
   }
   s.sortedData = sorted;
 
+  // Filter to selected only if "Show Selected" is active
+  if (_showSelectedOnly[entity] && s.selected.size > 0) {
+    sorted = sorted.filter(r => s.selected.has(String(r[idField]||'')));
+  }
+
   const offsets = getStickyOffsets(cols, s.pinned, entity);
   const container = document.getElementById(meta.bodyId);
 
@@ -2433,6 +2465,10 @@ function updateSelectionUI(entity) {
   if (bulkWrap) { bulkWrap.style.display = count > 0 ? '' : 'none'; document.getElementById(`${entity}-bulk-btn`).textContent = `Bulk Actions (${count}) ▾`; }
   const emailBtn = document.getElementById(`${entity}-email-btn`);
   if (emailBtn) emailBtn.style.display = count > 0 ? '' : 'none';
+  const dlSelBtn = document.getElementById(`${entity}-dl-selected`);
+  if (dlSelBtn) dlSelBtn.disabled = count === 0;
+  const showSelBtn = document.getElementById(`${entity}-show-sel-btn`);
+  if (showSelBtn) { showSelBtn.style.display = count > 0 ? '' : 'none'; if (count === 0 && _showSelectedOnly[entity]) { _showSelectedOnly[entity] = false; showSelBtn.classList.remove('active'); } }
   // Sync master checkbox state
   const rows = [...document.querySelectorAll(`#${bodyId} tbody tr`)].filter(tr=>tr.style.display!=='none');
   const master = document.querySelector(`#${bodyId} thead .row-cb`);
@@ -3103,56 +3139,87 @@ function filterRowsForDownload(entity, rows) {
   return rows.filter(row => activeFilters.every(([f, vals]) => vals.has(getRowFilterVal(row, f))));
 }
 
-async function downloadCSV(entity, btn) {
+const _showSelectedOnly = {};
+
+function toggleDownloadMenu(entity, e) {
+  e && e.stopPropagation();
+  const menu = document.getElementById(`${entity}-dl-menu`);
+  if (!menu) return;
+  const wasOpen = menu.classList.contains('open');
+  document.querySelectorAll('.dl-menu.open').forEach(m => m.classList.remove('open'));
+  if (!wasOpen) menu.classList.add('open');
+}
+
+function closeDownloadMenu(entity) {
+  const menu = document.getElementById(`${entity}-dl-menu`);
+  if (menu) menu.classList.remove('open');
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.dl-menu.open').forEach(m => m.classList.remove('open'));
+});
+
+function toggleShowSelected(entity) {
+  _showSelectedOnly[entity] = !_showSelectedOnly[entity];
+  const btn = document.getElementById(`${entity}-show-sel-btn`);
+  if (btn) btn.classList.toggle('active', !!_showSelectedOnly[entity]);
+  loadPage(entity, 1);
+}
+
+async function downloadCSV(entity, mode) {
   const cols = entity==='authors' ? AUTHOR_COLS : entity==='aes' ? AE_COLS : entity==='earn_ae' ? EARN_AE_COLS : BOOK_COLS;
-  const triggerBtn = btn || (window.event && window.event.target);
-  const origLabel = triggerBtn ? triggerBtn.textContent : null;
-  if (triggerBtn) { triggerBtn.disabled = true; triggerBtn.textContent = 'Preparing…'; }
-  try {
-    if (entity === 'authors' || entity === 'books') {
-      // Server streams the CSV directly from a MongoDB cursor — no JSON
-      // round-trip, no client-side row-by-row string building.
-      const exportCols = cols.filter(c => !c.field.startsWith('_'));
-      const filterBody = buildFilterBody(entity);
-      filterBody.cols = exportCols.map(c => ({ field: c.field, header: c.header }));
-      const resp = await fetch(BASE + `/api/${entity}/export/csv`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify(filterBody)
-      });
-      if (!resp.ok) {
-        let msg = 'Server error (' + resp.status + ')';
-        try { const j = await resp.json(); if (j.error) msg = j.error; } catch (e) {}
-        alert('Download failed: ' + msg);
-        return;
-      }
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = entity + '_' + new Date().toISOString().slice(0,10) + '.csv';
-      a.click();
-      URL.revokeObjectURL(url);
+
+  if (entity === 'authors' || entity === 'books') {
+    const exportCols = cols.filter(c => !c.field.startsWith('_'));
+    let body = {};
+
+    if (mode === 'selected') {
+      const sel = [...(state[entity]?.selected || new Set())];
+      if (!sel.length) { alert('No rows selected.'); return; }
+      body.ids = sel;
+    } else if (mode === 'filtered') {
+      body = buildFilterBody(entity);
+    }
+    // mode === 'all' → empty body → no filters, full collection
+
+    body.cols = exportCols.map(c => ({ field: c.field, header: c.header }));
+
+    const dlBtn = document.querySelector(`#${entity}-dl-menu`);
+    const resp = await fetch(BASE + `/api/${entity}/export/csv`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) {
+      let msg = 'Server error (' + resp.status + ')';
+      try { const j = await resp.json(); if (j.error) msg = j.error; } catch (e) {}
+      alert('Download failed: ' + msg);
       return;
     }
-
-    const source = state[entity]?.sortedData || state[entity]?.data || [];
-    const data = filterRowsForDownload(entity, source);
-    if (!data.length) { alert('No data to download.'); return; }
-    const esc = v => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
-    const header = cols.map(c => esc(c.header)).join(',');
-    const rows = data.map(row => cols.map(c => esc(row[c.field] ?? '')).join(','));
-    const csv = [header, ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = entity + '_' + new Date().toISOString().slice(0,10) + '.csv';
     a.click();
     URL.revokeObjectURL(url);
-  } finally {
-    if (triggerBtn) { triggerBtn.disabled = false; triggerBtn.textContent = origLabel; }
+    return;
   }
+
+  const source = state[entity]?.sortedData || state[entity]?.data || [];
+  const data = filterRowsForDownload(entity, source);
+  if (!data.length) { alert('No data to download.'); return; }
+  const esc = v => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') || s.includes('\n') ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  const header = cols.map(c => esc(c.header)).join(',');
+  const rows = data.map(row => cols.map(c => esc(row[c.field] ?? '')).join(','));
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = entity + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function setMsg(el,type,text){

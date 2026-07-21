@@ -173,7 +173,10 @@ function register(app, getDb, authMiddleware) {
   app.post('/api/books/export/csv', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const query = buildBooksQuery(req);
+      const ids = req.body.ids;
+      const query = (Array.isArray(ids) && ids.length)
+        ? { id: { $in: ids } }
+        : buildBooksQuery(req);
       let cols = req.body.cols || null;
       if (!cols) try { cols = JSON.parse(req.query.cols); } catch (e) { cols = null; }
       if (!Array.isArray(cols) || !cols.length) return res.status(400).json({ error: 'cols is required' });

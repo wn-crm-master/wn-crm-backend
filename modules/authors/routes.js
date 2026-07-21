@@ -127,7 +127,10 @@ function register(app, getDb, authMiddleware) {
   app.post('/api/authors/export/csv', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
-      const matchQuery = buildAuthorsQuery(req);
+      const ids = req.body.ids;
+      const matchQuery = (Array.isArray(ids) && ids.length)
+        ? { uid: { $in: ids } }
+        : buildAuthorsQuery(req);
       let cols = req.body.cols || null;
       if (!cols) try { cols = JSON.parse(req.query.cols); } catch (e) { cols = null; }
       if (!Array.isArray(cols) || !cols.length) return res.status(400).json({ error: 'cols is required' });
