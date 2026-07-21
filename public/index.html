@@ -3237,7 +3237,8 @@ function openEmailComposeFrom(entity) {
   const meta = ENTITY_META[entity];
   const idField = meta ? meta.idField : 'uid';
   const sel = state[entity] ? state[entity].selected : new Set();
-  const rows = (state[entity] ? state[entity].data : []).filter(r => sel.has(String(r[idField])));
+  const src = state[entity] ? (state[entity].sortedData || state[entity].data || []) : [];
+  const rows = src.filter(r => sel.has(String(r[idField])));
   if (!rows.length) { alert('No rows selected.'); return; }
   _emailComposeSource = {
     source: entity,
