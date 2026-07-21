@@ -152,32 +152,46 @@
     .pin-btn.pinned { color: #c0272d; }
 
     /* Filter button */
-    .th-filter { padding: 3px 8px 7px; }
-    .filter-btn {
-      width: 100%; padding: 3px 7px; font-size: 0.75rem; border: 1px solid #dde2f0;
-      border-radius: 4px; background: #fff; color: #888; cursor: pointer;
-      text-align: left; display: flex; align-items: center; justify-content: space-between;
-      gap: 4px; white-space: nowrap; overflow: hidden;
-    }
-    .filter-btn:hover { border-color: #c0272d; color: #c0272d; }
-    .filter-btn.has-filter { background: #fce8e8; border-color: #c0272d; color: #c0272d; font-weight: 600; }
-    .filter-btn-text { overflow: hidden; text-overflow: ellipsis; flex: 1; }
-    .filter-btn-arrow { flex-shrink: 0; font-size: 0.6rem; }
+    .th-filter { display: none; }
 
-    /* Shared dropdown */
-    #filter-dropdown {
-      display: none; position: fixed; z-index: 9999;
-      background: #fff; border: 1px solid #dde2f0; border-radius: 8px;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.14); width: 240px;
-      max-height: 320px; overflow: hidden; flex-direction: column;
-    }
-    #filter-dropdown.open { display: flex; }
-    .fd-search-wrap { padding: 10px 10px 6px; border-bottom: 1px solid #f0f2f5; flex-shrink: 0; }
-    .fd-search-wrap input { width: 100%; padding: 5px 9px; font-size: 0.83rem; border: 1px solid #dde2f0; border-radius: 5px; outline: none; }
-    .fd-search-wrap input:focus { border-color: #c0272d; }
-    .fd-actions { display: flex; gap: 6px; padding: 6px 10px; border-bottom: 1px solid #f0f2f5; flex-shrink: 0; }
-    .fd-action-btn { font-size: 0.75rem; color: #c0272d; background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 3px; }
-    .fd-action-btn:hover { background: #fce8e8; }
+    /* ── Filter bar above table ───────────────────────────────── */
+    .filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 0 4px; }
+    .filter-add-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; font-size: .8rem; border: 1px dashed #c0272d; border-radius: 14px; background: #fff; color: #c0272d; cursor: pointer; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+    .filter-add-btn:hover { background: #fce8e8; }
+
+    /* ── Filter panel ─────────────────────────────────────────── */
+    #filter-panel { position: fixed; z-index: 9999; background: #fff; border: 1px solid #dde2f0; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); width: 280px; display: none; flex-direction: column; max-height: 420px; overflow: hidden; }
+    .fp-hdr { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px 7px; border-bottom: 1px solid #f0f2f5; flex-shrink: 0; }
+    .fp-hdr-title { font-size: .87rem; font-weight: 600; color: #333; }
+    .fp-back { background: none; border: none; font-size: .84rem; color: #c0272d; cursor: pointer; font-weight: 500; padding: 0; }
+    .fp-back:hover { text-decoration: underline; }
+    .fp-x { background: none; border: none; font-size: 1.2rem; color: #aaa; cursor: pointer; padding: 0 2px; line-height: 1; }
+    .fp-x:hover { color: #c0272d; }
+    .fp-search { padding: 7px 10px 3px; flex-shrink: 0; }
+    .fp-search input { width: 100%; padding: 5px 9px; font-size: .82rem; border: 1px solid #dde2f0; border-radius: 5px; outline: none; box-sizing: border-box; }
+    .fp-search input:focus { border-color: #c0272d; }
+    .fp-list { overflow-y: auto; flex: 1; }
+    .fp-field-item { display: block; width: 100%; text-align: left; padding: 7px 14px; font-size: .84rem; border: none; background: none; cursor: pointer; color: #333; border-bottom: 1px solid #f8f8f8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fp-field-item:hover { background: #fce8e8; color: #c0272d; }
+    .fp-field-item.has-filter { color: #c0272d; font-weight: 600; }
+    .fp-val-actions { display: flex; gap: 6px; padding: 2px 10px 4px; flex-shrink: 0; }
+    .fp-val-actions button { font-size: .74rem; color: #c0272d; background: none; border: none; cursor: pointer; padding: 2px 4px; border-radius: 3px; }
+    .fp-val-actions button:hover { background: #fce8e8; }
+    .fp-val-item { display: flex; align-items: center; gap: 8px; padding: 5px 14px; cursor: pointer; border-bottom: 1px solid #f8f8f8; }
+    .fp-val-item:hover { background: #fafafa; }
+    .fp-val-item label { font-size: .84rem; cursor: pointer; flex: 1; }
+    .fp-empty { padding: 14px; text-align: center; color: #aaa; font-size: .82rem; }
+    .fp-footer { display: flex; gap: 8px; justify-content: flex-end; padding: 7px 10px; border-top: 1px solid #f0f2f5; flex-shrink: 0; }
+    .fp-text-row { display: flex; gap: 6px; padding: 8px 10px 4px; flex-shrink: 0; }
+    .fp-text-row input { flex: 1; padding: 5px 9px; font-size: .83rem; border: 1px solid #dde2f0; border-radius: 5px; outline: none; }
+    .fp-text-row input:focus { border-color: #c0272d; }
+    .fp-text-row button { padding: 4px 10px; font-size: .8rem; background: #c0272d; color: #fff; border: none; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+    .fp-chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px 10px 6px; flex-shrink: 0; min-height: 10px; }
+    .fp-chip { display: inline-flex; align-items: center; gap: 3px; background: #fce8e8; color: #c0272d; border: 1px solid #f0c0c0; border-radius: 10px; padding: 2px 8px; font-size: .78rem; }
+    .fp-chip button { background: none; border: none; cursor: pointer; color: #c0272d; padding: 0; font-size: .8rem; line-height: 1; }
+
+    /* ── Select-all banner ────────────────────────────────────── */
+    .select-all-banner { display: none; align-items: center; gap: 10px; flex-wrap: wrap; background: #e8f4fd; border: 1px solid #b3d4f5; border-radius: 6px; padding: 7px 14px; margin-bottom: 6px; font-size: .83rem; color: #1565c0; }
     .fd-options { overflow-y: auto; flex: 1; padding: 4px 0; }
     .fd-option { display: flex; align-items: center; gap: 8px; padding: 6px 12px; cursor: pointer; font-size: 0.84rem; color: #333; }
     .fd-option:hover { background: #f4f6ff; }
@@ -328,14 +342,29 @@
 <!-- Save indicator -->
 <div id="save-indicator" class="save-indicator">Saved ✓</div>
 
-<!-- Shared filter dropdown (portal — appended to body, positioned via JS) -->
-<div id="filter-dropdown">
-  <div class="fd-search-wrap"><input id="fd-search" type="text" placeholder="Search values…" oninput="fdSearch(this.value)" /></div>
-  <div class="fd-actions">
-    <button class="fd-action-btn" onclick="fdSelectAll()">Select all</button>
-    <button class="fd-action-btn" onclick="fdClearAll()">Clear all</button>
+<!-- Filter panel -->
+<div id="filter-panel">
+  <div id="fp-fields-pane">
+    <div class="fp-hdr"><span class="fp-hdr-title">Filter by…</span><button class="fp-x" onclick="closeFP()">×</button></div>
+    <div class="fp-search"><input id="fp-field-search" type="text" placeholder="Search fields…" oninput="fpSearchFields(this.value)"></div>
+    <div class="fp-list" id="fp-field-list"></div>
   </div>
-  <div class="fd-options" id="fd-options"></div>
+  <div id="fp-values-pane" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+    <div class="fp-hdr"><button class="fp-back" id="fp-back-btn" onclick="fpShowFields()">← <span id="fp-back-label"></span></button><button class="fp-x" onclick="closeFP()">×</button></div>
+    <div id="fp-text-mode" style="display:none">
+      <div class="fp-text-row"><input id="fp-text-input" type="text" placeholder="Type a value and press Add…" onkeydown="if(event.key==='Enter')fpTextAdd()"><button onclick="fpTextAdd()">Add</button></div>
+      <div class="fp-chips" id="fp-text-chips"></div>
+    </div>
+    <div id="fp-checkbox-mode" style="display:none;flex-direction:column;overflow:hidden">
+      <div class="fp-search"><input id="fp-val-search" type="text" placeholder="Search values…" oninput="fpSearchVals(this.value)"></div>
+      <div class="fp-val-actions"><button onclick="fpValSelectAll()">Select all</button><button onclick="fpValClearAll()">Clear</button></div>
+      <div class="fp-list" id="fp-val-list"></div>
+    </div>
+    <div class="fp-footer">
+      <button class="btn" style="background:#f0f2f5;color:#555;padding:4px 14px;font-size:.82rem" onclick="closeFP()">Cancel</button>
+      <button class="btn btn-primary" style="padding:4px 14px;font-size:.82rem" onclick="applyFP()">Apply</button>
+    </div>
+  </div>
 </div>
 
 <!-- Field mapping modal -->
@@ -422,7 +451,8 @@
 
     <div id="tab-authors" class="tab">
       <div class="tab-toolbar">
-        <div class="title-row"><div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div><div class="active-filters" id="authors-active-filters"></div></div>
+        <div class="title-row"><div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
+        <div class="filter-bar" id="authors-filter-bar"><button class="filter-add-btn" onclick="openFP('authors',this)">+ Add Filter</button><div class="active-filters" id="authors-active-filters"></div></div>
         <div class="import-btns">
           <button class="btn btn-download" onclick="downloadCSV('authors',this)">⬇ Download CSV</button>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
@@ -435,13 +465,15 @@
       </div>
       <div id="authors-import-msg" class="inline-msg"></div>
       <div id="authors-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
+      <div class="select-all-banner" id="authors-select-banner"></div>
       <div class="table-card"><div class="table-scroll"><div id="authors-body"><div class="loading">Loading…</div></div></div></div>
       <div class="pager" id="authors-pager"></div>
     </div>
 
     <div id="tab-books" class="tab">
       <div class="tab-toolbar">
-        <div class="title-row"><div class="page-title">Books</div><div class="active-filters" id="books-active-filters"></div></div>
+        <div class="title-row"><div class="page-title">Books</div></div>
+        <div class="filter-bar" id="books-filter-bar"><button class="filter-add-btn" onclick="openFP('books',this)">+ Add Filter</button><div class="active-filters" id="books-active-filters"></div></div>
         <div class="import-btns">
           <button class="btn btn-download" onclick="downloadCSV('books',this)">⬇ Download CSV</button>
           <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
@@ -460,6 +492,7 @@
       </div>
       <div id="books-import-msg" class="inline-msg"></div>
       <div id="books-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
+      <div class="select-all-banner" id="books-select-banner"></div>
       <div class="table-card"><div class="table-scroll"><div id="books-body"><div class="loading">Loading…</div></div></div></div>
       <div class="pager" id="books-pager"></div>
     </div>
@@ -903,7 +936,7 @@ const state = {
 };
 
 // Active filter dropdown context
-let fdCtx = null; // { entity, field, allVals, filteredVals }
+let fpCtx = null; // { entity, field, type, workingSet, allVals }
 
 // Rollup fields — computed from books, read-only on author rows
 const ROLLUP_AUTHOR_FIELDS = new Set(['booksCreated','booksChp1Published','books10kCompleted','booksModPassed','booksExpressContracted','booksWBPContracted','booksOFW','firstContractDate','firstContractBookId','first300kWordDate','first300kWordBookId']);
@@ -1862,7 +1895,7 @@ function renderFilterTags(entity) {
     const display = valArr.length <= 2
       ? valArr.map(v=>v||'(blank)').join(', ')
       : valArr.slice(0,2).map(v=>v||'(blank)').join(', ') + ' +' + (valArr.length-2);
-    html += `<span class="filter-tag" title="${label}: ${valArr.join(', ')}"><span class="filter-tag-label">${label}:</span> <span class="filter-tag-vals">${display}</span><button class="filter-tag-x" onclick="clearFilter('${entity}','${field}')">&times;</button></span>`;
+    html += `<span class="filter-tag" title="${label}: ${valArr.join(', ')}"><span class="filter-tag-label" style="cursor:pointer" onclick="reopenFilter('${entity}','${field}')">${label}:</span> <span class="filter-tag-vals" style="cursor:pointer" onclick="reopenFilter('${entity}','${field}')">${display}</span><button class="filter-tag-x" onclick="clearFilter('${entity}','${field}')">&times;</button></span>`;
   });
   html += `<button class="filter-clear-all" onclick="clearAllFilters('${entity}')">Clear all</button>`;
   container.innerHTML = html;
@@ -1972,7 +2005,7 @@ function togglePin(entity, field) {
   renderTable(entity);
 }
 
-// ── Filter Dropdown ────────────────────────────────────────────────
+// ── Filter Panel ───────────────────────────────────────────────────
 const _distinctCache = {};
 function invalidateDistinctCache(entity) {
   for (const k of Object.keys(_distinctCache)) {
@@ -1980,172 +2013,210 @@ function invalidateDistinctCache(entity) {
   }
 }
 
-async function openFD(event, entity, field, btn) {
-  event.stopPropagation();
-  const dd = document.getElementById('filter-dropdown');
+// Filterable fields per entity
+const BOOK_FILTER_FIELDS = [
+  { field:'title',                    header:'Book Title',                   type:'text' },
+  { field:'createMonth',              header:'Create Month',                 type:'distinct' },
+  { field:'stage',                    header:'Stage',                        type:'options', options:['',...STAGE_ORDER] },
+  { field:'id',                       header:'Book ID',                      type:'text' },
+  { field:'authorId',                 header:'Author ID',                    type:'text' },
+  { field:'showId',                   header:'Show ID',                      type:'text' },
+  { field:'authorPreContract',        header:'Author Pre-Contract',          type:'distinct' },
+  { field:'authorPreContractCompany', header:'Author Pre-Contract Company',  type:'distinct' },
+  { field:'authorAeEmail',            header:'AE Email',                     type:'distinct' },
+  { field:'genre',                    header:'Book Genre',                   type:'distinct' },
+  { field:'showStatus',               header:'Show Status',                  type:'options', options:['','active','disabled','published','unpublished'] },
+  { field:'contestName',              header:'Contest Name',                 type:'distinct' },
+  { field:'moderationStatus',         header:'Moderation Status',            type:'options', options:['','Passed','Failed','Pending'] },
+  { field:'editorScore',              header:'Book Editor Score',            type:'distinct' },
+  { field:'llmDecision1hr',           header:'1hr LLM Decision',             type:'options', options:['','Pass','Reject'] },
+  { field:'llmDecision5hr',           header:'5hr LLM Decision',             type:'options', options:['','Pass','Reject'] },
+  { field:'contractingDecision',      header:'Contracting Decision',         type:'distinct' },
+  { field:'wbpStatus',                header:'WBP Status',                   type:'distinct' },
+  { field:'wbpSubStatus',             header:'WBP Sub-Status',               type:'distinct' },
+  { field:'contractType',             header:'Contract Type By Us',          type:'distinct' },
+  { field:'incentiveFlag',            header:'Book Incentive Flag',          type:'options', options:['','Off','On'] },
+  { field:'ppvTag',                   header:'PPV Current State',            type:'options', options:['','Average','Bad','PPV','Testing P1','Testing P2','Testing P3','Untested','Action Needed','P3 Failed'] },
+];
+const AUTHOR_FILTER_FIELDS = [
+  { field:'name',              header:'Author Name',           type:'text' },
+  { field:'uid',               header:'Author UID',            type:'text' },
+  { field:'email',             header:'Email',                 type:'text' },
+  { field:'aeEmail',           header:'AE Email',              type:'distinct' },
+  { field:'preContractedTag',  header:'Pre-Contract',          type:'options', options:['','Pre-Contracted','Pre-Contracted (w/ Other Proof)','Uncontracted'] },
+  { field:'preContractCompany',header:'Pre-Contract Company',  type:'options', options:['','Webnovel','Goodnovel','Dreame','Meganovel'] },
+  { field:'authorTag',         header:'Author Tag',            type:'options', options:['','New Writer','Created Only','Non-activated','Non-contracted','Contracted'] },
+  { field:'_regMonth',         header:'Registration Month',    type:'distinct' },
+];
 
-  if (fdCtx && fdCtx.entity===entity && fdCtx.field===field && dd.classList.contains('open')) {
-    closeFD(); return;
-  }
+function getFPFields(entity) {
+  return entity === 'books' ? BOOK_FILTER_FIELDS : AUTHOR_FILTER_FIELDS;
+}
 
-  const s = state[entity];
-  const filterSet = s.filter[field] || new Set();
-
-  const meta = ENTITY_META[entity];
-  const cols = meta ? meta.cols : AUTHOR_COLS;
-  const colDef = cols.find(c=>c.field===field);
-
-  fdCtx = { entity, field, allVals: [], filterSet, loading: true };
-  document.getElementById('fd-search').value = '';
-
-  const cacheKey = entity + ':' + field;
-  let dataVals;
-  const virtualFields = new Set(['_daysInStage']);
-
-  if (_distinctCache[cacheKey]) {
-    dataVals = _distinctCache[cacheKey];
-    document.getElementById('fd-options').innerHTML = '';
-  } else {
-    document.getElementById('fd-options').innerHTML = '<div class="fd-empty">Loading…</div>';
-    if ((entity === 'books' || entity === 'authors') && !virtualFields.has(field)) {
-      try {
-        const r = await api(`/api/${entity}/distinct/${field}`);
-        dataVals = new Set((r.values || []).map(v => String(v ?? '')));
-      } catch (e) {
-        dataVals = new Set(s.data.map(r => String(r[field]??'')));
-      }
-    } else if (field === '_daysInStage') {
-      dataVals = new Set(s.data.map(r => getRowFilterVal(r, '_daysInStage')));
-    } else {
-      dataVals = new Set(s.data.map(r => String(r[field]??'')));
-    }
-    if (colDef?.options) colDef.options.forEach(o => dataVals.add(o));
-    dataVals.add('');
-    _distinctCache[cacheKey] = dataVals;
-  }
-
-  let nonBlank;
-  if (field === 'stage') {
-    nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b) => stageSortIndex(a) - stageSortIndex(b));
-  } else {
-    nonBlank = [...dataVals].filter(v=>v!=='').sort((a,b)=>{
-      const n=Number(a),m=Number(b); return (!isNaN(n)&&!isNaN(m))?n-m:a.localeCompare(b,undefined,{numeric:true});
-    });
-  }
-  const allVals = dataVals.has('') ? ['', ...nonBlank] : nonBlank;
-
-  fdCtx.allVals = allVals;
-  fdCtx.loading = false;
-  renderFDOptions(allVals, filterSet, '');
-
-  // Position below the button
+function openFP(entity, btn, field) {
+  fpCtx = { entity, field: field || null, type: null, workingSet: new Set(), allVals: [] };
+  const panel = document.getElementById('filter-panel');
   const rect = btn.getBoundingClientRect();
-  dd.style.top  = (rect.bottom + 4) + 'px';
-  dd.style.left = rect.left + 'px';
-  // Keep within viewport
-  const ddW = 240;
-  if (rect.left + ddW > window.innerWidth - 8) dd.style.left = (window.innerWidth - ddW - 8) + 'px';
-
-  dd.classList.add('open');
-}
-
-function closeFD() {
-  if (fdCtx) {
-    const entity = fdCtx.entity;
-    if (entity === 'authors' || entity === 'books') {
-      document.getElementById('filter-dropdown').classList.remove('open');
-      fdCtx = null;
-      renderFilterTags(entity);
-      if (entity === 'authors') loadAuthors(1); else loadBooks(1);
-      return;
-    }
+  panel.style.top  = (rect.bottom + 4) + 'px';
+  const pw = 280;
+  const left = Math.min(rect.left, window.innerWidth - pw - 8);
+  panel.style.left = Math.max(8, left) + 'px';
+  panel.style.display = 'flex';
+  if (field) {
+    const fd = getFPFields(entity).find(f => f.field === field);
+    if (fd) { fpPickField(fd); return; }
   }
-  document.getElementById('filter-dropdown').classList.remove('open');
-  fdCtx = null;
+  fpShowFields();
 }
 
-const RISK_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
+function fpShowFields() {
+  fpCtx.field = null;
+  document.getElementById('fp-fields-pane').style.display = '';
+  document.getElementById('fp-values-pane').style.display = 'none';
+  document.getElementById('fp-field-search').value = '';
+  renderFPFieldList('');
+}
 
-function renderFDOptions(vals, selected, search) {
-  const container = document.getElementById('fd-options');
-  const isRiskFilter = fdCtx && (fdCtx.field === 'stageImp' || fdCtx.field === 'stageUrg');
-  const filtered = search ? vals.filter(v => {
-    const display = v==='' ? '(blank)' : (isRiskFilter ? (RISK_LABELS[v]||v) : v);
-    return display.toLowerCase().includes(search.toLowerCase());
-  }) : vals;
-  if (!filtered.length) { container.innerHTML = '<div class="fd-empty">No values found</div>'; return; }
-  container.innerHTML = filtered.map(v => {
-    const checked = selected.has(v) ? 'checked' : '';
-    let label;
-    if (v === '') label = '<em style="color:#aaa">(blank)</em>';
-    else if (isRiskFilter) label = RISK_LABELS[v] || escHtml(v);
-    else label = escHtml(v);
-    return `<label class="fd-option"><input type="checkbox" ${checked} onchange="fdToggle(${escJsAttr(v)},this.checked)"><span class="fd-option-label" title="${v===''?'(blank)':escAttr(v)}">${label}</span></label>`;
+function fpSearchFields(val) { renderFPFieldList(val); }
+
+function renderFPFieldList(search) {
+  const fields = getFPFields(fpCtx.entity);
+  const filtered = search ? fields.filter(f => f.header.toLowerCase().includes(search.toLowerCase())) : fields;
+  const s = state[fpCtx.entity];
+  const container = document.getElementById('fp-field-list');
+  if (!filtered.length) { container.innerHTML = '<div class="fp-empty">No fields found</div>'; return; }
+  container.innerHTML = filtered.map(f => {
+    const active = s.filter[f.field] && s.filter[f.field].size > 0;
+    return `<button class="fp-field-item${active?' has-filter':''}" onclick="fpPickField(${JSON.stringify(f)})">${escHtml(f.header)}${active ? ' ●' : ''}</button>`;
   }).join('');
 }
 
-function fdSearch(val) {
-  if (!fdCtx) return;
-  renderFDOptions(fdCtx.allVals, fdCtx.filterSet, val);
+async function fpPickField(fd) {
+  if (typeof fd === 'string') fd = JSON.parse(fd);
+  fpCtx.field = fd.field;
+  fpCtx.type = fd.type;
+  fpCtx.workingSet = new Set(state[fpCtx.entity].filter[fd.field] || []);
+
+  document.getElementById('fp-back-label').textContent = fd.header;
+  document.getElementById('fp-fields-pane').style.display = 'none';
+  const vp = document.getElementById('fp-values-pane');
+  vp.style.display = 'flex';
+
+  const textMode = document.getElementById('fp-text-mode');
+  const cbMode   = document.getElementById('fp-checkbox-mode');
+
+  if (fd.type === 'text') {
+    textMode.style.display = '';
+    cbMode.style.display = 'none';
+    document.getElementById('fp-text-input').value = '';
+    renderFPChips();
+  } else {
+    textMode.style.display = 'none';
+    cbMode.style.display = 'flex';
+    document.getElementById('fp-val-search').value = '';
+    document.getElementById('fp-val-list').innerHTML = '<div class="fp-empty">Loading…</div>';
+
+    const cacheKey = fpCtx.entity + ':' + fd.field;
+    let vals;
+    if (_distinctCache[cacheKey]) {
+      vals = _distinctCache[cacheKey];
+    } else if (fd.type === 'options') {
+      vals = fd.options;
+      _distinctCache[cacheKey] = vals;
+    } else {
+      try {
+        const r = await api(`/api/${fpCtx.entity}/distinct/${fd.field}`);
+        vals = (r.values || []).map(v => String(v ?? ''));
+      } catch(e) {
+        vals = [...new Set(state[fpCtx.entity].data.map(r => String(r[fd.field]??'')))];
+      }
+      if (fd.field === 'stage') {
+        const nonBlank = vals.filter(v => v !== '').sort((a,b) => stageSortIndex(a) - stageSortIndex(b));
+        vals = vals.includes('') ? ['', ...nonBlank] : nonBlank;
+      }
+      _distinctCache[cacheKey] = vals;
+    }
+    fpCtx.allVals = vals;
+    renderFPValList('');
+  }
 }
 
-function fdToggle(value, checked) {
-  if (!fdCtx) return;
-  const { entity, field } = fdCtx;
-  if (!state[entity].filter[field]) state[entity].filter[field] = new Set();
-  const set = state[entity].filter[field];
-  checked ? set.add(value) : set.delete(value);
-  fdCtx.filterSet = set;
-  updateFilterBtn(entity, field);
-  if (entity !== 'authors' && entity !== 'books') applyRowFilters(entity);
-  else renderFilterTags(entity);
+function renderFPValList(search) {
+  const { allVals, workingSet, field } = fpCtx;
+  const isRisk = field === 'stageImp' || field === 'stageUrg';
+  const filtered = search ? allVals.filter(v => {
+    const d = v === '' ? '(blank)' : (isRisk ? (RISK_LABELS[v]||v) : v);
+    return d.toLowerCase().includes(search.toLowerCase());
+  }) : allVals;
+  const container = document.getElementById('fp-val-list');
+  if (!filtered.length) { container.innerHTML = '<div class="fp-empty">No values</div>'; return; }
+  container.innerHTML = filtered.map(v => {
+    const checked = workingSet.has(v) ? 'checked' : '';
+    const label = v === '' ? '<em style="color:#aaa">(blank)</em>' : (isRisk ? escHtml(RISK_LABELS[v]||v) : escHtml(v));
+    return `<div class="fp-val-item"><input type="checkbox" ${checked} onchange="fpValToggle(${escJsAttr(v)},this.checked)"><label>${label}</label></div>`;
+  }).join('');
 }
 
-function fdSelectAll() {
-  if (!fdCtx) return;
-  const { entity, field, allVals } = fdCtx;
-  const search = document.getElementById('fd-search').value;
-  const visible = search ? allVals.filter(v=>v.toLowerCase().includes(search.toLowerCase())) : allVals;
-  if (!state[entity].filter[field]) state[entity].filter[field] = new Set();
-  visible.forEach(v => state[entity].filter[field].add(v));
-  fdCtx.filterSet = state[entity].filter[field];
-  renderFDOptions(allVals, fdCtx.filterSet, search);
-  updateFilterBtn(entity, field);
-  if (entity !== 'authors' && entity !== 'books') applyRowFilters(entity);
-  else renderFilterTags(entity);
+function fpValToggle(val, checked) { checked ? fpCtx.workingSet.add(val) : fpCtx.workingSet.delete(val); }
+function fpSearchVals(val) { renderFPValList(val); }
+function fpValSelectAll() {
+  const search = document.getElementById('fp-val-search').value;
+  const visible = search ? fpCtx.allVals.filter(v => v.toLowerCase().includes(search.toLowerCase())) : fpCtx.allVals;
+  visible.forEach(v => fpCtx.workingSet.add(v));
+  renderFPValList(search);
+}
+function fpValClearAll() {
+  const search = document.getElementById('fp-val-search').value;
+  const visible = search ? fpCtx.allVals.filter(v => v.toLowerCase().includes(search.toLowerCase())) : fpCtx.allVals;
+  visible.forEach(v => fpCtx.workingSet.delete(v));
+  renderFPValList(search);
 }
 
-function fdClearAll() {
-  if (!fdCtx) return;
-  const { entity, field, allVals } = fdCtx;
-  const search = document.getElementById('fd-search').value;
-  const visible = search ? allVals.filter(v=>v.toLowerCase().includes(search.toLowerCase())) : allVals;
-  const set = state[entity].filter[field] || new Set();
-  visible.forEach(v => set.delete(v));
-  state[entity].filter[field] = set;
-  fdCtx.filterSet = set;
-  renderFDOptions(allVals, fdCtx.filterSet, search);
-  updateFilterBtn(entity, field);
-  if (entity !== 'authors' && entity !== 'books') applyRowFilters(entity);
-  else renderFilterTags(entity);
+function fpTextAdd() {
+  const inp = document.getElementById('fp-text-input');
+  const val = inp.value.trim();
+  if (!val) return;
+  fpCtx.workingSet.add(val);
+  inp.value = '';
+  renderFPChips();
+}
+function fpTextRemove(val) {
+  fpCtx.workingSet.delete(val);
+  renderFPChips();
+}
+function renderFPChips() {
+  const container = document.getElementById('fp-text-chips');
+  const vals = [...fpCtx.workingSet];
+  container.innerHTML = vals.length ? vals.map(v =>
+    `<span class="fp-chip">${escHtml(v)}<button onclick="fpTextRemove(${escJsAttr(v)})" title="Remove">×</button></span>`
+  ).join('') : '<span style="font-size:.78rem;color:#bbb">No values added yet</span>';
 }
 
-function updateFilterBtn(entity, field) {
-  const btn = document.getElementById(`fbtn-${entity}-${field}`);
-  if (!btn) return;
-  const set = state[entity].filter[field] || new Set();
-  const hasFilter = set.size > 0;
-  btn.className = 'filter-btn' + (hasFilter ? ' has-filter' : '');
-  btn.querySelector('.filter-btn-text').textContent = hasFilter ? set.size+' selected' : 'All';
-  const th = btn.closest('th');
-  if (th) th.classList.toggle('has-active-filter', hasFilter);
+function applyFP() {
+  const { entity, field, workingSet } = fpCtx;
+  state[entity].filter[field] = new Set(workingSet);
+  closeFP();
+  renderFilterTags(entity);
+  if (entity === 'authors') loadAuthors(1);
+  else if (entity === 'books') loadBooks(1);
+  else applyRowFilters(entity);
 }
 
-// Close dropdown on outside click
+function closeFP() {
+  document.getElementById('filter-panel').style.display = 'none';
+  fpCtx = null;
+}
+
+// Close filter panel on outside click
 document.addEventListener('click', e => {
-  const dd = document.getElementById('filter-dropdown');
-  if (dd.classList.contains('open') && !dd.contains(e.target)) closeFD();
+  const panel = document.getElementById('filter-panel');
+  if (panel.style.display !== 'none' && !panel.contains(e.target) && !e.target.closest('.filter-add-btn') && !e.target.closest('.filter-tag')) {
+    closeFP();
+  }
 });
+
+const RISK_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
+function closeFD() { closeFP(); } // legacy alias used by startEdit
 
 // ── Inline editing ─────────────────────────────────────────────────
 function startEdit(entity, rowId, field, currentVal, cell) {
@@ -2298,22 +2369,56 @@ function toggleSelectAll(entity, masterCb) {
   const idField = meta ? meta.idField : 'uid';
   const bodyId = meta ? meta.bodyId : entity+'-body';
   const s = state[entity];
-  const activeFilters = Object.entries(s.filter).filter(([,v])=>v&&v.size>0);
-  const visibleIds = new Set(
-    s.sortedData.filter(r => activeFilters.every(([f, vals]) => vals.has(String(r[f]??'')))).map(r => String(r[idField]))
-  );
 
   sel.clear();
-  if (masterCb.checked) visibleIds.forEach(id => sel.add(id));
+  if (masterCb.checked) s.sortedData.forEach(r => sel.add(String(r[idField])));
 
-  const rows = document.querySelectorAll(`#${bodyId} tbody tr`);
-  rows.forEach(tr => {
+  document.querySelectorAll(`#${bodyId} tbody tr`).forEach(tr => {
     const cb = tr.querySelector('.row-cb');
     const checked = sel.has(tr.dataset.id);
-    if (checked) { tr.classList.add('row-selected'); if(cb) cb.checked=true; }
-    else { tr.classList.remove('row-selected'); if(cb) cb.checked=false; }
+    tr.classList.toggle('row-selected', checked);
+    if (cb) cb.checked = checked;
   });
   updateSelectionUI(entity);
+
+  const banner = document.getElementById(`${entity}-select-banner`);
+  if (banner) {
+    if (masterCb.checked && s.total > PAGE_SIZE) {
+      const pageCount = s.sortedData.length;
+      banner.innerHTML = `<span>${pageCount.toLocaleString()} rows on this page selected — ${s.total.toLocaleString()} total match your filters.</span>
+        <button class="btn btn-primary" style="padding:3px 12px;font-size:.8rem" onclick="selectAllMatching('${entity}')">Select all ${s.total.toLocaleString()}</button>
+        <button class="btn" style="padding:3px 12px;font-size:.8rem;background:#f0f2f5;color:#555" onclick="this.closest('.select-all-banner').style.display='none'">Keep this page only</button>`;
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+}
+
+async function selectAllMatching(entity) {
+  const meta = ENTITY_META[entity];
+  const idField = meta ? meta.idField : 'uid';
+  const banner = document.getElementById(`${entity}-select-banner`);
+  if (banner) banner.style.display = 'none';
+  const filters = buildFilterBody(entity);
+  const res = await api(`/api/${entity}/ids`, { method: 'POST', body: JSON.stringify(filters) });
+  if (res.error) { alert(res.error); return; }
+  state[entity].selected.clear();
+  (res.ids || []).forEach(id => state[entity].selected.add(String(id)));
+  const bodyId = meta ? meta.bodyId : entity+'-body';
+  document.querySelectorAll(`#${bodyId} tbody tr`).forEach(tr => {
+    const cb = tr.querySelector('.row-cb');
+    const checked = state[entity].selected.has(tr.dataset.id);
+    tr.classList.toggle('row-selected', checked);
+    if (cb) cb.checked = checked;
+  });
+  updateSelectionUI(entity);
+}
+
+function reopenFilter(entity, field) {
+  const bar = document.getElementById(`${entity}-filter-bar`);
+  const btn = bar ? bar.querySelector('.filter-add-btn') : document.body;
+  openFP(entity, btn, field);
 }
 
 function updateSelectionUI(entity) {
@@ -2512,7 +2617,7 @@ function showSave(ok, err) {
 }
 
 // ── Load data ──────────────────────────────────────────────────────
-const PAGE_SIZE = 1000;
+const PAGE_SIZE = 100;
 
 function hasActiveFilters(entity) {
   const f = state[entity].filter;

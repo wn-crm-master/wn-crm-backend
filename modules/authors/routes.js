@@ -98,6 +98,14 @@ function register(app, getDb, authMiddleware) {
     }
   });
 
+  app.post('/api/authors/ids', authMiddleware, async (req, res) => {
+    try {
+      const matchQuery = buildAuthorsQuery(req);
+      const docs = await getDb().collection('authors').find(matchQuery, { projection: { uid: 1, _id: 0 } }).toArray();
+      res.json({ ids: docs.map(d => d.uid) });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   app.get('/api/authors/distinct/:field', authMiddleware, async (req, res) => {
     try {
       const db = getDb();

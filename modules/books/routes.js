@@ -102,6 +102,14 @@ function register(app, getDb, authMiddleware) {
     }
   });
 
+  app.post('/api/books/ids', authMiddleware, async (req, res) => {
+    try {
+      const query = buildBooksQuery(req);
+      const docs = await getDb().collection('books').find(query, { projection: { id: 1, _id: 0 } }).toArray();
+      res.json({ ids: docs.map(d => d.id) });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   app.get('/api/books', authMiddleware, async (req, res) => {
     try {
       const db = getDb();
