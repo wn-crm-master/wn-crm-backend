@@ -177,9 +177,10 @@
     .if-drop-val { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .if-drop-arrow { font-size: .65rem; color: #aaa; flex-shrink: 0; }
     .if-drop.active .if-drop-arrow { color: #c0272d; }
-    .if-clear-all-row { width: 100%; display: flex; justify-content: flex-end; padding: 0 2px 4px; }
-    .if-clear-all { font-size: .78rem; border: none; background: none; color: #c0272d; cursor: pointer; padding: 3px 6px; border-radius: 4px; }
-    .if-clear-all:hover { background: #fce8e8; text-decoration: underline; }
+    .if-reset-card { flex: 0 0 auto; min-width: unset; max-width: unset; }
+    .if-reset-btn { color: #888; border-color: #ddd; font-weight: 500; }
+    .if-reset-btn.active { color: #c0272d; border-color: #c0272d; background: #fce8e8; }
+    .if-reset-btn:hover { color: #c0272d; border-color: #c0272d; background: #fdf2f2; }
 
     /* ── Filter panel ─────────────────────────────────────────── */
     #filter-panel { position: fixed; z-index: 9999; background: #fff; border: 1px solid #dde2f0; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); width: 340px; display: none; flex-direction: column; max-height: 460px; overflow: hidden; }
@@ -1958,9 +1959,11 @@ function renderFilterTags(entity) {
       </button>
     </div>`;
   });
-  if (anyActive) {
-    html += `<div class="if-clear-all-row"><button class="if-clear-all" onclick="clearAllFilters('${entity}')">✕ Clear all filters</button></div>`;
-  }
+  // Reset button always visible at the end
+  html += `<div class="if-card if-reset-card">
+    <div class="if-card-label">&nbsp;</div>
+    <button class="if-drop if-reset-btn${anyActive?' active':''}" onclick="clearAllFilters('${entity}')" title="Reset all filters to All">↺ Reset</button>
+  </div>`;
   container.innerHTML = html;
 }
 
@@ -2278,7 +2281,8 @@ function fpTextAdd() {
   inp.value = '';
   renderFPChips();
 }
-function fpTextRemove(val) {
+function fpTextRemove(val, e) {
+  if (e) e.stopPropagation();
   fpCtx.workingSet.delete(val);
   renderFPChips();
 }
@@ -2286,7 +2290,7 @@ function renderFPChips() {
   const container = document.getElementById('fp-text-chips');
   const vals = [...fpCtx.workingSet];
   container.innerHTML = vals.length ? vals.map(v =>
-    `<span class="fp-chip">${escHtml(v)}<button onclick="fpTextRemove(${escJsAttr(v)})" title="Remove">×</button></span>`
+    `<span class="fp-chip">${escHtml(v)}<button onclick="event.stopPropagation();fpTextRemove(${escJsAttr(v)},event)" title="Remove">×</button></span>`
   ).join('') : '<span style="font-size:.78rem;color:#bbb">Type a value above and press Add to filter</span>';
 }
 
