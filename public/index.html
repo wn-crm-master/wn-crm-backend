@@ -68,9 +68,10 @@
     .stat-card .label { font-size: 0.9rem; color: #888; margin-top: 4px; }
 
     /* Toolbar */
-    .tab-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .tab-toolbar { display: flex; flex-direction: column; gap: 0; margin-bottom: 8px; }
     .tab-toolbar .page-title { margin-bottom: 0; }
-    .title-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0; }
+    .toolbar-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-bottom: 6px; }
+    .title-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .active-filters { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .filter-tag { display: inline-flex; align-items: center; gap: 4px; background: #fce8e8; color: #a32126; border: 1px solid #f0c0c0; border-radius: 14px; padding: 2px 10px 2px 8px; font-size: 0.72rem; font-weight: 500; white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; line-height: 1.6; }
     .filter-tag-label { font-weight: 600; color: #c0272d; }
@@ -95,9 +96,10 @@
     .dl-menu button:disabled { color: #aaa; cursor: default; }
     .dl-menu button:disabled:hover { background: none; color: #aaa; }
     .dl-menu hr { margin: 4px 0; border: none; border-top: 1px solid #eee; }
-    .btn-show-selected { background: #fff; color: #555; border: 1.5px solid #ccc; padding: 7px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: none; }
+    .btn-show-selected { background: #fff; color: #aaa; border: 1.5px solid #e0e0e0; padding: 7px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .btn-show-selected.has-sel { color: #555; border-color: #ccc; }
     .btn-show-selected.active { background: #e8f4fd; color: #1565c0; border-color: #90caf9; }
-    .btn-show-selected:hover { background: #f0f0f0; }
+    .btn-show-selected:hover { background: #f0f0f0; color: #555; }
     .inline-msg { margin-bottom: 10px; padding: 10px 14px; border-radius: 6px; font-size: 0.88rem; display: none; position: relative; }
     .inline-msg.success { background: #e6f9f0; color: #1a7f52; display: block; }
     .inline-msg.error { background: #fdecea; color: #c0392b; display: block; }
@@ -471,25 +473,27 @@
 
     <div id="tab-authors" class="tab">
       <div class="tab-toolbar">
-        <div class="title-row"><div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
-        <div class="inline-filters" id="authors-filter-bar"></div>
-        <div class="import-btns">
-          <button class="btn btn-show-selected" id="authors-show-sel-btn" onclick="toggleShowSelected('authors')">⊙ Show Selected</button>
-          <div class="dl-wrap">
-            <button class="btn btn-download" onclick="toggleDownloadMenu('authors',event)">⬇ Download CSV ▾</button>
-            <div class="dl-menu" id="authors-dl-menu">
-              <button id="authors-dl-selected" onclick="closeDownloadMenu('authors');downloadCSV('authors','selected')" disabled>Download Selected Rows</button>
-              <button onclick="closeDownloadMenu('authors');downloadCSV('authors','filtered')">Download Filtered Rows</button>
-              <button onclick="closeDownloadMenu('authors');downloadCSV('authors','all')">Download Entire Sheet</button>
+        <div class="toolbar-top">
+          <div class="title-row"><div class="page-title">Authors <span id="authors-count" style="font-size:0.85rem;font-weight:400;color:#888;margin-left:8px"></span></div></div>
+          <div class="import-btns">
+            <button class="btn btn-show-selected" id="authors-show-sel-btn" onclick="toggleShowSelected('authors')">⊙ Show Selected</button>
+            <div class="dl-wrap">
+              <button class="btn btn-download" onclick="toggleDownloadMenu('authors',event)">⬇ Download CSV ▾</button>
+              <div class="dl-menu" id="authors-dl-menu">
+                <button id="authors-dl-selected" onclick="closeDownloadMenu('authors');downloadCSV('authors','selected')" disabled>Download Selected Rows</button>
+                <button onclick="closeDownloadMenu('authors');downloadCSV('authors','filtered')">Download Filtered Rows</button>
+                <button onclick="closeDownloadMenu('authors');downloadCSV('authors','all')">Download Entire Sheet</button>
+              </div>
             </div>
+            <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
+            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
+            <button class="btn btn-mass-update" id="authors-mass-update" style="display:none" onclick="openMassUpdate('authors')">Mass Update</button>
+            <button class="btn btn-danger btn-del-selected" id="authors-del-selected" style="display:none" onclick="deleteSelected('authors')">Delete Selected</button>
+            <button class="btn" id="authors-email-btn" style="display:none;background:#e8f4fd;color:#1565c0;border-color:#b3d4f5" onclick="openEmailComposeFrom('authors')">✉ Email Selected</button>
+            <button class="btn btn-danger" onclick="deleteAllEntity('authors')">Delete Data</button>
           </div>
-          <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','authors')" /></label>
-          <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','authors')" /></label>
-          <button class="btn btn-mass-update" id="authors-mass-update" style="display:none" onclick="openMassUpdate('authors')">Mass Update</button>
-          <button class="btn btn-danger btn-del-selected" id="authors-del-selected" style="display:none" onclick="deleteSelected('authors')">Delete Selected</button>
-          <button class="btn" id="authors-email-btn" style="display:none;background:#e8f4fd;color:#1565c0;border-color:#b3d4f5" onclick="openEmailComposeFrom('authors')">✉ Email Selected</button>
-          <button class="btn btn-danger" onclick="deleteAllEntity('authors')">Delete Data</button>
         </div>
+        <div class="inline-filters" id="authors-filter-bar"></div>
       </div>
       <div id="authors-import-msg" class="inline-msg"></div>
       <div id="authors-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
@@ -500,31 +504,33 @@
 
     <div id="tab-books" class="tab">
       <div class="tab-toolbar">
-        <div class="title-row"><div class="page-title">Books</div></div>
-        <div class="inline-filters" id="books-filter-bar"></div>
-        <div class="import-btns">
-          <button class="btn btn-show-selected" id="books-show-sel-btn" onclick="toggleShowSelected('books')">⊙ Show Selected</button>
-          <div class="dl-wrap">
-            <button class="btn btn-download" onclick="toggleDownloadMenu('books',event)">⬇ Download CSV ▾</button>
-            <div class="dl-menu" id="books-dl-menu">
-              <button id="books-dl-selected" onclick="closeDownloadMenu('books');downloadCSV('books','selected')" disabled>Download Selected Rows</button>
-              <button onclick="closeDownloadMenu('books');downloadCSV('books','filtered')">Download Filtered Rows</button>
-              <button onclick="closeDownloadMenu('books');downloadCSV('books','all')">Download Entire Sheet</button>
+        <div class="toolbar-top">
+          <div class="title-row"><div class="page-title">Books</div></div>
+          <div class="import-btns">
+            <button class="btn btn-show-selected" id="books-show-sel-btn" onclick="toggleShowSelected('books')">⊙ Show Selected</button>
+            <div class="dl-wrap">
+              <button class="btn btn-download" onclick="toggleDownloadMenu('books',event)">⬇ Download CSV ▾</button>
+              <div class="dl-menu" id="books-dl-menu">
+                <button id="books-dl-selected" onclick="closeDownloadMenu('books');downloadCSV('books','selected')" disabled>Download Selected Rows</button>
+                <button onclick="closeDownloadMenu('books');downloadCSV('books','filtered')">Download Filtered Rows</button>
+                <button onclick="closeDownloadMenu('books');downloadCSV('books','all')">Download Entire Sheet</button>
+              </div>
             </div>
-          </div>
-          <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
-          <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
-          <div class="bulk-actions-wrap" id="books-bulk-wrap" style="display:none">
-            <button class="btn btn-mass-update" id="books-bulk-btn" onclick="toggleBulkMenu('books')">Bulk Actions ▾</button>
-            <div class="bulk-actions-menu" id="books-bulk-menu">
-              <button onclick="closeBulkMenu('books');openMassUpdate('books')">Mass Update</button>
-              <button onclick="closeBulkMenu('books');pushLlmSheet()">Push for 1 hr LLM Score</button>
-              <button onclick="closeBulkMenu('books');openEmailComposeFrom('books')">✉ Email Selected</button>
-              <button onclick="closeBulkMenu('books');deleteSelected('books')" style="color:#c0272d;">Delete Selected</button>
+            <label class="file-label file-label-json">⬆ Import JSON<input type="file" accept=".json" onchange="handleImport(event,'json','books')" /></label>
+            <label class="file-label file-label-csv">⬆ Import CSV<input type="file" accept=".csv" onchange="handleImport(event,'csv','books')" /></label>
+            <div class="bulk-actions-wrap" id="books-bulk-wrap" style="display:none">
+              <button class="btn btn-mass-update" id="books-bulk-btn" onclick="toggleBulkMenu('books')">Bulk Actions ▾</button>
+              <div class="bulk-actions-menu" id="books-bulk-menu">
+                <button onclick="closeBulkMenu('books');openMassUpdate('books')">Mass Update</button>
+                <button onclick="closeBulkMenu('books');pushLlmSheet()">Push for 1 hr LLM Score</button>
+                <button onclick="closeBulkMenu('books');openEmailComposeFrom('books')">✉ Email Selected</button>
+                <button onclick="closeBulkMenu('books');deleteSelected('books')" style="color:#c0272d;">Delete Selected</button>
+              </div>
             </div>
+            <button class="btn btn-danger" onclick="deleteAllEntity('books')">Delete Data</button>
           </div>
-          <button class="btn btn-danger" onclick="deleteAllEntity('books')">Delete Data</button>
         </div>
+        <div class="inline-filters" id="books-filter-bar"></div>
       </div>
       <div id="books-import-msg" class="inline-msg"></div>
       <div id="books-import-progress" class="import-progress"><div class="import-progress-bar"><div class="import-progress-fill"></div></div><div class="import-progress-text"></div></div>
@@ -2523,7 +2529,7 @@ function updateSelectionUI(entity) {
   const dlSelBtn = document.getElementById(`${entity}-dl-selected`);
   if (dlSelBtn) dlSelBtn.disabled = count === 0;
   const showSelBtn = document.getElementById(`${entity}-show-sel-btn`);
-  if (showSelBtn) { showSelBtn.style.display = count > 0 ? '' : 'none'; if (count === 0 && _showSelectedOnly[entity]) { _showSelectedOnly[entity] = false; showSelBtn.classList.remove('active'); } }
+  if (showSelBtn) { showSelBtn.classList.toggle('has-sel', count > 0); showSelBtn.disabled = count === 0; if (count === 0 && _showSelectedOnly[entity]) { _showSelectedOnly[entity] = false; showSelBtn.classList.remove('active'); } }
   // Sync master checkbox state
   const rows = [...document.querySelectorAll(`#${bodyId} tbody tr`)].filter(tr=>tr.style.display!=='none');
   const master = document.querySelector(`#${bodyId} thead .row-cb`);
