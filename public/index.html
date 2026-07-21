@@ -3223,7 +3223,7 @@ function toggleShowSelected(entity) {
   _showSelectedOnly[entity] = !_showSelectedOnly[entity];
   const btn = document.getElementById(`${entity}-show-sel-btn`);
   if (btn) btn.classList.toggle('active', !!_showSelectedOnly[entity]);
-  loadPage(entity, 1);
+  renderTable(entity);
 }
 
 async function downloadCSV(entity, mode) {
