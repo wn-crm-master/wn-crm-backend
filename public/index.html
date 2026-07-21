@@ -180,7 +180,7 @@
     .if-clear-all:hover { background: #fce8e8; text-decoration: underline; }
 
     /* ── Filter panel ─────────────────────────────────────────── */
-    #filter-panel { position: fixed; z-index: 9999; background: #fff; border: 1px solid #dde2f0; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); width: 280px; display: none; flex-direction: column; max-height: 420px; overflow: hidden; }
+    #filter-panel { position: fixed; z-index: 9999; background: #fff; border: 1px solid #dde2f0; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.15); width: 340px; display: none; flex-direction: column; max-height: 460px; overflow: hidden; }
     .fp-hdr { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px 7px; border-bottom: 1px solid #f0f2f5; flex-shrink: 0; }
     .fp-hdr-title { font-size: .87rem; font-weight: 600; color: #333; }
     .fp-back { background: none; border: none; font-size: .84rem; color: #c0272d; cursor: pointer; font-weight: 500; padding: 0; }
@@ -1087,8 +1087,8 @@ function showTab(name) {
   if (idx>=0) document.querySelectorAll('.nav-link')[idx].classList.add('active');
   if (name==='settings') document.querySelector('.nav-settings').classList.add('active');
   closeFD();
-  if (name==='authors') { renderFilterTags('authors'); loadAuthors(); }
-  if (name==='books') { renderFilterTags('books'); loadBooks(); }
+  if (name==='authors') { renderFilterTags('authors'); loadAuthors(); prewarmDistinctCache('authors'); }
+  if (name==='books') { renderFilterTags('books'); loadBooks(); prewarmDistinctCache('books'); }
   if (name==='dashboard') loadStats();
   if (name==='review') loadReview();
   if (name==='settings') loadBackups();
@@ -2076,6 +2076,28 @@ function invalidateDistinctCache(entity) {
   }
 }
 
+// Pre-warm the distinct cache for all non-text fields so the panel opens instantly
+async function prewarmDistinctCache(entity) {
+  const fields = getFPFields(entity).filter(f => f.type !== 'text');
+  for (const fd of fields) {
+    const key = entity + ':' + fd.field;
+    if (_distinctCache[key]) continue;
+    if (fd.type === 'options') {
+      _distinctCache[key] = fd.options;
+    } else {
+      try {
+        const r = await api(`/api/${entity}/distinct/${fd.field}`);
+        let vals = (r.values || []).map(v => String(v ?? ''));
+        if (fd.field === 'stage') {
+          const nonBlank = vals.filter(v => v !== '').sort((a,b) => stageSortIndex(a) - stageSortIndex(b));
+          vals = vals.includes('') ? ['', ...nonBlank] : nonBlank;
+        }
+        _distinctCache[key] = vals;
+      } catch(e) {}
+    }
+  }
+}
+
 // Filterable fields per entity
 const BOOK_FILTER_FIELDS = [
   { field:'title',                    header:'Book Title',                   type:'text' },
@@ -2252,7 +2274,7 @@ function renderFPChips() {
   const vals = [...fpCtx.workingSet];
   container.innerHTML = vals.length ? vals.map(v =>
     `<span class="fp-chip">${escHtml(v)}<button onclick="fpTextRemove(${escJsAttr(v)})" title="Remove">×</button></span>`
-  ).join('') : '<span style="font-size:.78rem;color:#bbb">No values added yet</span>';
+  ).join('') : '<span style="font-size:.78rem;color:#bbb">Type a value above and press Add to filter</span>';
 }
 
 function applyFP() {
