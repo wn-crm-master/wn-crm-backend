@@ -1704,7 +1704,14 @@ function renderTable(entity) {
   const offsets = getStickyOffsets(cols, s.pinned, entity);
   const container = document.getElementById(meta.bodyId);
 
-  if (!sorted.length) { container.innerHTML='<div class="empty">No data yet. Use Import above.</div>'; return; }
+  if (!sorted.length) {
+    const hasFilters = Object.values(s.filter).some(v => v && v.size > 0);
+    const emptyMsg = hasFilters
+      ? 'No results match your current filters. Try adjusting or resetting them.'
+      : (s.total > 0 ? 'No data on this page.' : 'No data yet. Use Import above.');
+    container.innerHTML = `<div class="empty">${emptyMsg}</div>`;
+    return;
+  }
 
   let html = '<table class="wide"><thead><tr>';
   // Select-all checkbox column
