@@ -3619,10 +3619,18 @@ async function buildRecipients() {
       if (missingIds.length) {
         try {
           const res = await api('/api/authors/ids-to-emails', { method: 'POST', body: JSON.stringify({ ids: missingIds }) });
-          (res.authors || []).forEach(a => { authorLookup[a.uid] = a; });
-        } catch(e) {}
+          (res.authors || []).forEach(a => { if (a.email) authorLookup[a.uid] = a; });
+        } catch(e) { console.warn('ids-to-emails failed', e); }
         // Fallback: check already-loaded authors state
-        (state.authors?.data || []).forEach(a => { if (a.uid && !authorLookup[a.uid]) authorLookup[a.uid] = a; });
+        (state.authors?.data || []).forEach(a => { if (a.uid && a.email && !authorLookup[a.uid]) authorLookup[a.uid] = a; });
+        // Second fallback: fetch each author individually
+        const stillMissing = missingIds.filter(id => !authorLookup[id]);
+        for (const uid of stillMissing.slice(0, 20)) {
+          try {
+            const a = await api(`/api/authors/${encodeURIComponent(uid)}`);
+            if (a && a.email) authorLookup[uid] = a;
+          } catch(e) {}
+        }
       }
       const seen = new Set();
       return rows.map(r => {
@@ -3632,6 +3640,11 @@ async function buildRecipients() {
           const a = authorLookup[r.authorId];
           email = (a.email || '').toLowerCase();
           if (!authorName) authorName = a.name || '';
+        }
+        // Last resort: match by authorName in loaded authors
+        if (!email && authorName) {
+          const match = (state.authors?.data || []).find(a => a.name && a.name.toLowerCase() === authorName.toLowerCase() && a.email);
+          if (match) email = (match.email || '').toLowerCase();
         }
         const key = r.authorId || r.uid || email;
         if (!email || !key || seen.has(key)) return null;
@@ -3717,7 +3730,14 @@ async function sendEmailCampaign() {
   btn.disabled = true; btn.textContent = 'Preparing…'; countEl.textContent = 'Fetching recipients…';
   const recipients = await buildRecipients();
   if (!recipients.length) {
-    errEl.textContent = 'No valid recipients found.'; errEl.style.display = 'block';
+    let hint = 'No valid recipients found.';
+    if (_emailComposeSource && _emailComposeSource.source === 'books') {
+      const rows = _emailComposeSource.rows || [];
+      const missing = rows.filter(r => !(r.authorEmail || r.email));
+      hint = `No valid recipients found. ${rows.length} book(s) selected — ${missing.length} have no author email on the book record.`;
+      if (missing.length) hint += ` Missing for: ${missing.slice(0,3).map(r=>r.title||r.id).join(', ')}${missing.length>3?' …':''}. Try editing those books to set the author email, or run the rollup sync.`;
+    }
+    errEl.textContent = hint; errEl.style.display = 'block';
     btn.disabled = false; btn.textContent = 'Send Campaign'; countEl.textContent = ''; return;
   }
   const invalid = recipients.filter(r => !r.email || !r.email.includes('@'));
