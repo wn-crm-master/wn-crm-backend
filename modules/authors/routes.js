@@ -106,6 +106,18 @@ function register(app, getDb, authMiddleware) {
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
+  app.post('/api/authors/ids-to-emails', authMiddleware, async (req, res) => {
+    try {
+      const ids = req.body.ids;
+      if (!Array.isArray(ids) || !ids.length) return res.json({ authors: [] });
+      const docs = await getDb().collection('authors').find(
+        { uid: { $in: ids } },
+        { projection: { uid: 1, name: 1, email: 1, _id: 0 } }
+      ).toArray();
+      res.json({ authors: docs });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
   app.get('/api/authors/distinct/:field', authMiddleware, async (req, res) => {
     try {
       const db = getDb();

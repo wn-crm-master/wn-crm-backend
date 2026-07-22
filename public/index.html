@@ -3613,15 +3613,32 @@ async function buildRecipients() {
       }));
     }
     if (source === 'books') {
+      // Collect authorIds that have no email on the book doc and fetch from authors collection
+      const missingIds = [...new Set(rows.filter(r => !(r.authorEmail || r.email) && r.authorId).map(r => r.authorId))];
+      const authorLookup = {};
+      if (missingIds.length) {
+        try {
+          const res = await api('/api/authors/ids-to-emails', { method: 'POST', body: JSON.stringify({ ids: missingIds }) });
+          (res.authors || []).forEach(a => { authorLookup[a.uid] = a; });
+        } catch(e) {}
+        // Fallback: check already-loaded authors state
+        (state.authors?.data || []).forEach(a => { if (a.uid && !authorLookup[a.uid]) authorLookup[a.uid] = a; });
+      }
       const seen = new Set();
       return rows.map(r => {
-        const email = (r.authorEmail || r.email || '').toLowerCase();
+        let email = (r.authorEmail || r.email || '').toLowerCase();
+        let authorName = r.authorName || '';
+        if (!email && r.authorId && authorLookup[r.authorId]) {
+          const a = authorLookup[r.authorId];
+          email = (a.email || '').toLowerCase();
+          if (!authorName) authorName = a.name || '';
+        }
         const key = r.authorId || r.uid || email;
         if (!email || !key || seen.has(key)) return null;
         seen.add(key);
         return {
-          name: r.authorName || '', email,
-          uid: r.authorId || '', authorName: r.authorName || '',
+          name: authorName, email,
+          uid: r.authorId || '', authorName,
           authorEmail: email, authorId: r.authorId || '',
           aeEmail: (r.authorAeEmail || r.aeEmail || '').toLowerCase(),
           aeName: getAeName(r.authorAeEmail || r.aeEmail),
