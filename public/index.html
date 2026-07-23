@@ -2113,7 +2113,9 @@ async function prewarmDistinctCache(entity) {
         let vals = (r.values || []).map(v => String(v ?? ''));
         if (fd.field === 'stage') {
           const nonBlank = vals.filter(v => v !== '').sort((a,b) => stageSortIndex(a) - stageSortIndex(b));
-          vals = vals.includes('') ? ['', ...nonBlank] : nonBlank;
+          vals = ['', ...nonBlank];
+        } else if (!vals.includes('')) {
+          vals = ['', ...vals];
         }
         _distinctCache[key] = vals;
       } catch(e) {}
@@ -2240,7 +2242,10 @@ async function fpPickField(fd) {
       }
       if (fd.field === 'stage') {
         const nonBlank = vals.filter(v => v !== '').sort((a,b) => stageSortIndex(a) - stageSortIndex(b));
-        vals = vals.includes('') ? ['', ...nonBlank] : nonBlank;
+        vals = ['', ...nonBlank];
+      } else {
+        // Always include blank so users can filter for "not set"
+        if (!vals.includes('')) vals = ['', ...vals];
       }
       _distinctCache[cacheKey] = vals;
     }
