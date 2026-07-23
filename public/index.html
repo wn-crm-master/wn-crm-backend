@@ -3493,18 +3493,50 @@ function getAeName(aeEmail) {
   return ae ? (ae.name || '') : '';
 }
 
-function openEmailComposeFrom(entity) {
+async function openEmailComposeFrom(entity) {
   const meta = ENTITY_META[entity];
   const idField = meta ? meta.idField : 'uid';
   const sel = state[entity] ? state[entity].selected : new Set();
+  if (!sel.size) { alert('No rows selected.'); return; }
+
   const src = state[entity] ? (state[entity].sortedData || state[entity].data || []) : [];
-  const rows = src.filter(r => sel.has(String(r[idField])));
+  const inMemory = src.filter(r => sel.has(String(r[idField])));
+
+  // If all selected IDs are present in memory, use them directly
+  if (inMemory.length === sel.size) {
+    _emailComposeSource = { source: entity, rows: inMemory, recipientTarget: entity === 'aes' ? 'ae' : 'author' };
+    showEmailCompose();
+    return;
+  }
+
+  // Otherwise fetch full data for all selected IDs from server
+  const ids = [...sel];
+  let rows = [];
+  try {
+    if (entity === 'authors') {
+      const r = await fetch('/api/authors/ids-to-emails', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      const j = await r.json();
+      rows = (j.authors || []).map(a => ({ uid: a.uid, name: a.name, email: a.email }));
+    } else if (entity === 'books') {
+      const r = await fetch('/api/books/slim', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: ['id', 'authorId', 'title', 'authorEmail', 'authorName', 'authorAeEmail'] })
+      });
+      const j = await r.json();
+      const selSet = sel;
+      rows = (j.data || []).filter(b => selSet.has(String(b.id)));
+    } else {
+      rows = inMemory;
+    }
+  } catch (e) {
+    rows = inMemory;
+  }
+
   if (!rows.length) { alert('No rows selected.'); return; }
-  _emailComposeSource = {
-    source: entity,
-    rows,
-    recipientTarget: entity === 'aes' ? 'ae' : 'author'
-  };
+  _emailComposeSource = { source: entity, rows, recipientTarget: entity === 'aes' ? 'ae' : 'author' };
   showEmailCompose();
 }
 
